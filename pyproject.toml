@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "octopilot-pipeline-tools"
+version = "0.1.0"
+description = "Python port of SAM pipeline.sh: drive Skaffold/Buildpacks build, push, build_result.json, watch-deployment, promote-image. Runs in Docker or GitHub Actions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "OctoPilot" }]
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+octopilot-pipeline = "octopilot_pipeline_tools.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["src/octopilot_pipeline_tools"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 65
