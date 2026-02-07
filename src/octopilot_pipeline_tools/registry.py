@@ -105,6 +105,7 @@ def get_push_registries(
     data = load_registry_file(repo_root)
     if in_ci is None:
         import os
+
         in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
     if destination == "auto":
         destination = "ci" if in_ci else "local"

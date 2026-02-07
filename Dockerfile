@@ -1,5 +1,5 @@
 # OctoPilot pipeline tools: run Skaffold/build_result/watch-deployment in CI or locally.
-# Use as a container so the toolchain is not copied into each app repo (unlike SAM's .github/waas/).
+# Use as a container so the toolchain is not copied into each app repo.
 FROM python:3.11-slim
 
 # Install Skaffold, flux, kubectl, crane for full pipeline (optional: multi-stage or slim image without these for CLI-only).

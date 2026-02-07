@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 BUILD_RESULT_FILENAME = "build_result.json"
 
 
@@ -52,8 +51,7 @@ def parse_skaffold_output_for_tag(
     """
     Parse skaffold build output to extract image tags.
     If image_pattern is given, use regex with group 'image' and 'tag'; else use Skaffold --file-output.
-    SAM pipeline.sh uses sed like: sed -En 's/^.*(sam-[a-z-]*):([a-z0-9]{7}-[0-9]{14}).*$/.../p'
-    Generic fallback: look for last "Tagged ... as <repo>/<image>:<tag>" or "Built ... -> <image>:<tag>".
+    Fallback: look for last "Tagged ... as <repo>/<image>:<tag>" or "Built ... -> <image>:<tag>".
     """
     if image_pattern:
         rx = re.compile(image_pattern)
@@ -102,9 +100,12 @@ def run_skaffold_build_push(
     if use_file_output:
         out_path = cwd / BUILD_RESULT_FILENAME
         cmd = [
-            skaffold_cmd, "build",
-            "--file-output", str(out_path),
-            "--default-repo", default_repo,
+            skaffold_cmd,
+            "build",
+            "--file-output",
+            str(out_path),
+            "--default-repo",
+            default_repo,
         ]
         if profile:
             cmd.extend(["--profile", profile])
@@ -115,7 +116,7 @@ def run_skaffold_build_push(
             raise SystemExit(proc.returncode)
         # Skaffold --file-output format may differ; normalize to { "builds": [ { "tag": "..." } ] }
         data = json.loads(out_path.read_text())
-        if "builds" in data and data["builds"]:
+        if data.get("builds"):
             normalized = []
             for b in data["builds"]:
                 if isinstance(b, dict):
@@ -124,12 +125,14 @@ def run_skaffold_build_push(
                     elif "imageName" in b and "tag" in b:
                         normalized.append({"tag": f"{b['imageName']}:{b['tag']}"})
                     else:
-                        normalized.append({"tag": f"{default_repo}/{b.get('imageName', 'app')}:{b.get('tag', 'latest')}"})
+                        img, t = b.get("imageName", "app"), b.get("tag", "latest")
+                        normalized.append({"tag": f"{default_repo}/{img}:{t}"})
                 else:
                     normalized.append({"tag": str(b)})
             out_path.write_text(json.dumps({"builds": normalized}, indent=2))
         elif "image" in data or "tag" in data:
-            out_path.write_text(json.dumps({"builds": [{"tag": f"{default_repo}/{data.get('image', 'app')}:{data.get('tag', 'latest')}"}]}, indent=2))
+            img, t = data.get("image", "app"), data.get("tag", "latest")
+            out_path.write_text(json.dumps({"builds": [{"tag": f"{default_repo}/{img}:{t}"}]}, indent=2))
         return out_path
     # No --file-output: run skaffold build and parse stdout
     cmd = [skaffold_cmd, "build", "--default-repo", default_repo]

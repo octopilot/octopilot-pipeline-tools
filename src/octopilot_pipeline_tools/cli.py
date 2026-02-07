@@ -1,4 +1,4 @@
-"""CLI: port of pipeline.sh for Skaffold/Buildpacks (build, push, watch-deployment, promote-image)."""
+"""CLI for Skaffold/Buildpacks pipelines: build, push, watch-deployment, promote-image."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from .build_result import (
     get_first_tag,
     read_build_result,
     run_skaffold_build_push,
-    write_build_result,
 )
 from .config import (
     get_config,
@@ -23,10 +22,9 @@ from .config import (
     get_watch_destination_repository,
 )
 from .registry import (
+    REGISTRY_FILENAME,
     get_default_repo_from_registry,
     get_push_registries,
-    load_registry_file,
-    REGISTRY_FILENAME,
 )
 
 
@@ -77,17 +75,35 @@ def build(ctx: click.Context) -> None:
 
 
 @main.command()
-@click.option("--default-repo", envvar="SKAFFOLD_DEFAULT_REPO", help="Registry/repo for push (overrides .registry and env).")
+@click.option(
+    "--default-repo",
+    envvar="SKAFFOLD_DEFAULT_REPO",
+    help="Registry/repo for push (overrides .registry and env).",
+)
 @click.option(
     "--destination",
     type=click.Choice(["local", "ci", "all", "auto"]),
     default="auto",
     help="Which registries from .registry: local, ci, all, or auto (ci in GITHUB_ACTIONS else local).",
 )
-@click.option("--registry-file", type=click.Path(path_type=Path), default=None, help=f"Path to .registry file (default: {REGISTRY_FILENAME} in cwd).")
-@click.option("--push-all", is_flag=True, help="After push to first registry, crane copy to remaining CI destinations.")
+@click.option(
+    "--registry-file",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=f"Path to .registry file (default: {REGISTRY_FILENAME} in cwd).",
+)
+@click.option(
+    "--push-all",
+    is_flag=True,
+    help="After push to first registry, crane copy to remaining CI destinations.",
+)
 @click.option("--profile", default="push", help="Skaffold profile (e.g. push).")
-@click.option("--output", type=click.Path(path_type=Path), default=None, help=f"Write {BUILD_RESULT_FILENAME} here (default: cwd).")
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=f"Write {BUILD_RESULT_FILENAME} here (default: cwd).",
+)
 @click.option("--no-file-output", is_flag=True, help="Parse skaffold stdout instead of --file-output.")
 @click.option("--image-pattern", default=None, help="Regex with 'image' and 'tag' groups to parse output.")
 @click.pass_context
@@ -103,7 +119,7 @@ def push(
     image_pattern: str | None,
 ) -> None:
     """Run skaffold build (with profile), push to registry, write build_result.json.
-    Registry can come from --default-repo, env (SKAFFOLD_DEFAULT_REPO / GOOGLE_GKE_IMAGE_REPOSITORY), or .registry file.
+    Registry can come from --default-repo, env, or .registry file.
     """
     config = ctx.obj["config"]
     cwd = Path.cwd()
@@ -117,7 +133,8 @@ def push(
         default_repo = get_default_repo_from_registry(repo_root=repo_root, destination=destination)
     if not default_repo:
         click.echo(
-            "::error ::No push registry. Set --default-repo, SKAFFOLD_DEFAULT_REPO, GOOGLE_GKE_IMAGE_REPOSITORY, or add a .registry file.",
+            "::error ::No push registry. Set --default-repo, SKAFFOLD_DEFAULT_REPO "
+            "(or equivalent env), or add a .registry file.",
             err=True,
         )
         sys.exit(1)
@@ -158,10 +175,20 @@ def push(
 
 @main.command("watch-deployment")
 @click.option("--component", "component_name", required=True, help="Deployment/HelmRelease name.")
-@click.option("--environment", type=click.Choice(["dev", "pp", "prod"]), required=True, help="Environment (sets destination repo).")
+@click.option(
+    "--environment",
+    type=click.Choice(["dev", "pp", "prod"]),
+    required=True,
+    help="Environment (sets destination repo).",
+)
 @click.option("--timeout", default="30m", help="kubectl rollout status timeout (e.g. 15m).")
-@click.option("--namespace", default="sam", help="Kubernetes namespace.")
-@click.option("--build-result", type=click.Path(path_type=Path), default=Path(BUILD_RESULT_FILENAME), help="Path to build_result.json.")
+@click.option("--namespace", default="default", help="Kubernetes namespace.")
+@click.option(
+    "--build-result",
+    type=click.Path(path_type=Path),
+    default=Path(BUILD_RESULT_FILENAME),
+    help="Path to build_result.json.",
+)
 @click.pass_context
 def watch_deployment(
     ctx: click.Context,
@@ -175,7 +202,11 @@ def watch_deployment(
     config = ctx.obj["config"]
     dest_repo = get_watch_destination_repository(config, environment)
     if not dest_repo:
-        click.echo("::error ::Could not resolve destination repository. Set GOOGLE_GKE_IMAGE_* or WATCH_DESTINATION_REPOSITORY.", err=True)
+        click.echo(
+            "::error ::Could not resolve destination repository. Set env "
+            "(e.g. GOOGLE_GKE_IMAGE_* or WATCH_DESTINATION_REPOSITORY).",
+            err=True,
+        )
         sys.exit(1)
     data = read_build_result(build_result.parent if build_result.is_file() else Path.cwd())
     tag = get_first_tag(data)
@@ -189,8 +220,9 @@ def watch_deployment(
             ["flux", "reconcile", "helmrelease", component_name, "-n", namespace],
             capture_output=True,
         )
+        jsonpath = "{.spec.template.spec.containers[0].image}"
         proc = subprocess.run(
-            ["kubectl", "-n", namespace, "get", "deployment", component_name, "-o", "jsonpath={.spec.template.spec.containers[0].image}"],
+            ["kubectl", "-n", namespace, "get", "deployment", component_name, "-o", jsonpath],
             capture_output=True,
             text=True,
         )
@@ -200,7 +232,16 @@ def watch_deployment(
         time.sleep(10)
     click.echo(f"Image matched. Waiting for rollout (timeout {timeout}) ...")
     proc = subprocess.run(
-        ["kubectl", "-n", namespace, "rollout", "status", f"deployment/{component_name}", "--timeout", timeout],
+        [
+            "kubectl",
+            "-n",
+            namespace,
+            "rollout",
+            "status",
+            f"deployment/{component_name}",
+            "--timeout",
+            timeout,
+        ],
     )
     if proc.returncode != 0:
         click.echo("::error ::Flux: deployment rollout failed.", err=True)
@@ -210,7 +251,12 @@ def watch_deployment(
 @main.command("promote-image")
 @click.option("--source", type=click.Choice(["dev", "pp", "prod"]), required=True)
 @click.option("--destination", type=click.Choice(["pp", "prod"]), required=True)
-@click.option("--build-result", type=click.Path(path_type=Path), default=Path(BUILD_RESULT_FILENAME), help="Path to build_result.json.")
+@click.option(
+    "--build-result",
+    type=click.Path(path_type=Path),
+    default=Path(BUILD_RESULT_FILENAME),
+    help="Path to build_result.json.",
+)
 @click.pass_context
 def promote_image(
     ctx: click.Context,
@@ -222,7 +268,10 @@ def promote_image(
     config = ctx.obj["config"]
     src_repo, dest_repo = get_promote_repositories(config, source, destination)
     if not src_repo or not dest_repo:
-        click.echo("::error ::Set GOOGLE_GKE_IMAGE_* or PROMOTE_SOURCE/DESTINATION_REPOSITORY.", err=True)
+        click.echo(
+            "::error ::Set env (e.g. GOOGLE_GKE_IMAGE_* or PROMOTE_SOURCE/DESTINATION_REPOSITORY).",
+            err=True,
+        )
         sys.exit(1)
     data = read_build_result(build_result.parent if build_result.is_file() else Path.cwd())
     tag = get_first_tag(data)

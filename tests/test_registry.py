@@ -22,10 +22,7 @@ def test_load_registry_file_empty(tmp_path: Path) -> None:
 
 def test_load_registry_file_local_and_ci(tmp_path: Path) -> None:
     (tmp_path / REGISTRY_FILENAME).write_text(
-        "local: localhost:5000\n"
-        "ci:\n"
-        "  - ghcr.io/my-org\n"
-        "  - europe-west1-docker.pkg.dev/proj/repo\n"
+        "local: localhost:5000\nci:\n  - ghcr.io/my-org\n  - europe-west1-docker.pkg.dev/proj/repo\n"
     )
     data = load_registry_file(tmp_path)
     assert data["local"] == "localhost:5000"
@@ -33,12 +30,7 @@ def test_load_registry_file_local_and_ci(tmp_path: Path) -> None:
 
 
 def test_load_registry_file_ci_with_url_objects(tmp_path: Path) -> None:
-    (tmp_path / REGISTRY_FILENAME).write_text(
-        "ci:\n"
-        "  - url: ghcr.io/octopilot\n"
-        "    name: ghcr\n"
-        "  - docker.io/user\n"
-    )
+    (tmp_path / REGISTRY_FILENAME).write_text("ci:\n  - url: ghcr.io/octopilot\n    name: ghcr\n  - docker.io/user\n")
     data = load_registry_file(tmp_path)
     assert data["ci"] == ["ghcr.io/octopilot", "docker.io/user"]
 
@@ -89,3 +81,22 @@ def test_registry_interpolation_dollar_dollar(tmp_path: Path) -> None:
     (tmp_path / REGISTRY_FILENAME).write_text('local: "prefix$$suffix"\nci: []\n')
     data = load_registry_file(tmp_path)
     assert data["local"] == "prefix$suffix"
+
+
+def test_load_registry_file_invalid_not_dict(tmp_path: Path) -> None:
+    (tmp_path / REGISTRY_FILENAME).write_text("local: localhost\n")  # YAML list or scalar
+    (tmp_path / REGISTRY_FILENAME).write_text('["list"]')
+    with pytest.raises(ValueError, match="must be a YAML object"):
+        load_registry_file(tmp_path)
+
+
+def test_load_registry_file_ci_not_list(tmp_path: Path) -> None:
+    (tmp_path / REGISTRY_FILENAME).write_text("local: localhost:5000\nci: not-a-list\n")
+    with pytest.raises(ValueError, match="'ci' must be a list"):
+        load_registry_file(tmp_path)
+
+
+def test_get_push_registries_invalid_destination(tmp_path: Path) -> None:
+    (tmp_path / REGISTRY_FILENAME).write_text("local: localhost:5000\nci: []\n")
+    with pytest.raises(ValueError, match="destination must be local"):
+        get_push_registries(repo_root=tmp_path, destination="invalid")

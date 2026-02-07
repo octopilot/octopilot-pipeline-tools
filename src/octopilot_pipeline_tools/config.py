@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 
 
 def load_properties_file(path: Path) -> dict[str, str]:
@@ -33,11 +33,8 @@ def get_config(properties_path: Path | None = None) -> dict[str, str]:
 
 
 def get_default_repo(config: dict[str, str]) -> str | None:
-    """SKAFFOLD_DEFAULT_REPO or GOOGLE_GKE_IMAGE_REPOSITORY (SAM convention)."""
-    return (
-        config.get("SKAFFOLD_DEFAULT_REPO")
-        or config.get("GOOGLE_GKE_IMAGE_REPOSITORY")
-    )
+    """SKAFFOLD_DEFAULT_REPO or GOOGLE_GKE_IMAGE_REPOSITORY (common for GKE/CI)."""
+    return config.get("SKAFFOLD_DEFAULT_REPO") or config.get("GOOGLE_GKE_IMAGE_REPOSITORY")
 
 
 def get_watch_destination_repository(config: dict[str, str], environment: str) -> str | None:
@@ -51,14 +48,14 @@ def get_watch_destination_repository(config: dict[str, str], environment: str) -
     return config.get("WATCH_DESTINATION_REPOSITORY")
 
 
-def get_promote_repositories(
-    config: dict[str, str], source: str, destination: str
-) -> tuple[str | None, str | None]:
+def get_promote_repositories(config: dict[str, str], source: str, destination: str) -> tuple[str | None, str | None]:
     """(source_repo, dest_repo) for promote-image."""
     repo_map = {
         "dev": config.get("GOOGLE_GKE_IMAGE_REPOSITORY"),
         "pp": config.get("GOOGLE_GKE_IMAGE_PP_REPOSITORY"),
         "prod": config.get("GOOGLE_GKE_IMAGE_PROD_REPOSITORY"),
     }
-    return (repo_map.get(source) or config.get("PROMOTE_SOURCE_REPOSITORY"),
-            repo_map.get(destination) or config.get("PROMOTE_DESTINATION_REPOSITORY"))
+    return (
+        repo_map.get(source) or config.get("PROMOTE_SOURCE_REPOSITORY"),
+        repo_map.get(destination) or config.get("PROMOTE_DESTINATION_REPOSITORY"),
+    )
