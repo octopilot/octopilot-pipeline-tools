@@ -1,0 +1,31 @@
+# Pre-commit: block commits that would fail CI (ruff lint/format, pytest).
+# Install: pip install -e ".[dev]" && pre-commit install
+# Run manually: pre-commit run --all-files
+# See https://pre-commit.com/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: python -m pytest tests/ -v --tb=short --cov=src/octopilot_pipeline_tools --cov-fail-under=80 --cov-report=term-missing
+        language: system
+        pass_filenames: false
+        always_run: true

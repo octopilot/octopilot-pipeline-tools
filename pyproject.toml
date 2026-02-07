@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "octopilot-pipeline-tools"
+version = "0.1.0"
+description = "Organisation-agnostic CLI for Skaffold/Buildpacks pipelines: build, push, build_result.json, watch-deployment, promote-image. Runs in Docker or GitHub Actions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "OctoPilot" }]
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov>=7.0",
+    "pre-commit>=4.0",
+    "ruff>=0.15.0",
+]
+
+[project.scripts]
+octopipeline = "octopilot_pipeline_tools.cli:main"
+op = "octopilot_pipeline_tools.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["src/octopilot_pipeline_tools"]
+branch = true
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = [".git", "__pycache__", ".venv", "*.egg-info"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "W",      # pycodestyle warnings
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "RUF",    # Ruff-specific
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit (security)
+    "T20",    # flake8-print
+]
+ignore = [
+    "S101",   # assert_used (allow in tests)
+    "S104",   # bind to all interfaces
+    "S311",   # random for crypto (allow random in tests)
+    "S603",   # subprocess without shell=True (CLI runs fixed tooling)
+    "S607",   # partial executable path (intentional for system binaries)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["octopilot_pipeline_tools"]
