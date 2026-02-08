@@ -11,6 +11,7 @@ import click
 
 from .build_result import (
     BUILD_RESULT_FILENAME,
+    find_tag_for_image,
     get_first_tag,
     read_build_result,
     run_skaffold_build_push,
@@ -24,16 +25,23 @@ from .config import (
 from .pack_build import (
     parse_skaffold_artifacts,
 )
-from .pack_build import (
-    run_pack_build_push as run_pack_build_push_impl,
-)
 from .registry import (
     REGISTRY_FILENAME,
     get_default_repo_from_registry,
     get_push_registries,
 )
 from .run_config import get_run_options_for_context, load_run_config
-from .start_registry import install_cert_trust, install_cert_trust_colima, start_registry
+from .start_registry import (
+    etc_hosts_has_registry_local,
+    install_cert_trust,
+    install_cert_trust_colima,
+    is_cert_already_trusted_system,
+    is_colima_running,
+    start_registry,
+)
+
+# Single pull hint for start-registry success (registry.local is already required in /etc/hosts at entry).
+_REGISTRY_PULL_HINT = "To pull: docker pull registry.local:5001/<image> or host.docker.internal:5001/<image>."
 
 
 def _config_callback(ctx: click.Context, _param: click.Parameter, value: str | None) -> str | None:
@@ -87,7 +95,7 @@ def build(ctx: click.Context) -> None:
 
 @main.command(
     "build-push",
-    short_help="Build and push with pack --publish (use when Skaffold buildpacks fail).",
+    short_help="Build and push all artifacts with Skaffold, then write build_result.json.",
 )
 @click.option(
     "--repo",
@@ -95,11 +103,6 @@ def build(ctx: click.Context) -> None:
     default="localhost:5001",
     envvar="SKAFFOLD_DEFAULT_REPO",
     help="Registry to push to (default: localhost:5001). E.g. ghcr.io/owner/repo for GitHub Container Registry.",
-)
-@click.option(
-    "--tag",
-    default="latest",
-    help="Image tag for all artifacts.",
 )
 @click.option(
     "--skaffold-file",
@@ -113,43 +116,35 @@ def build(ctx: click.Context) -> None:
     default=None,
     help=f"Directory to write {BUILD_RESULT_FILENAME} (default: cwd).",
 )
-@click.option(
-    "--pack",
-    "pack_cmd",
-    default="pack",
-    envvar="PACK_CMD",
-    help="Path to pack CLI (default: 'pack' from PATH). Use local build e.g. ../pack/out/pack or set PACK_CMD.",
-)
 @click.pass_context
 def build_push(
     ctx: click.Context,
     repo: str,
-    tag: str,
     skaffold_file: Path,
     output: Path | None,
-    pack_cmd: str,
 ) -> None:
-    """Build and push with pack --publish (use when Skaffold buildpacks fail on Mac or Linux).
+    """Build and push all artifacts with Skaffold, then write build_result.json.
 
-    Reads buildpacks artifacts from skaffold.yaml and runs pack build for each with
-    --publish, then writes build_result.json. Works around Mac containerd digest
-    error and Linux /layers permission denied. Default registry is localhost:5001
-    (override with --repo or SKAFFOLD_DEFAULT_REPO).
+    Uses a single Skaffold invocation to build all artifacts (buildpacks and docker).
+    Fails if Skaffold fails; use a Skaffold build with the buildpacks Publish fix
+    (e.g. from octopilot/skaffold buildpacks-publish-fix branch) on Mac/containerd.
+    Default registry is localhost:5001 (override with --repo or SKAFFOLD_DEFAULT_REPO).
     """
     cwd = Path.cwd()
     skaffold_path = cwd / skaffold_file if not skaffold_file.is_absolute() else skaffold_file
-    try:
-        path = run_pack_build_push_impl(
-            default_repo=repo,
-            cwd=cwd,
-            tag=tag,
-            skaffold_path=skaffold_path,
-            output_dir=output,
-            pack_cmd=pack_cmd,
-        )
-        click.echo(f"Wrote {path}")
-    except SystemExit as e:
-        sys.exit(e.code)
+    if not skaffold_path.exists():
+        click.echo(f"Skaffold file not found: {skaffold_path}", err=True)
+        sys.exit(1)
+    out_dir = (output or cwd).resolve()
+    path = run_skaffold_build_push(
+        default_repo=repo,
+        cwd=out_dir,
+        skaffold_file=skaffold_path,
+        push=True,
+        use_file_output=True,
+        profile=None,
+    )
+    click.echo(f"Wrote {path}")
 
 
 def _run_resolve_default_repo(cwd: Path, config: dict, run_config: dict) -> str:
@@ -253,7 +248,26 @@ def run(
             sys.exit(1)
         art = match[0]
         image_name = art["image"]
-        full_image = f"{default_repo}/{image_name}:{default_tag}"
+        full_image: str | None = None
+        build_result_path = cwd / BUILD_RESULT_FILENAME
+        if build_result_path.exists():
+            try:
+                data = read_build_result(cwd)
+                full_image = find_tag_for_image(data, image_name)
+                if full_image is None:
+                    built = [b.get("tag", b) if isinstance(b, dict) else b for b in data.get("builds") or []]
+                    click.echo(
+                        f"Context '{context_name}' (image {image_name}) was not in the last build.\n"
+                        f"{BUILD_RESULT_FILENAME} contains: {', '.join(str(t) for t in built)}.\n"
+                        "Build this image with 'skaffold build' (all artifacts) or add it as a "
+                        "buildpacks artifact and run 'op build-push'.",
+                        err=True,
+                    )
+                    sys.exit(1)
+            except (ValueError, FileNotFoundError):
+                full_image = None
+        if full_image is None:
+            full_image = f"{default_repo}/{image_name}:{default_tag}"
         opts = get_run_options_for_context(context_name, cwd, config=run_cfg)
         _run_docker_run(
             full_image,
@@ -513,6 +527,17 @@ def start_registry_cmd(
     Use --no-trust-cert-colima to skip (e.g. not using Colima). For system trust (macOS
     Keychain / Linux ca-certificates) use --trust-cert; that may prompt for sudo.
     """
+    if not etc_hosts_has_registry_local():
+        click.echo(
+            "::error ::Add '127.0.0.1 registry.local' to /etc/hosts before using the local registry, "
+            "then re-run op start-registry.",
+            err=True,
+        )
+        click.echo(
+            "Example: echo '127.0.0.1 registry.local' | sudo tee -a /etc/hosts",
+            err=True,
+        )
+        sys.exit(1)
     try:
         crt = start_registry(
             image=image,
@@ -522,15 +547,37 @@ def start_registry_cmd(
         )
         click.echo(f"Certs copied to {crt.parent}")
         if trust_cert_colima:
-            install_cert_trust_colima(
-                crt,
-                restart_colima=not no_restart_colima,
-            )
-            click.echo("Cert installed in Colima VM; Docker and pack will trust localhost:5001.")
-            click.echo(
-                "To pull from the host use: docker pull registry.local:5001/<image>. "
-                "Add to /etc/hosts if needed: 127.0.0.1 registry.local"
-            )
+            if is_colima_running():
+                install_cert_trust_colima(
+                    crt,
+                    restart_colima=not no_restart_colima,
+                )
+                click.echo("Cert installed in Colima VM; Docker and pack will trust localhost:5001.")
+                click.echo(_REGISTRY_PULL_HINT)
+            else:
+                # Docker Desktop or other runtime: install for system trust so Docker can verify the registry
+                if is_cert_already_trusted_system(crt, use_system_keychain_macos=not user_keychain):
+                    click.echo("Cert already trusted (idempotent); skipping install.")
+                    click.echo(_REGISTRY_PULL_HINT)
+                else:
+                    click.echo(
+                        "Docker Desktop (or other runtime) detected. Installing the registry's self-signed cert "
+                        "so Docker can trust HTTPS to localhost:5001 / registry.local:5001."
+                    )
+                    # Login keychain by default (no sudo); System keychain via --trust-cert if needed
+                    try:
+                        install_cert_trust(crt, use_system_keychain_macos=False)
+                        click.echo("Cert installed for system trust. Restart Docker if pull still fails.")
+                        click.echo(_REGISTRY_PULL_HINT)
+                    except RuntimeError as e:
+                        if "not supported" in str(e).lower():
+                            click.echo(
+                                "Docker Desktop or other runtime detected (not Colima). "
+                                "To trust the cert, run: op start-registry --trust-cert",
+                                err=True,
+                            )
+                        else:
+                            raise
         elif (
             not trust_cert
             and sys.stdin.isatty()
@@ -546,10 +593,7 @@ def start_registry_cmd(
                 "Skipped Colima cert install (--no-trust-cert-colima). "
                 "To trust later: op start-registry --trust-cert-colima, or add insecure-registries in Docker."
             )
-            click.echo(
-                "To pull from host: docker pull registry.local:5001/<image>. "
-                "Add to /etc/hosts: 127.0.0.1 registry.local"
-            )
+            click.echo(_REGISTRY_PULL_HINT)
         elif trust_cert:
             click.echo("Cert installed for system trust. You may need to restart Docker for it to take effect.")
     except RuntimeError as e:

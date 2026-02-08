@@ -58,6 +58,10 @@ def _docker_ps_filter(name: str) -> list[str]:
     return [s.strip() for s in (out.stdout or "").strip().splitlines() if s.strip()]
 
 
+# Volume for container's TLS certs so the same cert is reused across restarts (idempotent trust).
+REGISTRY_CERTS_VOLUME = "registry-certs:/etc/envoy/certs"
+
+
 def _replace_registry_container(
     image: str,
     port: str = "5001:5001",
@@ -66,6 +70,8 @@ def _replace_registry_container(
     """
     Stop/remove any existing registry container, run the given image, return container ID.
     Exposes only 5001 (TLS). Do not add HTTP (5000): use cert trust (e.g. --trust-cert-colima) instead.
+    Mounts a persistent volume for /etc/envoy/certs so the same cert is reused across restarts,
+    enabling idempotent system trust (no repeated password prompts).
     """
     for cid in _docker_ps_filter(REGISTRY_CONTAINER_NAME):
         _run(["docker", "stop", cid], check=False)
@@ -80,6 +86,8 @@ def _replace_registry_container(
             port,
             "-v",
             volume,
+            "-v",
+            REGISTRY_CERTS_VOLUME,
             "--restart",
             "unless-stopped",
             "--name",
@@ -126,6 +134,91 @@ def _is_linux() -> bool:
     return platform.system() == "Linux"
 
 
+def is_colima_running() -> bool:
+    """Return True if Colima is on PATH and its VM is running (current Docker host is Colima)."""
+    r = subprocess.run(
+        ["colima", "status"],
+        capture_output=True,
+        text=True,
+    )
+    return r.returncode == 0
+
+
+def etc_hosts_has_registry_local() -> bool:
+    """Return True if /etc/hosts already contains an entry for registry.local."""
+    hosts_path = Path("/etc/hosts")
+    if not hosts_path.exists():
+        return False
+    try:
+        text = hosts_path.read_text()
+    except OSError:
+        return False
+    for line in text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        # parts[0] is IP, parts[1:] are hostnames
+        if "registry.local" in parts[1:]:
+            return True
+    return False
+
+
+def _cert_fingerprint_sha1(cert_path: Path) -> str:
+    """Return SHA-1 fingerprint of the cert (uppercase, no colons) for comparison."""
+    r = subprocess.run(
+        ["openssl", "x509", "-noout", "-fingerprint", "-sha1", "-in", str(cert_path)],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"Could not read cert fingerprint: {r.stderr or r.stdout}")
+    # "SHA1 Fingerprint=AA:BB:CC:..."
+    line = (r.stdout or "").strip()
+    if "=" in line:
+        fp = line.split("=", 1)[1].replace(":", "").upper()
+        return fp
+    raise RuntimeError(f"Unexpected openssl output: {line}")
+
+
+def _system_trust_sentinel_path(cert_path: Path) -> Path:
+    """Path to sentinel file that records the cert fingerprint after we install for system trust."""
+    return cert_path.parent / ".system-trust-installed"
+
+
+def is_cert_already_trusted_system(
+    cert_path: Path,
+    use_system_keychain_macos: bool = True,
+) -> bool:
+    """
+    Return True if this cert was already installed for system trust (idempotency).
+    Uses a sentinel file next to the cert storing its fingerprint after a successful install.
+    """
+    cert_path = cert_path.resolve()
+    if not cert_path.exists():
+        return False
+    sentinel = _system_trust_sentinel_path(cert_path)
+    if not sentinel.exists():
+        return False
+    try:
+        current = _cert_fingerprint_sha1(cert_path)
+        stored = sentinel.read_text().strip()
+        return current == stored
+    except (OSError, RuntimeError):
+        return False
+
+
+def _write_trust_sentinel(cert_path: Path) -> None:
+    """Record that we installed this cert for system trust (for idempotency)."""
+    try:
+        fp = _cert_fingerprint_sha1(cert_path)
+        _system_trust_sentinel_path(cert_path).write_text(fp + "\n")
+    except (OSError, RuntimeError):
+        pass
+
+
 def _install_trust_macos(cert_path: Path, use_system_keychain: bool = True) -> None:
     """Add cert as trusted root on macOS. May prompt for password if use_system_keychain."""
     cert_path = cert_path.resolve()
@@ -158,17 +251,21 @@ def install_cert_trust(
 ) -> None:
     """
     Install an existing cert (e.g. from a previous start_registry) for system trust.
-    May prompt for sudo/password. Supports macOS and Linux only.
+    Skips if this cert was already installed (idempotent). May prompt for sudo/password.
+    Supports macOS and Linux only.
     """
     cert_path = cert_path.resolve()
     if not cert_path.exists():
         raise FileNotFoundError(cert_path)
+    if is_cert_already_trusted_system(cert_path, use_system_keychain_macos):
+        return
     if _is_macos():
         _install_trust_macos(cert_path, use_system_keychain=use_system_keychain_macos)
     elif _is_linux():
         _install_trust_linux(cert_path)
     else:
         raise RuntimeError("System trust is supported only on macOS and Linux")
+    _write_trust_sentinel(cert_path)
 
 
 # Host:port entries for the local registry in Colima; cert is installed for each

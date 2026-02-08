@@ -1,9 +1,13 @@
 # OctoPilot pipeline-tools – just recipes
-# Run: just (list) | just install | just lint | just test | just check
+# Run: just (list) | just build | just install | just lint | just test | just check
 
 # Default: list recipes
 default:
     @just --list
+
+# Build: install package and dev deps in editable mode (same as install)
+build:
+    pip install -e ".[dev]"
 
 # Install package and dev deps (editable)
 install:

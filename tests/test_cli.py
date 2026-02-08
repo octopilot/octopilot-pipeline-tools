@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -40,37 +41,38 @@ def test_promote_image_help() -> None:
 def test_build_push_help() -> None:
     r = runner.invoke(main, ["build-push", "--help"])
     assert r.exit_code == 0
-    assert "--repo" in r.output and "pack" in r.output.lower()
+    assert "--repo" in r.output and "skaffold" in r.output.lower()
 
 
-@patch("octopilot_pipeline_tools.cli.run_pack_build_push_impl")
-def test_build_push_uses_local_registry_by_default(mock_pack_build: MagicMock) -> None:
-    mock_pack_build.return_value = Path("build_result.json")
-    r = runner.invoke(main, ["build-push"])
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_push_uses_skaffold(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """build-push runs Skaffold only; no fallback."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-push"])
+    finally:
+        os.chdir(old)
     assert r.exit_code == 0
-    mock_pack_build.assert_called_once()
-    call_kw = mock_pack_build.call_args[1]
+    mock_skaffold.assert_called_once()
+    call_kw = mock_skaffold.call_args[1]
     assert call_kw["default_repo"] == "localhost:5001"
-    assert call_kw["pack_cmd"] == "pack"
+    assert call_kw["push"] is True
 
 
-@patch("octopilot_pipeline_tools.cli.run_pack_build_push_impl")
-def test_build_push_passes_pack_cmd(mock_pack_build: MagicMock) -> None:
-    mock_pack_build.return_value = Path("build_result.json")
-    r = runner.invoke(main, ["build-push", "--pack", "/opt/pack/out/pack"])
-    assert r.exit_code == 0
-    mock_pack_build.assert_called_once()
-    call_kw = mock_pack_build.call_args[1]
-    assert call_kw["pack_cmd"] == "/opt/pack/out/pack"
-
-
-@patch("octopilot_pipeline_tools.cli.run_pack_build_push_impl")
-def test_build_push_success(mock_pack_build: MagicMock) -> None:
-    mock_pack_build.return_value = Path("build_result.json")
-    r = runner.invoke(main, ["build-push", "--repo", "localhost:5001"])
-    assert r.exit_code == 0
-    mock_pack_build.assert_called_once()
-    assert "Wrote" in r.output
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push", side_effect=SystemExit(2))
+def test_build_push_fails_when_skaffold_fails(_mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """When Skaffold fails, build-push exits with same code (no fallback)."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-push"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 2
 
 
 @patch("octopilot_pipeline_tools.cli.subprocess.run")
@@ -202,6 +204,67 @@ build:
     assert "-e" in call_args
 
 
+@patch("octopilot_pipeline_tools.cli.subprocess.run")
+def test_run_uses_build_result_when_present(mock_run: MagicMock, tmp_path: Path) -> None:
+    mock_run.return_value = MagicMock(returncode=0)
+    skaffold = tmp_path / "skaffold.yaml"
+    skaffold.write_text("""
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+    - image: myapp-api
+      context: api
+""")
+    (tmp_path / "build_result.json").write_text('{"builds": [{"tag": "localhost:5001/myapp-api:latest"}]}')
+    (tmp_path / ".run.yaml").write_text('contexts:\n  api:\n    ports: ["8080:8080"]\n')
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(
+            main,
+            ["run", "api", "--skaffold-file", "skaffold.yaml"],
+            obj={"config": {}},
+        )
+    finally:
+        os.chdir(old_cwd)
+    assert r.exit_code == 0
+    call_args = mock_run.call_args[0][0]
+    assert "localhost:5001/myapp-api:latest" in call_args
+
+
+def test_run_context_not_in_build_result_exits_with_message(tmp_path: Path) -> None:
+    skaffold = tmp_path / "skaffold.yaml"
+    skaffold.write_text("""
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+    - image: sample-react-node-api
+      context: api
+    - image: sample-react-node-frontend
+      context: frontend
+""")
+    (tmp_path / "build_result.json").write_text('{"builds": [{"tag": "localhost:5001/sample-react-node-api:latest"}]}')
+    (tmp_path / ".run.yaml").write_text(
+        'contexts:\n  api:\n    ports: ["8081:8080"]\n  frontend:\n    ports: ["8080:8080"]\n'
+    )
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(
+            main,
+            ["run", "frontend", "--skaffold-file", "skaffold.yaml"],
+            obj={"config": {}},
+        )
+    finally:
+        os.chdir(old_cwd)
+    assert r.exit_code == 1
+    assert "frontend" in r.output or "sample-react-node-frontend" in r.output
+    assert "build_result.json" in r.output
+    assert "op build-push" in r.output or "skaffold build" in r.output
+
+
 def test_start_registry_help() -> None:
     r = runner.invoke(main, ["start-registry", "--help"])
     assert r.exit_code == 0
@@ -210,8 +273,13 @@ def test_start_registry_help() -> None:
     assert "5001" in r.output
 
 
+@patch("octopilot_pipeline_tools.cli.etc_hosts_has_registry_local", return_value=True)
 @patch("octopilot_pipeline_tools.cli.start_registry")
-def test_start_registry_invokes_module(mock_start_registry: MagicMock, tmp_path: Path) -> None:
+def test_start_registry_invokes_module(
+    mock_start_registry: MagicMock,
+    mock_etc_hosts: MagicMock,
+    tmp_path: Path,
+) -> None:
     mock_start_registry.return_value = tmp_path / "tls.crt"
     r = runner.invoke(
         main,
@@ -231,3 +299,69 @@ def test_start_registry_invokes_module(mock_start_registry: MagicMock, tmp_path:
     assert call_kw["image"] == "myreg:latest"
     assert call_kw["certs_out_dir"] == tmp_path
     assert call_kw["trust_cert"] is False
+
+
+@patch("octopilot_pipeline_tools.cli.etc_hosts_has_registry_local", return_value=True)
+@patch("octopilot_pipeline_tools.cli.install_cert_trust")
+@patch("octopilot_pipeline_tools.cli.is_colima_running")
+@patch("octopilot_pipeline_tools.cli.start_registry")
+def test_start_registry_docker_desktop_fallback(
+    mock_start_registry: MagicMock,
+    mock_is_colima: MagicMock,
+    mock_install_trust: MagicMock,
+    mock_etc_hosts: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """When trust_cert_colima is default (True) but Colima is not running, use system trust (Docker Desktop)."""
+    mock_start_registry.return_value = tmp_path / "tls.crt"
+    (tmp_path / "tls.crt").write_text("PEM")
+    mock_is_colima.return_value = False
+    r = runner.invoke(
+        main,
+        ["start-registry", "--certs-dir", str(tmp_path), "--image", "myreg:latest"],
+        obj={"config": {}},
+    )
+    assert r.exit_code == 0
+    mock_is_colima.assert_called_once()
+    mock_install_trust.assert_called_once()
+    assert "Docker Desktop" in r.output or "system trust" in r.output
+
+
+@patch("octopilot_pipeline_tools.cli.etc_hosts_has_registry_local", return_value=True)
+@patch("octopilot_pipeline_tools.cli.install_cert_trust")
+@patch("octopilot_pipeline_tools.cli.is_cert_already_trusted_system", return_value=True)
+@patch("octopilot_pipeline_tools.cli.is_colima_running")
+@patch("octopilot_pipeline_tools.cli.start_registry")
+def test_start_registry_idempotent_already_trusted(
+    mock_start_registry: MagicMock,
+    mock_is_colima: MagicMock,
+    mock_already_trusted: MagicMock,
+    mock_install_trust: MagicMock,
+    mock_etc_hosts: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """When cert is already trusted (Docker Desktop path), skip install and do not prompt."""
+    mock_start_registry.return_value = tmp_path / "tls.crt"
+    (tmp_path / "tls.crt").write_text("PEM")
+    mock_is_colima.return_value = False
+    r = runner.invoke(
+        main,
+        ["start-registry", "--certs-dir", str(tmp_path), "--image", "myreg:latest"],
+        obj={"config": {}},
+    )
+    assert r.exit_code == 0
+    mock_already_trusted.assert_called_once()
+    mock_install_trust.assert_not_called()
+    assert "already trusted" in r.output or "idempotent" in r.output
+
+
+@patch("octopilot_pipeline_tools.cli.etc_hosts_has_registry_local", return_value=False)
+def test_start_registry_exits_early_without_registry_local_in_hosts(
+    mock_etc_hosts: MagicMock,
+) -> None:
+    """If /etc/hosts does not contain registry.local, exit with error before starting anything."""
+    r = runner.invoke(main, ["start-registry", "--no-trust-cert-colima"], obj={"config": {}})
+    assert r.exit_code == 1
+    assert "registry.local" in r.output
+    assert "/etc/hosts" in r.output
+    mock_etc_hosts.assert_called_once()

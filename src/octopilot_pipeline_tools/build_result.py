@@ -36,6 +36,22 @@ def get_first_tag(build_result: dict) -> str:
     raise ValueError("builds[0] must have 'tag' or be a string")
 
 
+def find_tag_for_image(build_result: dict, image_name: str) -> str | None:
+    """
+    Return the full tag from build_result for the given image name, or None.
+    Tags are like 'localhost:5001/sample-react-node-api:latest'; image_name is 'sample-react-node-api'.
+    """
+    for b in build_result.get("builds") or []:
+        tag = b.get("tag") if isinstance(b, dict) else (b if isinstance(b, str) else None)
+        if not tag:
+            continue
+        # Last segment is "image_name:tag"
+        suffix = tag.split("/")[-1]
+        if suffix.startswith(image_name + ":"):
+            return tag
+    return None
+
+
 def write_build_result(builds: list[dict], cwd: Path | None = None) -> Path:
     """Write build_result.json. Each build: { 'tag': 'image:tag' } or { 'imageName', 'tag' }."""
     path = build_result_path(cwd)
@@ -89,6 +105,7 @@ def run_skaffold_build_push(
     profile: str | None = "push",
     cwd: Path | None = None,
     skaffold_cmd: str = "skaffold",
+    skaffold_file: Path | None = None,
     image_pattern: str | None = None,
     use_file_output: bool = True,
     push: bool = False,
@@ -97,18 +114,22 @@ def run_skaffold_build_push(
     Run skaffold build (with optional profile) and write build_result.json.
     When push=True, pass --push so images go to the registry (avoids daemon export issues).
     Prefer skaffold build --file-output build_result.json when available.
+    Skaffold builds all artifacts (docker + buildpacks) in one invocation.
     """
     cwd = cwd or Path.cwd()
     if use_file_output:
         out_path = cwd / BUILD_RESULT_FILENAME
-        cmd = [
-            skaffold_cmd,
-            "build",
-            "--file-output",
-            str(out_path),
-            "--default-repo",
-            default_repo,
-        ]
+        cmd = [skaffold_cmd, "build"]
+        if skaffold_file is not None:
+            cmd.extend(["-f", str(skaffold_file)])
+        cmd.extend(
+            [
+                "--file-output",
+                str(out_path),
+                "--default-repo",
+                default_repo,
+            ]
+        )
         if push:
             cmd.append("--push")
         if profile:
@@ -139,7 +160,10 @@ def run_skaffold_build_push(
             out_path.write_text(json.dumps({"builds": [{"tag": f"{default_repo}/{img}:{t}"}]}, indent=2))
         return out_path
     # No --file-output: run skaffold build and parse stdout
-    cmd = [skaffold_cmd, "build", "--default-repo", default_repo]
+    cmd = [skaffold_cmd, "build"]
+    if skaffold_file is not None:
+        cmd.extend(["-f", str(skaffold_file)])
+    cmd.extend(["--default-repo", default_repo])
     if push:
         cmd.append("--push")
     if profile:

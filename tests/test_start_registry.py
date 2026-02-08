@@ -6,9 +6,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from octopilot_pipeline_tools.start_registry import (
+    _cert_fingerprint_sha1,
     _docker_ps_filter,
+    etc_hosts_has_registry_local,
     install_cert_trust,
     install_cert_trust_colima,
+    is_cert_already_trusted_system,
+    is_colima_running,
     start_registry,
 )
 
@@ -26,24 +30,125 @@ def test_docker_ps_filter_one_id(mock_run: MagicMock) -> None:
     assert _docker_ps_filter("registry") == ["abc123"]
 
 
+@patch("octopilot_pipeline_tools.start_registry.subprocess.run")
+def test_is_colima_running_true(mock_run: MagicMock) -> None:
+    mock_run.return_value = MagicMock(returncode=0)
+    assert is_colima_running() is True
+    mock_run.assert_called_once_with(["colima", "status"], capture_output=True, text=True)
+
+
+@patch("octopilot_pipeline_tools.start_registry.subprocess.run")
+def test_is_colima_running_false(mock_run: MagicMock) -> None:
+    mock_run.return_value = MagicMock(returncode=1)
+    assert is_colima_running() is False
+
+
+def test_etc_hosts_has_registry_local_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from octopilot_pipeline_tools import start_registry as sr
+
+    missing = tmp_path / "nonexistent"
+    assert not missing.exists()
+    monkeypatch.setattr(sr, "Path", lambda x: missing if x == "/etc/hosts" else Path(x))
+    assert etc_hosts_has_registry_local() is False
+
+
+def test_etc_hosts_has_registry_local_not_present(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    f = tmp_path / "hosts"
+    f.write_text("127.0.0.1 localhost\n::1 localhost\n")
+    from octopilot_pipeline_tools import start_registry as sr
+
+    monkeypatch.setattr(sr, "Path", lambda x: Path(str(f)) if x == "/etc/hosts" else Path(x))
+    assert etc_hosts_has_registry_local() is False
+
+
+def test_etc_hosts_has_registry_local_present(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    f = tmp_path / "hosts"
+    f.write_text("127.0.0.1 localhost registry.local\n::1 localhost\n")
+    from octopilot_pipeline_tools import start_registry as sr
+
+    monkeypatch.setattr(sr, "Path", lambda x: Path(str(f)) if x == "/etc/hosts" else Path(x))
+    assert etc_hosts_has_registry_local() is True
+
+
+@patch("octopilot_pipeline_tools.start_registry.subprocess.run")
+def test_cert_fingerprint_sha1(mock_run: MagicMock, tmp_path: Path) -> None:
+    mock_run.return_value = MagicMock(returncode=0, stdout="SHA1 Fingerprint=AA:BB:CC:DD:EE\n")
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    assert _cert_fingerprint_sha1(cert) == "AABBCCDDEE"
+    mock_run.assert_called_once()
+
+
+def test_is_cert_already_trusted_system_no_sentinel(tmp_path: Path) -> None:
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    assert is_cert_already_trusted_system(cert) is False
+
+
+@patch("octopilot_pipeline_tools.start_registry._cert_fingerprint_sha1")
+def test_is_cert_already_trusted_system_sentinel_matches(mock_fp: MagicMock, tmp_path: Path) -> None:
+    mock_fp.return_value = "ABCD1234"
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    (tmp_path / ".system-trust-installed").write_text("ABCD1234\n")
+    assert is_cert_already_trusted_system(cert) is True
+
+
+@patch("octopilot_pipeline_tools.start_registry._cert_fingerprint_sha1")
+def test_is_cert_already_trusted_system_sentinel_mismatch(mock_fp: MagicMock, tmp_path: Path) -> None:
+    mock_fp.return_value = "NEWFINGER"
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    (tmp_path / ".system-trust-installed").write_text("OLDVALUE\n")
+    assert is_cert_already_trusted_system(cert) is False
+
+
+@patch("octopilot_pipeline_tools.start_registry._write_trust_sentinel")
+@patch("octopilot_pipeline_tools.start_registry.is_cert_already_trusted_system")
 @patch("octopilot_pipeline_tools.start_registry._install_trust_macos")
 @patch("octopilot_pipeline_tools.start_registry.platform")
-def test_install_cert_trust_macos(mock_platform: MagicMock, mock_install: MagicMock, tmp_path: Path) -> None:
+def test_install_cert_trust_skips_when_already_trusted(
+    mock_platform: MagicMock,
+    mock_install: MagicMock,
+    mock_already: MagicMock,
+    mock_sentinel: MagicMock,
+    tmp_path: Path,
+) -> None:
+    mock_platform.system.return_value = "Darwin"
+    mock_already.return_value = True
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    install_cert_trust(cert, use_system_keychain_macos=True)
+    mock_install.assert_not_called()
+    mock_sentinel.assert_not_called()
+
+
+@patch("octopilot_pipeline_tools.start_registry._write_trust_sentinel")
+@patch("octopilot_pipeline_tools.start_registry._install_trust_macos")
+@patch("octopilot_pipeline_tools.start_registry.platform")
+def test_install_cert_trust_macos(
+    mock_platform: MagicMock, mock_install: MagicMock, mock_sentinel: MagicMock, tmp_path: Path
+) -> None:
     mock_platform.system.return_value = "Darwin"
     cert = tmp_path / "tls.crt"
     cert.write_text("PEM")
     install_cert_trust(cert, use_system_keychain_macos=True)
     mock_install.assert_called_once_with(cert.resolve(), use_system_keychain=True)
+    mock_sentinel.assert_called_once_with(cert.resolve())
 
 
+@patch("octopilot_pipeline_tools.start_registry._write_trust_sentinel")
 @patch("octopilot_pipeline_tools.start_registry._install_trust_linux")
 @patch("octopilot_pipeline_tools.start_registry.platform")
-def test_install_cert_trust_linux(mock_platform: MagicMock, mock_install: MagicMock, tmp_path: Path) -> None:
+def test_install_cert_trust_linux(
+    mock_platform: MagicMock, mock_install: MagicMock, mock_sentinel: MagicMock, tmp_path: Path
+) -> None:
     mock_platform.system.return_value = "Linux"
     cert = tmp_path / "tls.crt"
     cert.write_text("PEM")
     install_cert_trust(cert, use_system_keychain_macos=False)
     mock_install.assert_called_once()
+    mock_sentinel.assert_called_once()
 
 
 def test_install_cert_trust_missing_file() -> None:

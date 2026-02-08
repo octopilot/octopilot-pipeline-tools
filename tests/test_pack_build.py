@@ -8,6 +8,7 @@ import pytest
 from octopilot_pipeline_tools.pack_build import (
     parse_skaffold_artifacts,
     parse_skaffold_buildpacks_artifacts,
+    parse_skaffold_docker_artifacts,
     run_pack_build_push,
 )
 
@@ -89,6 +90,34 @@ build:
     assert artifacts == []
 
 
+def test_parse_skaffold_docker_artifacts(tmp_path: Path) -> None:
+    skaffold = tmp_path / "skaffold.yaml"
+    skaffold.write_text("""
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+    - image: sample-react-node-frontend
+      context: frontend
+      docker:
+        dockerfile: Dockerfile
+    - image: sample-react-node-api
+      context: api
+      buildpacks:
+        builder: paketobuildpacks/builder-jammy-base
+    - image: docker-only
+      context: .
+      docker: {}
+""")
+    artifacts = parse_skaffold_docker_artifacts(skaffold)
+    assert len(artifacts) == 2
+    assert artifacts[0]["image"] == "sample-react-node-frontend"
+    assert artifacts[0]["context"] == "frontend"
+    assert artifacts[0]["dockerfile"] == "Dockerfile"
+    assert artifacts[1]["image"] == "docker-only"
+    assert artifacts[1]["dockerfile"] == "Dockerfile"
+
+
 def _mock_popen_success(returncode=0):
     mock_stdout = MagicMock()
     mock_stdout.readline.side_effect = [""]
@@ -166,6 +195,50 @@ build:
     call_args = mock_popen.call_args[0][0]
     assert "ghcr.io/org/repo/myapp:latest" in call_args
     assert "--insecure-registry" not in call_args
+
+
+@patch("octopilot_pipeline_tools.pack_build.subprocess.run")
+@patch("octopilot_pipeline_tools.pack_build.subprocess.Popen")
+def test_run_pack_build_push_builds_both_buildpacks_and_docker(
+    mock_popen: MagicMock,
+    mock_run: MagicMock,
+    tmp_path: Path,
+) -> None:
+    mock_popen.return_value = _mock_popen_success()
+    mock_run.return_value = MagicMock(returncode=0)
+    skaffold = tmp_path / "skaffold.yaml"
+    skaffold.write_text("""
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+    - image: myapp-api
+      context: api
+      buildpacks:
+        builder: paketobuildpacks/builder-jammy-base
+    - image: myapp-frontend
+      context: frontend
+      docker:
+        dockerfile: Dockerfile
+""")
+    (tmp_path / "api").mkdir()
+    (tmp_path / "frontend").mkdir()
+    (tmp_path / "frontend" / "Dockerfile").write_text("FROM scratch\n")
+    out = run_pack_build_push(
+        default_repo="localhost:5001",
+        cwd=tmp_path,
+        tag="latest",
+        skaffold_path=skaffold,
+    )
+    data = __import__("json").loads(out.read_text())
+    tags = [b["tag"] for b in data["builds"]]
+    assert "localhost:5001/myapp-api:latest" in tags
+    assert "localhost:5001/myapp-frontend:latest" in tags
+    assert mock_popen.call_count == 1
+    assert mock_run.call_count == 2
+    run_calls = [mock_run.call_args_list[i][0][0] for i in range(2)]
+    assert any("docker" in c and "build" in c for c in run_calls)
+    assert any("docker" in c and "push" in c for c in run_calls)
 
 
 @patch("octopilot_pipeline_tools.pack_build.subprocess.Popen")

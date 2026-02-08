@@ -58,6 +58,31 @@ def parse_skaffold_buildpacks_artifacts(skaffold_path: Path) -> list[dict]:
     return result
 
 
+def parse_skaffold_docker_artifacts(skaffold_path: Path) -> list[dict]:
+    """
+    Read skaffold.yaml and return docker artifacts: list of {image, context, dockerfile}.
+    Skips artifacts that do not have docker (e.g. buildpacks-only).
+    """
+    if not skaffold_path.exists():
+        raise FileNotFoundError(f"Skaffold file not found: {skaffold_path}")
+    data = yaml.safe_load(skaffold_path.read_text()) or {}
+    build = data.get("build") or {}
+    artifacts = build.get("artifacts") or []
+    result: list[dict] = []
+    for art in artifacts:
+        if not isinstance(art, dict):
+            continue
+        docker_cfg = art.get("docker")
+        if not isinstance(docker_cfg, dict):
+            continue
+        image = art.get("image")
+        context = art.get("context") or "."
+        dockerfile = (docker_cfg.get("dockerfile") or "Dockerfile") if docker_cfg else "Dockerfile"
+        if image:
+            result.append({"image": image, "context": context, "dockerfile": dockerfile})
+    return result
+
+
 def run_pack_build_push(
     *,
     default_repo: str,
@@ -68,15 +93,19 @@ def run_pack_build_push(
     output_dir: Path | None = None,
 ) -> Path:
     """
-    For each buildpacks artifact in skaffold.yaml, run pack build with --publish,
-    then write build_result.json. Use when Skaffold fails (Mac containerd digest,
-    Linux /layers permission denied).
+    For each buildpacks artifact run pack build --publish; for each docker artifact
+    run docker build and docker push. Writes build_result.json with all built images.
+    Use when Skaffold fails (Mac containerd digest, Linux /layers permission denied).
     """
     cwd = cwd.resolve()
     skaffold_path = (skaffold_path or cwd / "skaffold.yaml").resolve()
-    artifacts = parse_skaffold_buildpacks_artifacts(skaffold_path)
-    if not artifacts:
-        msg = "No buildpacks artifacts in skaffold.yaml. Each artifact must have buildpacks.builder.\n"
+    bp_artifacts = parse_skaffold_buildpacks_artifacts(skaffold_path)
+    docker_artifacts = parse_skaffold_docker_artifacts(skaffold_path)
+    if not bp_artifacts and not docker_artifacts:
+        msg = (
+            "No buildpacks or docker artifacts in skaffold.yaml. "
+            "Add artifacts with buildpacks.builder and/or docker.dockerfile.\n"
+        )
         sys.stderr.write(msg)
         sys.stderr.flush()
         raise SystemExit(1)
@@ -93,7 +122,7 @@ def run_pack_build_push(
     # Result file and downstream tools use the user-facing ref (localhost:5001), not effective_repo.
     display_repo = default_repo.rstrip("/")
     builds: list[dict] = []
-    for art in artifacts:
+    for art in bp_artifacts:
         image_name = art["image"]
         context = art["context"]
         builder = art["builder"]
@@ -139,6 +168,27 @@ def run_pack_build_push(
         if proc.returncode != 0:
             raise SystemExit(proc.returncode)
         builds.append({"tag": f"{display_repo}/{image_name}:{tag}"})
+    for art in docker_artifacts:
+        image_name = art["image"]
+        context = art["context"]
+        dockerfile = art["dockerfile"]
+        full_image = f"{display_repo}/{image_name}:{tag}"
+        context_dir = cwd / context
+        dockerfile_path = context_dir / dockerfile
+        if not dockerfile_path.exists():
+            sys.stderr.write(f"Dockerfile not found: {dockerfile_path}\n")
+            sys.stderr.flush()
+            raise SystemExit(1)
+        proc = subprocess.run(
+            ["docker", "build", "-t", full_image, "-f", str(dockerfile_path), str(context_dir)],
+            cwd=cwd,
+        )
+        if proc.returncode != 0:
+            raise SystemExit(proc.returncode)
+        proc = subprocess.run(["docker", "push", full_image], cwd=cwd)
+        if proc.returncode != 0:
+            raise SystemExit(proc.returncode)
+        builds.append({"tag": full_image})
     write_cwd = (output_dir or cwd).resolve()
     out_path = write_build_result(builds, cwd=write_cwd)
     return out_path
