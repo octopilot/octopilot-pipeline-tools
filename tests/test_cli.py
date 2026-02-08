@@ -215,7 +215,14 @@ def test_start_registry_invokes_module(mock_start_registry: MagicMock, tmp_path:
     mock_start_registry.return_value = tmp_path / "tls.crt"
     r = runner.invoke(
         main,
-        ["start-registry", "--certs-dir", str(tmp_path), "--image", "myreg:latest"],
+        [
+            "start-registry",
+            "--certs-dir",
+            str(tmp_path),
+            "--image",
+            "myreg:latest",
+            "--no-trust-cert-colima",
+        ],
         obj={"config": {}},
     )
     assert r.exit_code == 0

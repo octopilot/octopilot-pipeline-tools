@@ -160,6 +160,7 @@ def test_install_cert_trust_colima_success(mock_run: MagicMock, tmp_path: Path) 
     ssh_args = " ".join(mock_run.call_args_list[1][0][0])
     assert "localhost:5001" in ssh_args
     assert "host.docker.internal:5001" in ssh_args
+    assert "registry.local:5001" in ssh_args
     assert mock_run.call_args_list[2][0][0] == ["colima", "restart"]
 
 

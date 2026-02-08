@@ -479,17 +479,16 @@ def watch_deployment(
     help="Install the self-signed cert for system trust (may prompt for sudo/password).",
 )
 @click.option(
-    "--trust-cert-colima",
+    "--trust-cert-colima/--no-trust-cert-colima",
     "trust_cert_colima",
-    is_flag=True,
-    default=False,
-    help="Install cert in Colima VM so Docker trusts the registry. Restarts Colima by default.",
+    default=True,
+    help="Install cert in Colima VM so Docker trusts the registry (default: on). Restarts Colima by default.",
 )
 @click.option(
     "--no-restart-colima",
     is_flag=True,
     default=False,
-    help="With --trust-cert-colima: do not restart Colima (you must run 'colima restart' yourself).",
+    help="Do not restart Colima after installing cert (you must run 'colima restart' yourself).",
 )
 @click.option(
     "--user-keychain",
@@ -509,15 +508,10 @@ def start_registry_cmd(
 ) -> None:
     """Start local registry with TLS on port 5001.
 
-    Replaces any existing registry container, starts the image, copies certs out of the
-    container, and optionally installs the cert so the system (and Docker) trusts HTTPS
-    to localhost:5001. On macOS, trusting the cert may ask for your password (sudo to add
-    to System keychain); use --user-keychain to avoid sudo. On Linux, trusting runs sudo
-    to copy the cert into the system CA store. If you skip trust, add localhost:5001 to
-    Docker's insecure-registries instead.
-
-    With Colima: use --trust-cert-colima to install the cert inside the VM so the Docker
-    daemon and pack build lifecycle trust the registry (then use --repo localhost:5001).
+    Replaces any existing registry container, starts the image, copies certs out, and
+    by default installs the cert in the Colima VM so Docker and pack trust the registry.
+    Use --no-trust-cert-colima to skip (e.g. not using Colima). For system trust (macOS
+    Keychain / Linux ca-certificates) use --trust-cert; that may prompt for sudo.
     """
     try:
         crt = start_registry(
@@ -533,6 +527,10 @@ def start_registry_cmd(
                 restart_colima=not no_restart_colima,
             )
             click.echo("Cert installed in Colima VM; Docker and pack will trust localhost:5001.")
+            click.echo(
+                "To pull from the host use: docker pull registry.local:5001/<image>. "
+                "Add to /etc/hosts if needed: 127.0.0.1 registry.local"
+            )
         elif (
             not trust_cert
             and sys.stdin.isatty()
@@ -545,9 +543,12 @@ def start_registry_cmd(
             click.echo("Cert installed for system trust. You may need to restart Docker for it to take effect.")
         elif not trust_cert and not trust_cert_colima:
             click.echo(
-                "To trust the cert later, run: op start-registry --trust-cert. "
-                "With Colima: op start-registry --trust-cert-colima. "
-                'Or add "insecure-registries": ["localhost:5001"] to Docker settings.',
+                "Skipped Colima cert install (--no-trust-cert-colima). "
+                "To trust later: op start-registry --trust-cert-colima, or add insecure-registries in Docker."
+            )
+            click.echo(
+                "To pull from host: docker pull registry.local:5001/<image>. "
+                "Add to /etc/hosts: 127.0.0.1 registry.local"
             )
         elif trust_cert:
             click.echo("Cert installed for system trust. You may need to restart Docker for it to take effect.")

@@ -11,6 +11,17 @@ cert. Exposing port 5000 (plain HTTP) would bypass TLS and make the cert setup p
 Clients (Docker daemon, pack lifecycle) must trust the cert (e.g. op start-registry
 --trust-cert-colima on Colima) and use https://localhost:5001. Do not add a second -p
 5000:5000 or similar in this module.
+
+**docker pull and SANs:** The self-signed cert includes SANs for localhost, registry.local,
+and (when the image is built from current registry-tls source) host.docker.internal. The
+*published* image (ghcr.io/octopilot/registry-tls:latest) may have been built before
+host.docker.internal was added; then "docker pull host.docker.internal:5001/..." fails with
+"certificate is valid for localhost, registry.local, not host.docker.internal". Two options:
+(1) Use registry.local: add "127.0.0.1 registry.local" to /etc/hosts, then
+    docker pull registry.local:5001/<image> (cert already has registry.local).
+(2) Build the image locally so the cert includes host.docker.internal:
+    cd registry-tls && docker build -t registry-tls:local .
+    op start-registry --image registry-tls:local --trust-cert-colima
 """
 
 from __future__ import annotations
@@ -161,8 +172,10 @@ def install_cert_trust(
 
 
 # Host:port entries for the local registry in Colima; cert is installed for each
-# so both "docker pull localhost:5001/..." and "docker pull host.docker.internal:5001/..." work.
-COLIMA_REGISTRY_HOST_PORTS = ("localhost:5001", "host.docker.internal:5001")
+# so docker pull works for localhost, host.docker.internal, and registry.local.
+# Use registry.local + /etc/hosts (127.0.0.1 registry.local) if the served cert
+# does not yet include host.docker.internal (e.g. when using the published image).
+COLIMA_REGISTRY_HOST_PORTS = ("localhost:5001", "host.docker.internal:5001", "registry.local:5001")
 
 
 def install_cert_trust_colima(
@@ -174,8 +187,8 @@ def install_cert_trust_colima(
     Install the registry's self-signed cert into the Colima VM so Docker (and pack
     lifecycle containers) trust HTTPS to the registry.
 
-    - Writes the cert to /etc/docker/certs.d/<host:port>/ca.crt for both
-      localhost:5001 and host.docker.internal:5001 (so pull works for either).
+    - Writes the cert to /etc/docker/certs.d/<host:port>/ca.crt for
+      localhost:5001, host.docker.internal:5001, and registry.local:5001.
     - Optionally restarts Colima so the Docker daemon picks up the new CA.
 
     Requires colima to be on PATH and the VM to be running. May prompt for sudo
