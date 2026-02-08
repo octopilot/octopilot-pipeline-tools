@@ -89,9 +89,22 @@ build:
     assert artifacts == []
 
 
-@patch("octopilot_pipeline_tools.pack_build.subprocess.run")
-def test_run_pack_build_push_invokes_pack_and_writes_result(mock_run: MagicMock, tmp_path: Path) -> None:
-    mock_run.return_value = MagicMock(returncode=0)
+def _mock_popen_success(returncode=0):
+    mock_stdout = MagicMock()
+    mock_stdout.readline.side_effect = [""]
+    mock_stderr = MagicMock()
+    mock_stderr.readline.side_effect = [""]
+    proc = MagicMock()
+    proc.stdout = mock_stdout
+    proc.stderr = mock_stderr
+    proc.returncode = returncode
+    proc.wait = MagicMock()
+    return proc
+
+
+@patch("octopilot_pipeline_tools.pack_build.subprocess.Popen")
+def test_run_pack_build_push_invokes_pack_and_writes_result(mock_popen: MagicMock, tmp_path: Path) -> None:
+    mock_popen.return_value = _mock_popen_success()
     skaffold = tmp_path / "skaffold.yaml"
     skaffold.write_text("""
 apiVersion: skaffold/v2beta29
@@ -113,10 +126,11 @@ build:
     assert out == tmp_path / "build_result.json"
     assert out.exists()
     data = __import__("json").loads(out.read_text())
-    # localhost:5001 is rewritten to host.docker.internal:5001 for lifecycle container reachability
-    assert data["builds"] == [{"tag": "host.docker.internal:5001/myapp/foo:latest"}]
-    assert mock_run.call_count == 1
-    call_args = mock_run.call_args[0][0]
+    # build_result uses display_repo (localhost:5001); pack invoked with host.docker.internal:5001
+    assert data["builds"] == [{"tag": "localhost:5001/myapp/foo:latest"}]
+    assert mock_popen.call_count == 1
+    call_kw = mock_popen.call_args[1]
+    call_args = mock_popen.call_args[0][0]
     assert call_args[0] == "pack"
     assert "build" in call_args
     assert "host.docker.internal:5001/myapp/foo:latest" in call_args
@@ -125,11 +139,13 @@ build:
     assert "--builder" in call_args
     assert "--insecure-registry" in call_args
     assert "host.docker.internal:5001" in call_args
+    assert call_kw.get("text") is True
+    assert call_kw.get("bufsize") == 1
 
 
-@patch("octopilot_pipeline_tools.pack_build.subprocess.run")
-def test_run_pack_build_push_remote_repo_no_insecure_registry(mock_run: MagicMock, tmp_path: Path) -> None:
-    mock_run.return_value = MagicMock(returncode=0)
+@patch("octopilot_pipeline_tools.pack_build.subprocess.Popen")
+def test_run_pack_build_push_remote_repo_no_insecure_registry(mock_popen: MagicMock, tmp_path: Path) -> None:
+    mock_popen.return_value = _mock_popen_success()
     skaffold = tmp_path / "skaffold.yaml"
     skaffold.write_text("""
 apiVersion: skaffold/v2beta29
@@ -147,13 +163,13 @@ build:
         cwd=tmp_path,
         skaffold_path=skaffold,
     )
-    call_args = mock_run.call_args[0][0]
+    call_args = mock_popen.call_args[0][0]
     assert "ghcr.io/org/repo/myapp:latest" in call_args
     assert "--insecure-registry" not in call_args
 
 
-@patch("octopilot_pipeline_tools.pack_build.subprocess.run")
-def test_run_pack_build_push_no_artifacts_exits(mock_run: MagicMock, tmp_path: Path) -> None:
+@patch("octopilot_pipeline_tools.pack_build.subprocess.Popen")
+def test_run_pack_build_push_no_artifacts_exits(mock_popen: MagicMock, tmp_path: Path) -> None:
     skaffold = tmp_path / "skaffold.yaml"
     skaffold.write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
     with pytest.raises(SystemExit):
@@ -162,4 +178,4 @@ def test_run_pack_build_push_no_artifacts_exits(mock_run: MagicMock, tmp_path: P
             cwd=tmp_path,
             skaffold_path=skaffold,
         )
-    mock_run.assert_not_called()
+    mock_popen.assert_not_called()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path  # noqa: TC003
+from threading import Thread
 
 import yaml
 
@@ -75,7 +76,9 @@ def run_pack_build_push(
     skaffold_path = (skaffold_path or cwd / "skaffold.yaml").resolve()
     artifacts = parse_skaffold_buildpacks_artifacts(skaffold_path)
     if not artifacts:
-        sys.stderr.write("No buildpacks artifacts in skaffold.yaml. Each artifact must have buildpacks.builder.\n")
+        msg = "No buildpacks artifacts in skaffold.yaml. Each artifact must have buildpacks.builder.\n"
+        sys.stderr.write(msg)
+        sys.stderr.flush()
         raise SystemExit(1)
     default_repo = default_repo.rstrip("/")
     # Lifecycle runs in a container: from there "localhost" is the container, not the host.
@@ -87,6 +90,8 @@ def run_pack_build_push(
         # Lifecycle container doesn't have the host's CA store; skip TLS verify for this registry.
         insecure_registries.append("host.docker.internal:5001")
     full_repo = effective_repo.rstrip("/")
+    # Result file and downstream tools use the user-facing ref (localhost:5001), not effective_repo.
+    display_repo = default_repo.rstrip("/")
     builds: list[dict] = []
     for art in artifacts:
         image_name = art["image"]
@@ -106,10 +111,34 @@ def run_pack_build_push(
         ]
         for reg in insecure_registries:
             cmd.extend(["--insecure-registry", reg])
-        proc = subprocess.run(cmd, cwd=cwd)
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        assert proc.stdout is not None and proc.stderr is not None
+
+        def stream_fd(pipe, out_stream):
+            for line in iter(pipe.readline, ""):
+                out_stream.write(line.replace("host.docker.internal:5001", display_repo))
+                out_stream.flush()
+            pipe.close()
+
+        t_out = Thread(target=stream_fd, args=(proc.stdout, sys.stdout))
+        t_err = Thread(target=stream_fd, args=(proc.stderr, sys.stderr))
+        t_out.daemon = True
+        t_err.daemon = True
+        t_out.start()
+        t_err.start()
+        proc.wait()
+        t_out.join(timeout=5)
+        t_err.join(timeout=5)
         if proc.returncode != 0:
             raise SystemExit(proc.returncode)
-        builds.append({"tag": full_image})
+        builds.append({"tag": f"{display_repo}/{image_name}:{tag}"})
     write_cwd = (output_dir or cwd).resolve()
     out_path = write_build_result(builds, cwd=write_cwd)
     return out_path
