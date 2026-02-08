@@ -51,6 +51,17 @@ def test_build_push_uses_local_registry_by_default(mock_pack_build: MagicMock) -
     mock_pack_build.assert_called_once()
     call_kw = mock_pack_build.call_args[1]
     assert call_kw["default_repo"] == "localhost:5001"
+    assert call_kw["pack_cmd"] == "pack"
+
+
+@patch("octopilot_pipeline_tools.cli.run_pack_build_push_impl")
+def test_build_push_passes_pack_cmd(mock_pack_build: MagicMock) -> None:
+    mock_pack_build.return_value = Path("build_result.json")
+    r = runner.invoke(main, ["build-push", "--pack", "/opt/pack/out/pack"])
+    assert r.exit_code == 0
+    mock_pack_build.assert_called_once()
+    call_kw = mock_pack_build.call_args[1]
+    assert call_kw["pack_cmd"] == "/opt/pack/out/pack"
 
 
 @patch("octopilot_pipeline_tools.cli.run_pack_build_push_impl")
@@ -189,3 +200,27 @@ build:
     assert "localhost:5001/myapp-api:latest" in call_args
     assert "-p" in call_args
     assert "-e" in call_args
+
+
+def test_start_registry_help() -> None:
+    r = runner.invoke(main, ["start-registry", "--help"])
+    assert r.exit_code == 0
+    assert "start-registry" in r.output
+    assert "trust-cert" in r.output
+    assert "5001" in r.output
+
+
+@patch("octopilot_pipeline_tools.cli.start_registry")
+def test_start_registry_invokes_module(mock_start_registry: MagicMock, tmp_path: Path) -> None:
+    mock_start_registry.return_value = tmp_path / "tls.crt"
+    r = runner.invoke(
+        main,
+        ["start-registry", "--certs-dir", str(tmp_path), "--image", "myreg:latest"],
+        obj={"config": {}},
+    )
+    assert r.exit_code == 0
+    mock_start_registry.assert_called_once()
+    call_kw = mock_start_registry.call_args[1]
+    assert call_kw["image"] == "myreg:latest"
+    assert call_kw["certs_out_dir"] == tmp_path
+    assert call_kw["trust_cert"] is False

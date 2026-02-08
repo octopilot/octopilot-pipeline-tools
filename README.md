@@ -72,11 +72,12 @@ For full detail (Procfile vs Dockerfile, per-artifact and hybrid setups, how op 
 | Command | Description |
 |--------|-------------|
 | `op build` | Run `skaffold build`. Uses `SKAFFOLD_DEFAULT_REPO` or registry env vars from config. |
+| `op start-registry` | Start local registry with TLS on 5001 (replaces existing). Copies certs out; optionally installs for system trust (may prompt for sudo). Use before `op build-push` so localhost:5001 is trusted. |
 | `op build-push` | Build and push using **pack** CLI with `--publish` for each artifact in skaffold.yaml; write **build_result.json**. Use when `op build` / `op push` fail (Mac containerd digest, Linux /layers permission). Default registry is **localhost:5001** (override with `--repo` or `SKAFFOLD_DEFAULT_REPO`). |
 | `op push` | Run `skaffold build` with profile (e.g. `push`), push to registry, write **build_result.json**. Registry from **--default-repo**, env, or **.registry** (--destination local\|ci\|all\|auto). Use **--push-all** to crane copy to all CI registries. |
 | `op watch-deployment` | Read image tag from build_result.json; loop `flux reconcile helmrelease` until deployment image matches; then `kubectl rollout status`. |
 | `op promote-image` | Read tag from build_result.json; **crane copy** from source env registry to destination (e.g. dev → pp). |
-| `op run` | **Local dev only:** run a built image for a Skaffold context via `docker run` with preconfigured ports/env/volumes from **op-run.yaml**. **`op run context list`** lists contexts; **`op run <context>`** runs that context. Not for production; does not replace docker-compose, Kubernetes (e.g. kind), or full deploy workflows. |
+| `op run` | **Local dev only:** run a built image for a Skaffold context via `docker run` with preconfigured ports/env/volumes from **.run.yaml**. **`op run context list`** lists contexts; **`op run <context>`** runs that context. Not for production; does not replace docker-compose, Kubernetes (e.g. kind), or full deploy workflows. |
 
 ---
 
@@ -91,6 +92,14 @@ For full detail (Procfile vs Dockerfile, per-artifact and hybrid setups, how op 
 - **Full pipeline (all samples):** Run **`op build-push`** (defaults to localhost:5001; start a local registry on 5001 first). For CI, use **`op build-push --repo <registry>`** or **`op build`** / **`op push`** on Linux.
 - **Single-app local testing:** Run **`op build-push`** after starting a local registry on 5001, or use **pack** directly as in the samples README.
 
+For an assessment of using **Apple's [container](https://github.com/apple/container)** (Mac VM-based OCI runtime) to reduce reliance on Docker/Colima, see **[docs/AUDIT-APPLE-CONTAINER-BUILDPACKS.md](docs/AUDIT-APPLE-CONTAINER-BUILDPACKS.md)**.
+
+**Using a local pack build (containerd workaround):** The [octopilot/pack](https://github.com/octopilot/pack) fork includes a publish-then-pull workaround for containerd-backed daemons when building *without* `--publish`. To use it:
+
+1. Build pack from the fork: `cd pack && make build` → binary at `pack/out/pack`.
+2. Point **op** at it: `op build-push --pack /path/to/pack/out/pack` or `export PACK_CMD=/path/to/pack/out/pack` then `op build-push`.
+3. **op build-push** always invokes pack with **--publish**, so the daemon export path is avoided and the workaround is not used there. The fork’s workaround applies when running **pack** directly without `--publish` (e.g. Skaffold or `pack build myapp:latest`); then a local registry (e.g. `localhost:5001`) is required. See [AUDIT-APPLE-CONTAINER-BUILDPACKS.md](docs/AUDIT-APPLE-CONTAINER-BUILDPACKS.md).
+
 ### Linux / Skaffold buildpacks
 
 On **Linux**, `op build` and `op push` can fail with **`/layers/group.toml: permission denied`** when the Buildpacks lifecycle runs inside the builder container ([Skaffold #5407](https://github.com/GoogleContainerTools/skaffold/issues/5407)). The Docker host and group permissions are fine; the issue is how Skaffold mounts the layers volume.
@@ -98,8 +107,8 @@ On **Linux**, `op build` and `op push` can fail with **`/layers/group.toml: perm
 **Recommendation:** Use **`op build-push`** so each artifact is built with **pack build … --publish** (no daemon export, no layers volume from Skaffold). Default repo is **localhost:5001**. Install [pack](https://buildpacks.io/docs/tools/pack/) and run from the app repo:
 
 ```bash
-# Local registry (then build; op build-push defaults to localhost:5001)
-docker run -d -p 5001:5000 --restart=unless-stopped --name registry registry:2
+# Local registry with TLS (then build; op build-push defaults to localhost:5001)
+# From the registry-tls repo: docker build -t registry-tls . && docker run -d -p 5001:5001 -v registry-data:/var/lib/registry --restart=unless-stopped --name registry registry-tls (or use the published image ghcr.io/octopilot/registry-tls:latest)
 op build-push
 ```
 
@@ -107,7 +116,7 @@ This writes **build_result.json** and pushes all images from skaffold.yaml to th
 
 **Local HTTP registry:** If you use a local registry on port 5001 (e.g. `registry:2`), it serves HTTP. Add it to Docker’s **insecure-registries** so pack can push: Docker Desktop → Settings → Docker Engine → add `"insecure-registries": ["host.docker.internal:5001"]` (Mac) or on Linux in `/etc/docker/daemon.json` add `"insecure-registries": ["localhost:5001"]` (or the host IP), then restart Docker.
 
-### op run and op-run.yaml (quick local run)
+### op run and .run.yaml (quick local run)
 
 **For local development only.** **`op run`** runs a single built image with **docker run** and preconfigured ports/env/volumes so you don't have to type `-p ... -e ...` by hand. It is **not for production** and **does not replace** docker-compose, Kubernetes (e.g. kind), or full deploy workflows—use those for multi-container or production runs.
 
@@ -116,10 +125,10 @@ After building (e.g. **`op build-push`** or **skaffold build**), run one artifac
 - **List runnable contexts:** **`op run context list`**
 - **Run one context:** **`op run api`** or **`op run frontend`** (example names)
 
-Ports, env vars, and volume mounts are **preconfigured** in **op-run.yaml** (or defaults apply). Put **op-run.yaml** in your app repo root (next to **skaffold.yaml**):
+Ports, env vars, and volume mounts are **preconfigured** in **.run.yaml** (or defaults apply). Put **.run.yaml** in your app repo root (next to **skaffold.yaml**):
 
 ```yaml
-# op-run.yaml (optional; defaults: -p 8080:8080 -e PORT=8080 per context)
+# .run.yaml (optional; defaults: -p 8080:8080 -e PORT=8080 per context)
 default_repo: localhost:5001
 tag: latest
 
@@ -144,10 +153,20 @@ contexts:
 
 ### Local registry (for push/build testing)
 
-To try **op push** or **op build** against a registry on your machine, run the official Registry image on **port 5001** (5000 is often used by macOS system services):
+**Recommended:** use **`op start-registry`** to start the TLS registry on 5001, replace any existing registry container, copy certs out, and optionally install them for system trust (you may be prompted for your password on macOS/Linux):
 
 ```bash
-docker run -d -p 5001:5000 --restart=unless-stopped --name registry registry:2
+op start-registry
+# Optionally: op start-registry --trust-cert   # install cert (may ask for sudo)
+# Or run without --trust-cert and answer y when asked to install for system trust.
+```
+
+This uses the image **ghcr.io/octopilot/registry-tls:latest** by default (override with `--image` or `REGISTRY_TLS_IMAGE`). Certs are copied to `~/.config/registry-tls/certs` (or `--certs-dir`). On macOS, use **`--user-keychain`** to add the cert to your login keychain instead of the system keychain (avoids sudo).
+
+Alternatively, run the image manually:
+
+```bash
+docker run -d -p 5001:5001 -v registry-data:/var/lib/registry --restart=unless-stopped --name registry ghcr.io/octopilot/registry-tls:latest
 ```
 
 Then use **`--default-repo localhost:5001`** (or set `local: localhost:5001` in your app’s **.registry** file). To stop and remove the container: `docker stop registry && docker rm registry`.
@@ -216,7 +235,7 @@ docker run --rm -v "$(pwd):/workspace" -w /workspace \
 From the [octopilot-samples](https://github.com/octopilot/octopilot-samples) repo (clone it next to this one or use your own):
 
 1. **Local registry** (if you don’t have one):
-   `docker run -d -p 5001:5000 --restart=unless-stopped --name registry registry:2`
+   From `registry-tls` repo: build and run the TLS registry on 5001 (see "Local registry" above).
 
 2. **Config** in the samples repo: copy `.registry.example` to `.registry` and set `local: localhost:5001` (or use `--default-repo` below).
 

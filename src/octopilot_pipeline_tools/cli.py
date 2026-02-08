@@ -33,6 +33,7 @@ from .registry import (
     get_push_registries,
 )
 from .run_config import get_run_options_for_context, load_run_config
+from .start_registry import install_cert_trust, start_registry
 
 
 def _config_callback(ctx: click.Context, _param: click.Parameter, value: str | None) -> str | None:
@@ -112,6 +113,13 @@ def build(ctx: click.Context) -> None:
     default=None,
     help=f"Directory to write {BUILD_RESULT_FILENAME} (default: cwd).",
 )
+@click.option(
+    "--pack",
+    "pack_cmd",
+    default="pack",
+    envvar="PACK_CMD",
+    help="Path to pack CLI (default: 'pack' from PATH). Use local build e.g. ../pack/out/pack or set PACK_CMD.",
+)
 @click.pass_context
 def build_push(
     ctx: click.Context,
@@ -119,6 +127,7 @@ def build_push(
     tag: str,
     skaffold_file: Path,
     output: Path | None,
+    pack_cmd: str,
 ) -> None:
     """Build and push with pack --publish (use when Skaffold buildpacks fail on Mac or Linux).
 
@@ -136,6 +145,7 @@ def build_push(
             tag=tag,
             skaffold_path=skaffold_path,
             output_dir=output,
+            pack_cmd=pack_cmd,
         )
         click.echo(f"Wrote {path}")
     except SystemExit as e:
@@ -143,7 +153,7 @@ def build_push(
 
 
 def _run_resolve_default_repo(cwd: Path, config: dict, run_config: dict) -> str:
-    """Default repo for op run: op-run.yaml > SKAFFOLD_DEFAULT_REPO > .registry local > localhost:5001."""
+    """Default repo for op run: .run.yaml > SKAFFOLD_DEFAULT_REPO > .registry local > localhost:5001."""
     repo = run_config.get("default_repo") if isinstance(run_config.get("default_repo"), str) else None
     if repo:
         return repo.strip().rstrip("/")
@@ -178,7 +188,7 @@ def _run_docker_run(
 
 @main.command(
     "run",
-    short_help="Run a built image for a Skaffold context (ports/env/volumes from op-run.yaml).",
+    short_help="Run a built image for a Skaffold context (ports/env/volumes from .run.yaml).",
 )
 @click.option(
     "--skaffold-file",
@@ -196,12 +206,12 @@ def run(
     """Run a built image for a Skaffold context (local dev only).
 
     For local development only: runs a single container with \"docker run\" using
-    preconfigured ports/env/volumes from op-run.yaml. Not for production. Does not
+    preconfigured ports/env/volumes from .run.yaml. Not for production. Does not
     replace docker-compose, Kubernetes (e.g. kind), or full deploy workflows.
 
     Use \"op run context list\" to list runnable contexts from skaffold.yaml.
     Use \"op run <context>\" to run that context (e.g. op run api, op run frontend).
-    Ports, env vars, and volumes come from op-run.yaml in the repo root; if missing,
+    Ports, env vars, and volumes come from .run.yaml in the repo root; if missing,
     defaults are applied (e.g. -p 8080:8080 -e PORT=8080). Build images first with
     \"op build-push\" or \"skaffold build\".
     """
@@ -444,6 +454,84 @@ def watch_deployment(
     if proc.returncode != 0:
         click.echo("::error ::Flux: deployment rollout failed.", err=True)
         sys.exit(proc.returncode)
+
+
+@main.command(
+    "start-registry",
+    short_help="Start local registry with TLS; replace existing, copy certs, optionally trust.",
+)
+@click.option(
+    "--image",
+    default="ghcr.io/octopilot/registry-tls:latest",
+    envvar="REGISTRY_TLS_IMAGE",
+    help="Docker image for the registry (default: ghcr.io/octopilot/registry-tls:latest).",
+)
+@click.option(
+    "--certs-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Directory to copy certs to (default: ~/.config/registry-tls/certs).",
+)
+@click.option(
+    "--trust-cert",
+    is_flag=True,
+    default=False,
+    help="Install the self-signed cert for system trust (may prompt for sudo/password).",
+)
+@click.option(
+    "--user-keychain",
+    is_flag=True,
+    default=False,
+    help="[macOS only] Use login keychain instead of System keychain (no sudo).",
+)
+@click.pass_context
+def start_registry_cmd(
+    ctx: click.Context,
+    image: str,
+    certs_dir: Path | None,
+    trust_cert: bool,
+    user_keychain: bool,
+) -> None:
+    """Start local registry with TLS on port 5001.
+
+    Replaces any existing registry container, starts the image, copies certs out of the
+    container, and optionally installs the cert so the system (and Docker) trusts HTTPS
+    to localhost:5001. On macOS, trusting the cert may ask for your password (sudo to add
+    to System keychain); use --user-keychain to avoid sudo. On Linux, trusting runs sudo
+    to copy the cert into the system CA store. If you skip trust, add localhost:5001 to
+    Docker's insecure-registries instead.
+    """
+    try:
+        crt = start_registry(
+            image=image,
+            certs_out_dir=certs_dir,
+            trust_cert=trust_cert,
+            use_system_keychain_macos=not user_keychain,
+        )
+        click.echo(f"Certs copied to {crt.parent}")
+        if (
+            not trust_cert
+            and sys.stdin.isatty()
+            and click.confirm(
+                "Install cert for system trust? This may ask for your password (sudo).",
+                default=False,
+            )
+        ):
+            install_cert_trust(crt, use_system_keychain_macos=not user_keychain)
+            click.echo("Cert installed for system trust. You may need to restart Docker for it to take effect.")
+        elif not trust_cert:
+            click.echo(
+                "To trust the cert later, run: op start-registry --trust-cert. "
+                'Or add "insecure-registries": ["localhost:5001"] to Docker settings.',
+            )
+        else:
+            click.echo("Cert installed for system trust. You may need to restart Docker for it to take effect.")
+    except RuntimeError as e:
+        click.echo(f"::error ::{e}", err=True)
+        sys.exit(1)
+    except FileNotFoundError as e:
+        click.echo(f"::error ::{e}", err=True)
+        sys.exit(1)
 
 
 @main.command(
