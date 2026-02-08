@@ -35,3 +35,16 @@ pytest tests/ -v --cov=src/octopilot_pipeline_tools --cov-report=term-missing --
 ```
 
 CI runs these via [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+## Optional: strip Cursor Co-authored-by from commits
+
+If you use Cursor IDE and don't want `Co-authored-by: Cursor <cursoragent@cursor.com>` added to your commit messages, use the prepare-commit-msg hook:
+
+```bash
+# From this repo (octopilot-pipeline-tools)
+echo '#!/bin/sh' > .git/hooks/prepare-commit-msg
+echo 'exec python3 '"$(pwd)"'/scripts/strip_cursor_coauthor.py "$@"' >> .git/hooks/prepare-commit-msg
+chmod +x .git/hooks/prepare-commit-msg
+```
+
+To apply for all your repos, set a global hooks directory and put the script there (e.g. as `prepare-commit-msg` with `#!/usr/bin/env python3` and the script body, then `chmod +x`).

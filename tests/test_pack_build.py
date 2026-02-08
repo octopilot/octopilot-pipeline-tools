@@ -113,15 +113,43 @@ build:
     assert out == tmp_path / "build_result.json"
     assert out.exists()
     data = __import__("json").loads(out.read_text())
-    assert data["builds"] == [{"tag": "localhost:5001/myapp/foo:latest"}]
+    # localhost:5001 is rewritten to host.docker.internal:5001 for lifecycle container reachability
+    assert data["builds"] == [{"tag": "host.docker.internal:5001/myapp/foo:latest"}]
     assert mock_run.call_count == 1
     call_args = mock_run.call_args[0][0]
     assert call_args[0] == "pack"
     assert "build" in call_args
-    assert "localhost:5001/myapp/foo:latest" in call_args
+    assert "host.docker.internal:5001/myapp/foo:latest" in call_args
     assert "--publish" in call_args
     assert "--path" in call_args
     assert "--builder" in call_args
+    assert "--insecure-registry" in call_args
+    assert "host.docker.internal:5001" in call_args
+
+
+@patch("octopilot_pipeline_tools.pack_build.subprocess.run")
+def test_run_pack_build_push_remote_repo_no_insecure_registry(mock_run: MagicMock, tmp_path: Path) -> None:
+    mock_run.return_value = MagicMock(returncode=0)
+    skaffold = tmp_path / "skaffold.yaml"
+    skaffold.write_text("""
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+    - image: myapp
+      context: app
+      buildpacks:
+        builder: paketobuildpacks/builder-jammy-base
+""")
+    (tmp_path / "app").mkdir()
+    run_pack_build_push(
+        default_repo="ghcr.io/org/repo",
+        cwd=tmp_path,
+        skaffold_path=skaffold,
+    )
+    call_args = mock_run.call_args[0][0]
+    assert "ghcr.io/org/repo/myapp:latest" in call_args
+    assert "--insecure-registry" not in call_args
 
 
 @patch("octopilot_pipeline_tools.pack_build.subprocess.run")

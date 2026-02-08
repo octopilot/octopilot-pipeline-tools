@@ -3,8 +3,14 @@ Start local registry-tls container, copy certs out, optionally trust them system
 
 - Replaces any existing registry container.
 - Copies certs from container to a local directory.
-- On confirmation, installs cert for system trust (macOS Keychain or Linux ca-certificates);
-  may prompt for sudo/password based on platform.
+- On confirmation, installs cert for system trust (macOS Keychain or Linux ca-certificates)
+  or Colima VM trust (--trust-cert-colima); may prompt for sudo/password.
+
+**TLS only — do not expose HTTP (5000).** This image is built for HTTPS with a self-signed
+cert. Exposing port 5000 (plain HTTP) would bypass TLS and make the cert setup pointless.
+Clients (Docker daemon, pack lifecycle) must trust the cert (e.g. op start-registry
+--trust-cert-colima on Colima) and use https://localhost:5001. Do not add a second -p
+5000:5000 or similar in this module.
 """
 
 from __future__ import annotations
@@ -48,6 +54,7 @@ def _replace_registry_container(
 ) -> str:
     """
     Stop/remove any existing registry container, run the given image, return container ID.
+    Exposes only 5001 (TLS). Do not add HTTP (5000): use cert trust (e.g. --trust-cert-colima) instead.
     """
     for cid in _docker_ps_filter(REGISTRY_CONTAINER_NAME):
         _run(["docker", "stop", cid], check=False)
@@ -151,6 +158,62 @@ def install_cert_trust(
         _install_trust_linux(cert_path)
     else:
         raise RuntimeError("System trust is supported only on macOS and Linux")
+
+
+# Host:port entries for the local registry in Colima; cert is installed for each
+# so both "docker pull localhost:5001/..." and "docker pull host.docker.internal:5001/..." work.
+COLIMA_REGISTRY_HOST_PORTS = ("localhost:5001", "host.docker.internal:5001")
+
+
+def install_cert_trust_colima(
+    cert_path: Path,
+    registry_host_port: str | None = None,
+    restart_colima: bool = True,
+) -> None:
+    """
+    Install the registry's self-signed cert into the Colima VM so Docker (and pack
+    lifecycle containers) trust HTTPS to the registry.
+
+    - Writes the cert to /etc/docker/certs.d/<host:port>/ca.crt for both
+      localhost:5001 and host.docker.internal:5001 (so pull works for either).
+    - Optionally restarts Colima so the Docker daemon picks up the new CA.
+
+    Requires colima to be on PATH and the VM to be running. May prompt for sudo
+    when Colima runs the remote commands.
+    """
+    cert_path = cert_path.resolve()
+    if not cert_path.exists():
+        raise FileNotFoundError(cert_path)
+    # Check colima is available and running
+    r = subprocess.run(
+        ["colima", "status"],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        raise RuntimeError("Colima is not running or not on PATH. Start it with: colima start")
+    cert_content = cert_path.read_text()
+    # Docker reads /etc/docker/certs.d/<host:port>/*.crt; install for both so
+    # "docker pull localhost:5001/..." and "docker pull host.docker.internal:5001/..." work
+    ports = (registry_host_port,) if registry_host_port else COLIMA_REGISTRY_HOST_PORTS
+    dirs = " ".join(f"/etc/docker/certs.d/{p}" for p in ports)
+    # Write cert once to /tmp then copy to each dir (single stdin pipe)
+    script = f"mkdir -p {dirs} && cat > /tmp/registry-ca.crt && " + " && ".join(
+        f"cp /tmp/registry-ca.crt /etc/docker/certs.d/{p}/ca.crt" for p in ports
+    )
+    proc = subprocess.run(
+        ["colima", "ssh", "--", "sudo", "sh", "-c", script],
+        input=cert_content,
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"Failed to install cert in Colima VM: {proc.stderr or proc.stdout or 'unknown'}")
+    if restart_colima:
+        sys.stderr.write("Restarting Colima so Docker picks up the new CA...\n")
+        subprocess.run(["colima", "restart"], check=True)
+    else:
+        sys.stderr.write("Cert installed in Colima VM. Restart Colima (colima restart) for Docker to use it.\n")
 
 
 def start_registry(

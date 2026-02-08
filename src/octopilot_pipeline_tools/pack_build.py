@@ -78,12 +78,21 @@ def run_pack_build_push(
         sys.stderr.write("No buildpacks artifacts in skaffold.yaml. Each artifact must have buildpacks.builder.\n")
         raise SystemExit(1)
     default_repo = default_repo.rstrip("/")
+    # Lifecycle runs in a container: from there "localhost" is the container, not the host.
+    # Use host.docker.internal so the lifecycle can reach the registry (Mac/Windows Docker).
+    effective_repo = default_repo
+    insecure_registries: list[str] = []
+    if default_repo in ("localhost:5001", "127.0.0.1:5001"):
+        effective_repo = "host.docker.internal:5001"
+        # Lifecycle container doesn't have the host's CA store; skip TLS verify for this registry.
+        insecure_registries.append("host.docker.internal:5001")
+    full_repo = effective_repo.rstrip("/")
     builds: list[dict] = []
     for art in artifacts:
         image_name = art["image"]
         context = art["context"]
         builder = art["builder"]
-        full_image = f"{default_repo}/{image_name}:{tag}"
+        full_image = f"{full_repo}/{image_name}:{tag}"
         cmd = [
             pack_cmd,
             "build",
@@ -93,7 +102,10 @@ def run_pack_build_push(
             "--builder",
             builder,
             "--publish",
+            "--verbose",
         ]
+        for reg in insecure_registries:
+            cmd.extend(["--insecure-registry", reg])
         proc = subprocess.run(cmd, cwd=cwd)
         if proc.returncode != 0:
             raise SystemExit(proc.returncode)

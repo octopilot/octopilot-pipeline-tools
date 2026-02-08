@@ -72,7 +72,7 @@ For full detail (Procfile vs Dockerfile, per-artifact and hybrid setups, how op 
 | Command | Description |
 |--------|-------------|
 | `op build` | Run `skaffold build`. Uses `SKAFFOLD_DEFAULT_REPO` or registry env vars from config. |
-| `op start-registry` | Start local registry with TLS on 5001 (replaces existing). Copies certs out; optionally installs for system trust (may prompt for sudo). Use before `op build-push` so localhost:5001 is trusted. |
+| `op start-registry` | Start local registry with TLS on 5001 (replaces existing). Copies certs out; optionally install for system trust (`--trust-cert`) or Colima VM trust (`--trust-cert-colima`). Use before `op build-push` so localhost:5001 is trusted. |
 | `op build-push` | Build and push using **pack** CLI with `--publish` for each artifact in skaffold.yaml; write **build_result.json**. Use when `op build` / `op push` fail (Mac containerd digest, Linux /layers permission). Default registry is **localhost:5001** (override with `--repo` or `SKAFFOLD_DEFAULT_REPO`). |
 | `op push` | Run `skaffold build` with profile (e.g. `push`), push to registry, write **build_result.json**. Registry from **--default-repo**, env, or **.registry** (--destination local\|ci\|all\|auto). Use **--push-all** to crane copy to all CI registries. |
 | `op watch-deployment` | Read image tag from build_result.json; loop `flux reconcile helmrelease` until deployment image matches; then `kubectl rollout status`. |
@@ -162,6 +162,8 @@ op start-registry
 ```
 
 This uses the image **ghcr.io/octopilot/registry-tls:latest** by default (override with `--image` or `REGISTRY_TLS_IMAGE`). Certs are copied to `~/.config/registry-tls/certs` (or `--certs-dir`). On macOS, use **`--user-keychain`** to add the cert to your login keychain instead of the system keychain (avoids sudo).
+
+**Colima:** So that the Docker daemon and pack build lifecycle inside the VM trust the registry, run **`op start-registry --trust-cert-colima`**. This installs the cert into the Colima VM at `/etc/docker/certs.d/localhost:5001/` and restarts Colima by default (use **`--no-restart-colima`** to skip the restart and run `colima restart` yourself).
 
 Alternatively, run the image manually:
 

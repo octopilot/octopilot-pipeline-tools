@@ -8,6 +8,7 @@ import pytest
 from octopilot_pipeline_tools.start_registry import (
     _docker_ps_filter,
     install_cert_trust,
+    install_cert_trust_colima,
     start_registry,
 )
 
@@ -142,3 +143,48 @@ def test_start_registry_with_trust_cert_linux(
     )
     mock_install.assert_called_once()
     assert result == tmp_path / "tls.crt"
+
+
+@patch("octopilot_pipeline_tools.start_registry.subprocess.run")
+def test_install_cert_trust_colima_success(mock_run: MagicMock, tmp_path: Path) -> None:
+    cert = tmp_path / "tls.crt"
+    cert.write_text("-----BEGIN CERTIFICATE-----\nPEM\n-----END CERTIFICATE-----")
+    mock_run.side_effect = [
+        MagicMock(returncode=0, stdout="", stderr=""),  # colima status
+        MagicMock(returncode=0, stdout="", stderr=""),  # colima ssh (install cert)
+        MagicMock(returncode=0, stdout="", stderr=""),  # colima restart
+    ]
+    install_cert_trust_colima(cert, restart_colima=True)
+    assert mock_run.call_count == 3
+    assert mock_run.call_args_list[1][0][0][:3] == ["colima", "ssh", "--"]
+    ssh_args = " ".join(mock_run.call_args_list[1][0][0])
+    assert "localhost:5001" in ssh_args
+    assert "host.docker.internal:5001" in ssh_args
+    assert mock_run.call_args_list[2][0][0] == ["colima", "restart"]
+
+
+@patch("octopilot_pipeline_tools.start_registry.subprocess.run")
+def test_install_cert_trust_colima_no_restart(mock_run: MagicMock, tmp_path: Path) -> None:
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    mock_run.side_effect = [
+        MagicMock(returncode=0),
+        MagicMock(returncode=0),
+    ]
+    install_cert_trust_colima(cert, restart_colima=False)
+    assert mock_run.call_count == 2
+    assert mock_run.call_args_list[1][0][0][:3] == ["colima", "ssh", "--"]
+
+
+def test_install_cert_trust_colima_missing_file() -> None:
+    with pytest.raises(FileNotFoundError):
+        install_cert_trust_colima(Path("/nonexistent/tls.crt"))
+
+
+@patch("octopilot_pipeline_tools.start_registry.subprocess.run")
+def test_install_cert_trust_colima_not_running(mock_run: MagicMock, tmp_path: Path) -> None:
+    cert = tmp_path / "tls.crt"
+    cert.write_text("PEM")
+    mock_run.return_value = MagicMock(returncode=1, stderr="colima is not running")
+    with pytest.raises(RuntimeError, match="Colima is not running"):
+        install_cert_trust_colima(cert)
