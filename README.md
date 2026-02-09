@@ -193,6 +193,16 @@ export OCTOPILOT_PIPELINE_PROPERTIES=./pipeline.properties
 op push
 ```
 
+### Packages (Homebrew, Chocolatey, deb, rpm)
+
+For delivery as native packages:
+
+- **Homebrew** (macOS/Linux): Formula in `packaging/homebrew/` — add to your tap and `brew install octopilot-pipeline-tools`.
+- **Chocolatey** (Windows): nuspec and scripts in `packaging/chocolatey/` — `choco pack` then publish; install with `choco install octopilot-pipeline-tools`.
+- **deb** (Debian/Ubuntu) / **rpm** (RHEL/Fedora): build with `./packaging/deb-rpm/build-deb-rpm.sh`; install the resulting `.deb` or `.rpm` from `dist/`.
+
+See **[packaging/README.md](packaging/README.md)** for versioning, release steps, and per-format details.
+
 ### Docker (no install; includes Skaffold, pack, flux, kubectl, crane)
 
 The published image is **multi-arch** (`linux/amd64` and `linux/arm64`). On Apple Silicon Macs, `docker pull` gets the arm64 image so you can run it without `--platform` or a separate build.

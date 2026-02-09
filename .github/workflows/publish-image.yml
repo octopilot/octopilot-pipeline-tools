@@ -1,6 +1,7 @@
 # Manual workflow: build and publish the octopipeline container to ghcr.io.
 # Matrix build: linux/amd64 and linux/arm64, then merge into a multi-arch manifest.
 # Run from Actions tab → "Publish container image" → Run workflow.
+# For full releases (packages + Docker), push a tag v* to trigger the Release workflow instead.
 name: Publish container image
 on:
   workflow_dispatch:

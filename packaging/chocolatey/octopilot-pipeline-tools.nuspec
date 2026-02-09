@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>octopilot-pipeline-tools</id>
+    <version>0.1.0</version>
+    <packageSourceUrl>https://github.com/octopilot/octopilot-pipeline-tools</packageSourceUrl>
+    <owners>octopilot</owners>
+    <title>OctoPilot Pipeline Tools (op)</title>
+    <authors>OctoPilot</authors>
+    <projectUrl>https://github.com/octopilot/octopilot-pipeline-tools</projectUrl>
+    <licenseUrl>https://github.com/octopilot/octopilot-pipeline-tools/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/octopilot/octopilot-pipeline-tools</projectSourceUrl>
+    <docsUrl>https://github.com/octopilot/octopilot-pipeline-tools#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/octopilot/octopilot-pipeline-tools/issues</bugTrackerUrl>
+    <summary>CLI for Skaffold/Buildpacks pipelines: build, push, build_result.json (op / octopipeline)</summary>
+    <description><![CDATA[Organisation-agnostic CLI for Skaffold/Buildpacks pipelines. Commands: build, push, build_result.json, watch-deployment, promote-image. Install adds `op` and `octopipeline` to PATH. Requires Python 3.10+.]]></description>
+    <tags>octopilot pipeline skaffold buildpacks docker kubernetes ci cd</tags>
+    <dependencies>
+      <dependency id="python" version="3.10.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
