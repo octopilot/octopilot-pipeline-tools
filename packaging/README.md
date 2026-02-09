@@ -1,5 +1,7 @@
 # Packaging OctoPilot Pipeline Tools for delivery
 
+**Build packaging in CI (no release):** The workflow [Build packaging](.github/workflows/build-packaging.yml) runs on push to `main` when `packaging/`, `pyproject.toml`, or `src/` change, and can be run manually from the Actions tab. It builds deb, rpm, Chocolatey nupkg, and a versioned Homebrew formula template, and uploads them as workflow artifacts.
+
 This directory contains assets and scripts to package **octopilot-pipeline-tools** (the `op` / `octopipeline` CLI) for:
 
 | Format       | Directory        | Use case                    |
