@@ -457,6 +457,41 @@ build:
     assert r.exit_code == 0
     call_args = mock_run.call_args[0][0]
     assert "localhost:5001/myapp-api:latest" in call_args
+    # Octopilot ports override: must see -p 8080:8080
+    idx = call_args.index("-p")
+    assert idx + 1 < len(call_args)
+    assert call_args[idx + 1] == "8080:8080"
+
+
+@patch("octopilot_pipeline_tools.cli.subprocess.run")
+def test_run_explicit_octopilot_ports_used_as_is(mock_run: MagicMock, tmp_path: Path) -> None:
+    """When octopilot sets ports for context, op run uses them (no free-port scan)."""
+    mock_run.return_value = MagicMock(returncode=0)
+    skaffold = tmp_path / "skaffold.yaml"
+    skaffold.write_text("""
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+    - image: myapp-api
+      context: api
+""")
+    (tmp_path / "api").mkdir()
+    _write_octopilot(tmp_path, 'contexts:\n  api:\n    ports: ["3001:8080"]\n')
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(
+            main,
+            ["run", "api", "--skaffold-file", "skaffold.yaml"],
+            obj={"config": {}},
+        )
+    finally:
+        os.chdir(old_cwd)
+    assert r.exit_code == 0
+    call_args = mock_run.call_args[0][0]
+    idx = call_args.index("-p")
+    assert call_args[idx + 1] == "3001:8080"
 
 
 def test_run_context_not_in_build_result_exits_with_message(tmp_path: Path) -> None:

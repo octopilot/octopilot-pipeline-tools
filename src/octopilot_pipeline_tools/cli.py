@@ -22,6 +22,7 @@ from .config import (
     get_promote_repositories,
     get_watch_destination_repository,
 )
+from .infer_run_options import infer_run_options
 from .pack_build import (
     parse_skaffold_artifacts,
 )
@@ -31,6 +32,7 @@ from .registry import (
     get_push_registries,
 )
 from .run_config import get_run_options_for_context, load_run_config
+from .run_ports import find_free_port
 from .start_registry import (
     etc_hosts_has_registry_local,
     install_cert_trust,
@@ -353,7 +355,10 @@ def run(
     if len(args) == 2 and args[0] == "context" and args[1] == "list":
         click.echo("Contexts (use: op run <context>):")
         for art in artifacts:
-            click.echo(f"  {art['context']}")
+            context_dir = cwd / art["context"]
+            inferred = infer_run_options(context_dir)
+            port = inferred["container_port"]
+            click.echo(f"  {art['context']} (container {port})")
         return
 
     if len(args) == 1:
@@ -387,10 +392,17 @@ def run(
                 full_image = None
         if full_image is None:
             full_image = f"{default_repo}/{image_name}:{default_tag}"
-        opts = get_run_options_for_context(context_name, cwd, config=run_cfg)
+        context_dir = cwd / art["context"]
+        opts = get_run_options_for_context(context_name, cwd, config=run_cfg, context_dir=context_dir)
+        ports = opts["ports"]
+        if ports is None:
+            container_port = opts.get("container_port", 8080)
+            host_port = find_free_port(start=8080, max_tries=100)
+            ports = [f"{host_port}:{container_port}"]
+            click.echo(f"Mapped to http://localhost:{host_port}", err=True)
         _run_docker_run(
             full_image,
-            ports=opts["ports"],
+            ports=ports,
             env=opts["env"],
             volumes=opts["volumes"],
         )

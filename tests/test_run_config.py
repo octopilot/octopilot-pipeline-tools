@@ -70,6 +70,35 @@ def test_get_run_options_for_context_defaults(tmp_path: Path) -> None:
     assert opts["volumes"] == []
 
 
+def test_get_run_options_with_context_dir_inferred_ports_none(tmp_path: Path) -> None:
+    """With context_dir and no octopilot ports override, ports is None and container_port set."""
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "Procfile").write_text("web: node server.js --port ${PORT:-3000}\n")
+    # No contexts in octopilot
+    opts = get_run_options_for_context("api", tmp_path, context_dir=tmp_path / "api")
+    assert opts["ports"] is None
+    assert opts["container_port"] == 3000
+    assert opts["env"]["PORT"] == "3000"
+    assert opts["volumes"] == []
+
+
+def test_get_run_options_with_context_dir_octopilot_ports_override(tmp_path: Path) -> None:
+    """With context_dir and octopilot ports set, use octopilot ports as-is."""
+    _octopilot_path(tmp_path).write_text("""
+contexts:
+  api:
+    ports: ["3000:3000"]
+    env:
+      PORT: "3000"
+""")
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "Procfile").write_text("web: node --port ${PORT:-8080}\n")
+    opts = get_run_options_for_context("api", tmp_path, config=load_run_config(tmp_path), context_dir=tmp_path / "api")
+    assert opts["ports"] == ["3000:3000"]
+    assert opts["container_port"] == 8080  # from Procfile
+    assert opts["env"]["PORT"] == "3000"  # overridden by octopilot
+
+
 def test_get_default_repo_and_tag_for_run(tmp_path: Path) -> None:
     repo, tag = get_default_repo_and_tag_for_run(tmp_path)
     assert repo == "localhost:5001"

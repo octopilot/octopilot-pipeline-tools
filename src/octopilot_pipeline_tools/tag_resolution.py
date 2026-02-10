@@ -26,11 +26,14 @@ def resolve_build_tag(cwd: Path | None = None) -> tuple[str | None, bool]:
 
     # GitHub Actions: refs/tags/v1.2.3 → use 1.2.3 (or v1.2.3); add latest
     github_ref = os.environ.get("GITHUB_REF")
-    if github_ref and github_ref.startswith("refs/tags/"):
-        raw = github_ref.removeprefix("refs/tags/")
-        tag = raw[1:] if raw.startswith("v") else raw
-        if tag:
-            return (tag, True)
+    if github_ref:
+        if github_ref.startswith("refs/tags/"):
+            raw = github_ref.removeprefix("refs/tags/")
+            tag = raw[1:] if raw.startswith("v") else raw
+            if tag:
+                return (tag, True)
+        # GITHUB_REF set but not a tag (e.g. refs/heads/main): do not fall back to git
+        return (None, False)
 
     # Local: exact git tag on HEAD
     try:

@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path  # noqa: TC003
 from typing import Any
 
+from .infer_run_options import infer_run_options
+
 RUN_CONFIG_FILENAME = ".github/octopilot.yaml"
 
 _DEFAULT_PORTS = ["8080:8080"]
@@ -39,10 +41,14 @@ def get_run_options_for_context(
     cwd: Path,
     *,
     config: dict[str, Any] | None = None,
+    context_dir: Path | None = None,
 ) -> dict[str, Any]:
     """
     Return run options for a context: ports, env, volumes.
-    Merges .github/octopilot.yaml context entry with defaults (ports 8080:8080, env PORT=8080).
+    When context_dir is provided, infers container_port and env from Procfile/project.toml/Dockerfile,
+    then overrides from .github/octopilot.yaml. If octopilot does not set ports, returns
+    ports=None and container_port=<inferred> so the caller can resolve host port at run time
+    (e.g. find_free_port).
     """
     if config is None:
         config = load_run_config(cwd)
@@ -52,13 +58,39 @@ def get_run_options_for_context(
     ctx_opts = contexts.get(context_name)
     if not isinstance(ctx_opts, dict):
         ctx_opts = {}
+
+    if context_dir is not None:
+        inferred = infer_run_options(context_dir)
+        container_port = inferred["container_port"]
+        env = {str(k): str(v) for k, v in inferred["env"].items()}
+        # Octopilot overrides
+        if ctx_opts.get("env") and isinstance(ctx_opts["env"], dict):
+            env.update({str(k): str(v) for k, v in ctx_opts["env"].items()})
+        octopilot_ports = ctx_opts.get("ports")
+        if isinstance(octopilot_ports, list) and len(octopilot_ports) > 0:
+            ports = [str(p) for p in octopilot_ports]
+            return {
+                "ports": ports,
+                "env": env,
+                "volumes": _volumes_from_ctx(ctx_opts),
+                "container_port": container_port,
+            }
+        # No override: caller must resolve host port at run time
+        volumes = _volumes_from_ctx(ctx_opts)
+        return {"ports": None, "env": env, "volumes": volumes, "container_port": container_port}
+
+    # Legacy path: no context_dir, use only octopilot + defaults
     ports = ctx_opts.get("ports")
     ports = _DEFAULT_PORTS.copy() if not isinstance(ports, list) else [str(p) for p in ports]
     env = ctx_opts.get("env")
     env = _DEFAULT_ENV.copy() if not isinstance(env, dict) else {str(k): str(v) for k, v in env.items()}
+    volumes = _volumes_from_ctx(ctx_opts)
+    return {"ports": ports, "env": env, "volumes": volumes, "container_port": 8080}
+
+
+def _volumes_from_ctx(ctx_opts: dict) -> list[str]:
     volumes = ctx_opts.get("volumes")
-    volumes = [] if not isinstance(volumes, list) else [str(v) for v in volumes]
-    return {"ports": ports, "env": env, "volumes": volumes}
+    return [] if not isinstance(volumes, list) else [str(v) for v in volumes]
 
 
 def get_default_repo_and_tag_for_run(cwd: Path, config: dict[str, Any] | None = None) -> tuple[str, str]:
