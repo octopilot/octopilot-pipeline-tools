@@ -5,14 +5,33 @@ from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
 
 from octopilot_pipeline_tools.cli import main
+from octopilot_pipeline_tools.run_config import RUN_CONFIG_FILENAME
 
 runner = CliRunner()
 
 
+def _write_octopilot(tmp_path: Path, content: str) -> None:
+    p = tmp_path / RUN_CONFIG_FILENAME
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(content)
+
+
 def test_build_help() -> None:
+    """op build --help shows group with status subcommand."""
     r = runner.invoke(main, ["build", "--help"])
     assert r.exit_code == 0
-    assert "skaffold build" in r.output or "build" in r.output
+    assert "build" in r.output
+    assert "status" in r.output
+    assert "Commands:" in r.output
+
+
+def test_build_status_help() -> None:
+    """op build status --help shows status-specific options."""
+    r = runner.invoke(main, ["build", "status", "--help"])
+    assert r.exit_code == 0
+    assert "status" in r.output
+    assert "--repo" in r.output
+    assert "build_result.json" in r.output or "cache" in r.output.lower()
 
 
 def test_push_requires_default_repo() -> None:
@@ -60,6 +79,7 @@ def test_build_push_uses_skaffold(mock_skaffold: MagicMock, tmp_path: Path) -> N
     call_kw = mock_skaffold.call_args[1]
     assert call_kw["default_repo"] == "localhost:5001"
     assert call_kw["push"] is True
+    assert call_kw["cache_artifacts"] is False
 
 
 @patch("octopilot_pipeline_tools.cli.run_skaffold_build_push", side_effect=SystemExit(2))
@@ -75,8 +95,57 @@ def test_build_push_fails_when_skaffold_fails(_mock_skaffold: MagicMock, tmp_pat
     assert r.exit_code == 2
 
 
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_push_uses_default_repo_from_run_yaml(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """op build-push uses default_repo from .github/octopilot.yaml when --repo not passed."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    _write_octopilot(tmp_path, "default_repo: myreg:5000\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-push"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["default_repo"] == "myreg:5000"
+    assert call_kw["cache_artifacts"] is False
+
+
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_push_repo_option_overrides_run_yaml(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """op build-push --repo overrides .github/octopilot.yaml default_repo."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    _write_octopilot(tmp_path, "default_repo: registry.local:5001\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-push", "--repo", "ghcr.io/owner/repo"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["default_repo"] == "ghcr.io/owner/repo"
+
+
+def test_build_push_exits_when_skaffold_yaml_missing(tmp_path: Path) -> None:
+    """op build-push exits with error when skaffold.yaml is not found."""
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-push"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 1
+    assert "Skaffold file not found" in r.output or "not found" in r.output
+
+
+@patch("octopilot_pipeline_tools.cli.resolve_build_tag", return_value=(None, False))
 @patch("octopilot_pipeline_tools.cli.subprocess.run")
-def test_build_invokes_skaffold(mock_run: MagicMock) -> None:
+def test_build_invokes_skaffold(mock_run: MagicMock, _mock_resolve_tag: MagicMock) -> None:
+    """op build (no subcommand) runs full Skaffold build with cache disabled and default-repo set."""
     mock_run.return_value = MagicMock(returncode=0)
     r = runner.invoke(main, ["build"])
     assert r.exit_code == 0
@@ -84,6 +153,163 @@ def test_build_invokes_skaffold(mock_run: MagicMock) -> None:
     call_args = mock_run.call_args[0][0]
     assert "skaffold" in call_args[0]
     assert "build" in call_args
+    assert "--cache-artifacts=false" in call_args
+    assert "--default-repo" in call_args
+    # Without .github/octopilot.yaml, default repo is localhost:5001
+    idx = call_args.index("--default-repo")
+    assert call_args[idx + 1] == "localhost:5001"
+    assert "--tag" not in call_args
+
+
+@patch("octopilot_pipeline_tools.cli.resolve_build_tag", return_value=(None, False))
+@patch("octopilot_pipeline_tools.cli.subprocess.run")
+def test_build_uses_default_repo_from_run_yaml(
+    mock_run: MagicMock, _mock_resolve_tag: MagicMock, tmp_path: Path
+) -> None:
+    """op build uses default_repo from .github/octopilot.yaml when present."""
+    mock_run.return_value = MagicMock(returncode=0)
+    _write_octopilot(tmp_path, "default_repo: myreg.local:5000\n")
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build"], obj={"config": {}})
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    call_args = mock_run.call_args[0][0]
+    idx = call_args.index("--default-repo")
+    assert call_args[idx + 1] == "myreg.local:5000"
+
+
+@patch("octopilot_pipeline_tools.cli.resolve_build_tag", return_value=("1.2.3", False))
+@patch("octopilot_pipeline_tools.cli.subprocess.run")
+def test_build_with_version_tag_passes_tag_to_skaffold(mock_run: MagicMock, _mock_resolve_tag: MagicMock) -> None:
+    """When on a version tag, op build passes --tag to Skaffold."""
+    mock_run.return_value = MagicMock(returncode=0)
+    r = runner.invoke(main, ["build"])
+    assert r.exit_code == 0
+    call_args = mock_run.call_args[0][0]
+    assert "--tag" in call_args
+    idx = call_args.index("--tag")
+    assert call_args[idx + 1] == "1.2.3"
+
+
+@patch("octopilot_pipeline_tools.cli.resolve_build_tag", return_value=("1.2.3", True))
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_push_with_version_tag_passes_tag_and_add_latest(
+    mock_skaffold: MagicMock, _mock_resolve_tag: MagicMock, tmp_path: Path
+) -> None:
+    """When on a version tag, op build-push passes tag and add_latest to run_skaffold_build_push."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-push"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["tag"] == "1.2.3"
+    assert call_kw["add_latest"] is True
+
+
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_status_uses_cache(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """build-status (alias) runs Skaffold with cache enabled (cache_artifacts=True)."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-status"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    mock_skaffold.assert_called_once()
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["cache_artifacts"] is True
+    assert call_kw["push"] is True
+    assert call_kw["default_repo"] == "localhost:5001"
+
+
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_status_subcommand_same_as_alias(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """op build status (subcommand) has same behaviour as op build-status (alias)."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build", "status"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    mock_skaffold.assert_called_once()
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["cache_artifacts"] is True
+    assert call_kw["push"] is True
+    assert call_kw["default_repo"] == "localhost:5001"
+    assert "Wrote" in r.output
+
+
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_status_uses_default_repo_from_run_yaml(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """op build status uses default_repo from .github/octopilot.yaml when --repo not passed."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    _write_octopilot(tmp_path, "default_repo: registry.local:5001\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build", "status"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["default_repo"] == "registry.local:5001"
+
+
+@patch("octopilot_pipeline_tools.cli.run_skaffold_build_push")
+def test_build_status_repo_option_overrides_run_yaml(mock_skaffold: MagicMock, tmp_path: Path) -> None:
+    """op build status --repo overrides .github/octopilot.yaml default_repo."""
+    (tmp_path / "skaffold.yaml").write_text("apiVersion: skaffold/v2beta29\nkind: Config\nbuild:\n  artifacts: []\n")
+    _write_octopilot(tmp_path, "default_repo: registry.local:5001\n")
+    mock_skaffold.return_value = tmp_path / "build_result.json"
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build", "status", "--repo", "ghcr.io/org/repo"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 0
+    call_kw = mock_skaffold.call_args[1]
+    assert call_kw["default_repo"] == "ghcr.io/org/repo"
+
+
+def test_build_status_exits_when_skaffold_yaml_missing(tmp_path: Path) -> None:
+    """op build status exits with error when skaffold.yaml is not found."""
+    # No skaffold.yaml in tmp_path
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build", "status"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 1
+    assert "Skaffold file not found" in r.output or "not found" in r.output
+
+
+def test_build_status_alias_exits_when_skaffold_yaml_missing(tmp_path: Path) -> None:
+    """op build-status (alias) exits with error when skaffold.yaml is not found."""
+    old = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        r = runner.invoke(main, ["build-status"])
+    finally:
+        os.chdir(old)
+    assert r.exit_code == 1
+    assert "Skaffold file not found" in r.output or "not found" in r.output
 
 
 @patch("octopilot_pipeline_tools.cli.subprocess.run")
@@ -217,7 +443,7 @@ build:
       context: api
 """)
     (tmp_path / "build_result.json").write_text('{"builds": [{"tag": "localhost:5001/myapp-api:latest"}]}')
-    (tmp_path / ".run.yaml").write_text('contexts:\n  api:\n    ports: ["8080:8080"]\n')
+    _write_octopilot(tmp_path, 'contexts:\n  api:\n    ports: ["8080:8080"]\n')
     old_cwd = os.getcwd()
     try:
         os.chdir(tmp_path)
@@ -246,8 +472,9 @@ build:
       context: frontend
 """)
     (tmp_path / "build_result.json").write_text('{"builds": [{"tag": "localhost:5001/sample-react-node-api:latest"}]}')
-    (tmp_path / ".run.yaml").write_text(
-        'contexts:\n  api:\n    ports: ["8081:8080"]\n  frontend:\n    ports: ["8080:8080"]\n'
+    _write_octopilot(
+        tmp_path,
+        'contexts:\n  api:\n    ports: ["8081:8080"]\n  frontend:\n    ports: ["8080:8080"]\n',
     )
     old_cwd = os.getcwd()
     try:

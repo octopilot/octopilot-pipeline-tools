@@ -1,11 +1,11 @@
-"""Load .run.yaml for preconfigured ports, env, and volumes for `op run`."""
+"""Load .github/octopilot.yaml for preconfigured ports, env, and volumes for `op run`."""
 
 from __future__ import annotations
 
 from pathlib import Path  # noqa: TC003
 from typing import Any
 
-RUN_CONFIG_FILENAME = ".run.yaml"
+RUN_CONFIG_FILENAME = ".github/octopilot.yaml"
 
 _DEFAULT_PORTS = ["8080:8080"]
 _DEFAULT_ENV = {"PORT": "8080"}
@@ -13,7 +13,7 @@ _DEFAULT_ENV = {"PORT": "8080"}
 
 def load_run_config(cwd: Path) -> dict[str, Any]:
     """
-    Load .run.yaml from cwd. Returns a dict with:
+    Load .github/octopilot.yaml from cwd. Returns a dict with:
       - default_repo: str | None
       - tag: str (default "latest")
       - contexts: dict[context_name, { ports: list[str], env: dict, volumes: list[str] }]
@@ -25,7 +25,7 @@ def load_run_config(cwd: Path) -> dict[str, Any]:
     try:
         import yaml
     except ImportError:
-        raise RuntimeError("PyYAML required to read .run.yaml. pip install pyyaml") from None
+        raise RuntimeError("PyYAML required to read .github/octopilot.yaml. pip install pyyaml") from None
     raw = yaml.safe_load(path.read_text())
     if raw is None:
         return {}
@@ -42,7 +42,7 @@ def get_run_options_for_context(
 ) -> dict[str, Any]:
     """
     Return run options for a context: ports, env, volumes.
-    Merges .run.yaml context entry with defaults (ports 8080:8080, env PORT=8080).
+    Merges .github/octopilot.yaml context entry with defaults (ports 8080:8080, env PORT=8080).
     """
     if config is None:
         config = load_run_config(cwd)
@@ -62,7 +62,7 @@ def get_run_options_for_context(
 
 
 def get_default_repo_and_tag_for_run(cwd: Path, config: dict[str, Any] | None = None) -> tuple[str, str]:
-    """Return (default_repo, tag) for op run. Uses .run.yaml, then falls back to localhost:5001 and latest."""
+    """Return (default_repo, tag) for op run. Uses .github/octopilot.yaml, else localhost:5001 and latest."""
     if config is None:
         config = load_run_config(cwd)
     default_repo = config.get("default_repo")

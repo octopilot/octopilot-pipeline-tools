@@ -39,6 +39,7 @@ from .start_registry import (
     is_colima_running,
     start_registry,
 )
+from .tag_resolution import resolve_build_tag
 
 # Single pull hint for start-registry success (registry.local is already required in /etc/hosts at entry).
 _REGISTRY_PULL_HINT = "To pull: docker pull registry.local:5001/<image> or host.docker.internal:5001/<image>."
@@ -71,19 +72,21 @@ def main(ctx: click.Context, config_path: Path | None) -> None:
     ctx.obj["config"] = get_config(ctx.obj.get("properties_path"))
 
 
-@main.command(short_help="Run skaffold build (no push).")
+@main.group("build", invoke_without_command=True)
 @click.pass_context
-def build(ctx: click.Context) -> None:
-    """Run skaffold build (no push).
-
-    Uses SKAFFOLD_DEFAULT_REPO or registry from config if set.
-    """
+def build_group(ctx: click.Context) -> None:
+    """Build with Skaffold. Use 'op build' for full build, 'op build status' for cache check."""
+    if ctx.invoked_subcommand is not None:
+        return
+    # No subcommand: run full build (no push)
     config = ctx.obj["config"]
     cwd = Path.cwd()
-    cmd = ["skaffold", "build"]
-    default_repo = get_default_repo(config)
-    if default_repo:
-        cmd.extend(["--default-repo", default_repo])
+    run_cfg = load_run_config(cwd)
+    default_repo = _run_resolve_default_repo(cwd, config, run_cfg)
+    build_tag, _ = resolve_build_tag(cwd=cwd)
+    cmd = ["skaffold", "build", "--cache-artifacts=false", "--default-repo", default_repo]
+    if build_tag:
+        cmd.extend(["--tag", build_tag])
     for key in ("SKAFFOLD_PROFILE", "SKAFFOLD_LABEL", "SKAFFOLD_NAMESPACE"):
         if config.get(key):
             opt = key.replace("SKAFFOLD_", "").lower().replace("_", "-")
@@ -93,14 +96,115 @@ def build(ctx: click.Context) -> None:
         sys.exit(proc.returncode)
 
 
-@main.command(
-    "build-push",
-    short_help="Build and push all artifacts with Skaffold, then write build_result.json.",
+def _do_build_status(
+    ctx: click.Context,
+    repo: str | None,
+    skaffold_file: Path,
+    output: Path | None,
+) -> None:
+    """Check build status (use cache), push if needed, write build_result.json."""
+    cwd = Path.cwd()
+    config = ctx.obj["config"]
+    run_cfg = load_run_config(cwd)
+    effective_repo = repo if repo is not None else _run_resolve_default_repo(cwd, config, run_cfg)
+    skaffold_path = cwd / skaffold_file if not skaffold_file.is_absolute() else skaffold_file
+    if not skaffold_path.exists():
+        click.echo(f"Skaffold file not found: {skaffold_path}", err=True)
+        sys.exit(1)
+    out_dir = (output or cwd).resolve()
+    path = run_skaffold_build_push(
+        default_repo=effective_repo,
+        cwd=out_dir,
+        skaffold_file=skaffold_path,
+        push=True,
+        use_file_output=True,
+        profile=None,
+        cache_artifacts=True,
+    )
+    click.echo(f"Wrote {path}")
+
+
+@build_group.command(
+    "status",
+    short_help="Check build status (use cache), push if needed, write build_result.json.",
 )
 @click.option(
     "--repo",
     "repo",
-    default="localhost:5001",
+    default=None,
+    envvar="SKAFFOLD_DEFAULT_REPO",
+    help="Registry to push to (default: from .github/octopilot.yaml or localhost:5001).",
+)
+@click.option(
+    "--skaffold-file",
+    type=click.Path(path_type=Path),
+    default=Path("skaffold.yaml"),
+    help="Path to skaffold.yaml (default: skaffold.yaml in cwd).",
+)
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=f"Directory to write {BUILD_RESULT_FILENAME} (default: cwd).",
+)
+@click.pass_context
+def build_status_cmd(
+    ctx: click.Context,
+    repo: str | None,
+    skaffold_file: Path,
+    output: Path | None,
+) -> None:
+    """Check build status using Skaffold cache; write build_result.json.
+
+    Runs Skaffold build with cache enabled. If images are found remotely or in
+    cache, skips building and writes build_result.json with existing tags.
+    For a full build use 'op build' or 'op build-push'.
+    """
+    _do_build_status(ctx, repo, skaffold_file, output)
+
+
+@main.command(
+    "build-status",
+    short_help="Alias for 'op build status'. Check build status (use cache), write build_result.json.",
+)
+@click.option(
+    "--repo",
+    "repo",
+    default=None,
+    envvar="SKAFFOLD_DEFAULT_REPO",
+    help="Registry to push to (default: from .github/octopilot.yaml or localhost:5001).",
+)
+@click.option(
+    "--skaffold-file",
+    type=click.Path(path_type=Path),
+    default=Path("skaffold.yaml"),
+    help="Path to skaffold.yaml (default: skaffold.yaml in cwd).",
+)
+@click.option(
+    "--output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=f"Directory to write {BUILD_RESULT_FILENAME} (default: cwd).",
+)
+@click.pass_context
+def build_status(
+    ctx: click.Context,
+    repo: str | None,
+    skaffold_file: Path,
+    output: Path | None,
+) -> None:
+    """Alias for 'op build status'. Check build status (use cache), write build_result.json."""
+    _do_build_status(ctx, repo, skaffold_file, output)
+
+
+@main.command(
+    "build-push",
+    short_help="Run full Skaffold build, push, then write build_result.json.",
+)
+@click.option(
+    "--repo",
+    "repo",
+    default=None,
     envvar="SKAFFOLD_DEFAULT_REPO",
     help="Registry to push to (default: localhost:5001). E.g. ghcr.io/owner/repo for GitHub Container Registry.",
 )
@@ -119,36 +223,43 @@ def build(ctx: click.Context) -> None:
 @click.pass_context
 def build_push(
     ctx: click.Context,
-    repo: str,
+    repo: str | None,
     skaffold_file: Path,
     output: Path | None,
 ) -> None:
-    """Build and push all artifacts with Skaffold, then write build_result.json.
+    """Run full Skaffold build (all artifacts), push, then write build_result.json.
 
     Uses a single Skaffold invocation to build all artifacts (buildpacks and docker).
-    Fails if Skaffold fails; use a Skaffold build with the buildpacks Publish fix
-    (e.g. from octopilot/skaffold buildpacks-publish-fix branch) on Mac/containerd.
-    Default registry is localhost:5001 (override with --repo or SKAFFOLD_DEFAULT_REPO).
+    Disables artifact cache so images are always built. Fails if Skaffold fails.
+    Default repo: .github/octopilot.yaml > pipeline config > .registry (local) > localhost:5001.
+    Override with --repo or SKAFFOLD_DEFAULT_REPO.
     """
     cwd = Path.cwd()
+    config = ctx.obj["config"]
+    run_cfg = load_run_config(cwd)
+    effective_repo = repo if repo is not None else _run_resolve_default_repo(cwd, config, run_cfg)
+    build_tag, add_latest = resolve_build_tag(cwd=cwd)
     skaffold_path = cwd / skaffold_file if not skaffold_file.is_absolute() else skaffold_file
     if not skaffold_path.exists():
         click.echo(f"Skaffold file not found: {skaffold_path}", err=True)
         sys.exit(1)
     out_dir = (output or cwd).resolve()
     path = run_skaffold_build_push(
-        default_repo=repo,
+        default_repo=effective_repo,
         cwd=out_dir,
         skaffold_file=skaffold_path,
         push=True,
         use_file_output=True,
         profile=None,
+        cache_artifacts=False,
+        tag=build_tag,
+        add_latest=add_latest,
     )
     click.echo(f"Wrote {path}")
 
 
 def _run_resolve_default_repo(cwd: Path, config: dict, run_config: dict) -> str:
-    """Default repo for op run: .run.yaml > SKAFFOLD_DEFAULT_REPO > .registry local > localhost:5001."""
+    """Default repo for op run: .github/octopilot.yaml > SKAFFOLD_DEFAULT_REPO > .registry local > localhost:5001."""
     repo = run_config.get("default_repo") if isinstance(run_config.get("default_repo"), str) else None
     if repo:
         return repo.strip().rstrip("/")
@@ -167,7 +278,9 @@ def _run_docker_run(
     env: dict[str, str],
     volumes: list[str],
 ) -> None:
-    """Run docker run with the given image, ports, env, and volumes."""
+    """Run docker run with the given image, ports, env, and volumes.
+    Streams container stdout/stderr directly so users see all output.
+    """
     cmd = ["docker", "run", "--rm", "-it"]
     for p in ports:
         cmd.extend(["-p", p])
@@ -176,14 +289,20 @@ def _run_docker_run(
     for v in volumes:
         cmd.extend(["-v", v])
     cmd.append(image)
-    proc = subprocess.run(cmd)
+    click.echo("Running: " + " ".join(cmd), err=True)
+    proc = subprocess.run(
+        cmd,
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
     if proc.returncode != 0:
         sys.exit(proc.returncode)
 
 
 @main.command(
     "run",
-    short_help="Run a built image for a Skaffold context (ports/env/volumes from .run.yaml).",
+    short_help="Run a built image for a Skaffold context (ports/env/volumes from .github/octopilot.yaml).",
 )
 @click.option(
     "--skaffold-file",
@@ -201,12 +320,12 @@ def run(
     """Run a built image for a Skaffold context (local dev only).
 
     For local development only: runs a single container with \"docker run\" using
-    preconfigured ports/env/volumes from .run.yaml. Not for production. Does not
+    preconfigured ports/env/volumes from .github/octopilot.yaml. Not for production. Does not
     replace docker-compose, Kubernetes (e.g. kind), or full deploy workflows.
 
     Use \"op run context list\" to list runnable contexts from skaffold.yaml.
     Use \"op run <context>\" to run that context (e.g. op run api, op run frontend).
-    Ports, env vars, and volumes come from .run.yaml in the repo root; if missing,
+    Ports, env vars, and volumes come from .github/octopilot.yaml; if missing,
     defaults are applied (e.g. -p 8080:8080 -e PORT=8080). Build images first with
     \"op build-push\" or \"skaffold build\".
     """

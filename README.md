@@ -77,7 +77,7 @@ For full detail (Procfile vs Dockerfile, per-artifact and hybrid setups, how op 
 | `op push` | Run `skaffold build` with profile (e.g. `push`), push to registry, write **build_result.json**. Registry from **--default-repo**, env, or **.registry** (--destination local\|ci\|all\|auto). Use **--push-all** to crane copy to all CI registries. |
 | `op watch-deployment` | Read image tag from build_result.json; loop `flux reconcile helmrelease` until deployment image matches; then `kubectl rollout status`. |
 | `op promote-image` | Read tag from build_result.json; **crane copy** from source env registry to destination (e.g. dev → pp). |
-| `op run` | **Local dev only:** run a built image for a Skaffold context via `docker run` with preconfigured ports/env/volumes from **.run.yaml**. **`op run context list`** lists contexts; **`op run <context>`** runs that context. Not for production; does not replace docker-compose, Kubernetes (e.g. kind), or full deploy workflows. |
+| `op run` | **Container startup check and quick smoke tests:** run a built image for a Skaffold context via `docker run` with preconfigured ports/env/volumes from **.github/octopilot.yaml**. **`op run context list`** lists contexts; **`op run <context>`** runs that context. Does **not** replace Tilt, Kubernetes, Helm, or full deploy workflows—use those for multi-service orchestration. |
 
 ---
 
@@ -116,19 +116,19 @@ This writes **build_result.json** and pushes all images from skaffold.yaml to th
 
 **Local HTTP registry:** If you use a local registry on port 5001 (e.g. `registry:2`), it serves HTTP. Add it to Docker’s **insecure-registries** so pack can push: Docker Desktop → Settings → Docker Engine → add `"insecure-registries": ["host.docker.internal:5001"]` (Mac) or on Linux in `/etc/docker/daemon.json` add `"insecure-registries": ["localhost:5001"]` (or the host IP), then restart Docker.
 
-### op run and .run.yaml (quick local run)
+### op run and .github/octopilot.yaml (quick local run)
 
-**For local development only.** **`op run`** runs a single built image with **docker run** and preconfigured ports/env/volumes so you don't have to type `-p ... -e ...` by hand. It is **not for production** and **does not replace** docker-compose, Kubernetes (e.g. kind), or full deploy workflows—use those for multi-container or production runs.
+**Purpose:** Check that containers start as expected and run quick smoke tests. **`op run`** runs a single built image with **docker run** and preconfigured ports/env/volumes so you don't have to type `-p ... -e ...` by hand. It **does not replace** Tilt, Kubernetes, Helm manifests, or full deploy workflows—use those for multi-service orchestration and production.
 
 After building (e.g. **`op build-push`** or **skaffold build**), run one artifact with **`op run <context>`**. Contexts come from your **skaffold.yaml** (one per artifact).
 
 - **List runnable contexts:** **`op run context list`**
 - **Run one context:** **`op run api`** or **`op run frontend`** (example names)
 
-Ports, env vars, and volume mounts are **preconfigured** in **.run.yaml** (or defaults apply). Put **.run.yaml** in your app repo root (next to **skaffold.yaml**):
+Ports, env vars, and volume mounts are **preconfigured** in **.github/octopilot.yaml** (or defaults apply). Put **.github/octopilot.yaml** in your repo:
 
 ```yaml
-# .run.yaml (optional; defaults: -p 8080:8080 -e PORT=8080 per context)
+# .github/octopilot.yaml (optional; defaults: -p 8080:8080 -e PORT=8080 per context)
 default_repo: localhost:5001
 tag: latest
 
@@ -147,7 +147,7 @@ contexts:
 - **default_repo** / **tag** — used to form the image name (`<default_repo>/<image>:<tag>`). Resolved in order: this file → **SKAFFOLD_DEFAULT_REPO** / config → **.registry** `local` → **localhost:5001**.
 - **contexts.*** — per-context (Skaffold artifact `context` name) **ports**, **env**, and optional **volumes** (Docker `-v` style, e.g. `host:container`). If a context is omitted, defaults are **ports: ["8080:8080"]**, **env: { PORT: "8080" }**.
 
-**Reminder:** **op run** is for quick local dev only. For production, multi-container, or real orchestration use docker-compose, Kubernetes (kind, etc.), or your normal deploy path.
+**Reminder:** **op run** is for container startup checks and quick smoke tests. For production, multi-service orchestration, or real deploy use Tilt, Kubernetes (kind, etc.), Helm, or your normal deploy path.
 
 ---
 
@@ -353,3 +353,17 @@ Tool versions used in the container image are listed in [DEPENDENCIES.md](DEPEND
 ## Compatibility
 
 The CLI is compatible with workflows that use a `.properties`-style config and Skaffold (including Skaffold + Buildpacks). Use the package or Docker image so each app repo does not need to ship its own pipeline scripts.
+
+---
+
+## Documentation
+
+- **[procfile.md](procfile.md)** — Procfile and project.toml with Skaffold/Buildpacks.
+- **[skaffold.md](skaffold.md)** — How skaffold.yaml is used by op.
+- **[docs/PRD-infer-run-options-option1-option5.md](docs/PRD-infer-run-options-option1-option5.md)** — PRD: infer run options (ports, env) from Procfile/buildpack on the fly; octopilot `contexts` as overrides only (Option 1 + Option 5).
+
+---
+
+## Implementation note
+
+The CLI is implemented in **Python** today. A future rewrite in **Go** is under consideration to integrate directly with pack and Skaffold libraries; Python remains the implementation for now and is fine for current use.

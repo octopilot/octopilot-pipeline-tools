@@ -1,6 +1,6 @@
 # Skaffold with op and Buildpacks
 
-This document explains how **Skaffold** is used by the **op** (OctoPilot pipeline tools) CLI, how your **skaffold.yaml** drives builds and runs, and how it fits with **Cloud Native Buildpacks**, **op build-push**, **op run**, and related config (**.registry**, **.run.yaml**, **build_result.json**).
+This document explains how **Skaffold** is used by the **op** (OctoPilot pipeline tools) CLI, how your **skaffold.yaml** drives builds and runs, and how it fits with **Cloud Native Buildpacks**, **op build-push**, **op run**, and related config (**.registry**, **.github/octopilot.yaml**, **build_result.json**).
 
 ---
 
@@ -84,7 +84,7 @@ build:
 | **op build** | Runs **skaffold build**. Passes **--default-repo** (from config / **SKAFFOLD_DEFAULT_REPO** / .registry). Builds **all** artifacts (buildpacks and docker). |
 | **op push** | Runs **skaffold build** with a push profile, pushes to the resolved registry, writes **build_result.json**. Uses the same **--default-repo** resolution. Builds all artifacts. |
 | **op build-push** | **Does not run Skaffold.** Reads skaffold.yaml, finds every artifact with **buildpacks.builder**, and for each runs **pack build … --publish** with that artifact’s **context** and **image** name. Writes **build_result.json**. Skips artifacts that use **docker** only. Use when **op build** / **op push** fail (Mac containerd digest, Linux /layers permission). |
-| **op run** | Reads skaffold.yaml to get **all** artifacts’ **context** and **image** names. **op run context list** lists contexts; **op run &lt;context&gt;** runs the image for that context with **docker run** and options from **.run.yaml** (local dev only). |
+| **op run** | Reads skaffold.yaml to get **all** artifacts’ **context** and **image** names. **op run context list** lists contexts; **op run &lt;context&gt;** runs the image for that context with **docker run** and options from **.github/octopilot.yaml** (local dev only). |
 | **op watch-deployment** | Does not read skaffold.yaml; uses **build_result.json** (produced by **op push** or **op build-push**). |
 | **op promote-image** | Does not read skaffold.yaml; uses **build_result.json** and config for source/destination registries. |
 
@@ -126,7 +126,7 @@ op resolves the default repo in this order (for **op build**, **op push**, and w
 1. **--default-repo** / **--repo** (CLI option, where applicable).
 2. **SKAFFOLD_DEFAULT_REPO** (env or from **pipeline.properties** via **--config**).
 3. **.registry** file: **local** (for local dev) or **ci** (in CI, e.g. when **GITHUB_ACTIONS** is set), depending on **--destination** for **op push**.
-4. For **op run**: **.run.yaml** **default_repo** (if present), then the same as above, then **localhost:5001**.
+4. For **op run**: **.github/octopilot.yaml** **default_repo** (if present), then the same as above, then **localhost:5001**.
 
 So your **skaffold.yaml** does **not** contain the registry; it only has **image** names. The registry comes from op’s config, .registry, or env. See [README: .registry file](README.md#registry-file-push-destinations) and [README: Config](README.md#config-properties-file).
 
@@ -136,7 +136,7 @@ So your **skaffold.yaml** does **not** contain the registry; it only has **image
 
 **op push** and **op build-push** write **build_result.json** in the repo root (or the path you pass). It lists the built image tags (e.g. `localhost:5001/myapp-api:latest`). **op watch-deployment** and **op promote-image** read this file to know which image to watch or promote; they do not read skaffold.yaml.
 
-So the flow is: **skaffold.yaml** (and optionally **.run.yaml**) define what to build and how to run locally; **build_result.json** is the handoff from build/push to deploy/watch/promote.
+So the flow is: **skaffold.yaml** (and optionally **.github/octopilot.yaml**) define what to build and how to run locally; **build_result.json** is the handoff from build/push to deploy/watch/promote.
 
 ---
 
@@ -145,7 +145,7 @@ So the flow is: **skaffold.yaml** (and optionally **.run.yaml**) define what to 
 **op run** uses skaffold.yaml only to get the list of **context** names and **image** names. It then:
 
 - **op run context list** — prints each artifact’s **context** (e.g. `api`, `frontend`).
-- **op run &lt;context&gt;** — runs **docker run** with the image `<default_repo>/<image>:<tag>`, using ports/env/volumes from **.run.yaml** (or defaults). Local dev only; does not replace docker-compose, Kubernetes (e.g. kind), or production deploy. See [README: op run and .run.yaml](README.md#op-run-and-runyaml-quick-local-run).
+- **op run &lt;context&gt;** — runs **docker run** with the image `<default_repo>/<image>:<tag>`, using ports/env/volumes from **.github/octopilot.yaml** (or defaults). Local dev only; does not replace docker-compose, Kubernetes (e.g. kind), or production deploy. See [README: op run and .github/octopilot.yaml](README.md#op-run-and-githuboctopilotyaml-quick-local-run).
 
 ---
 
@@ -155,8 +155,8 @@ So the flow is: **skaffold.yaml** (and optionally **.run.yaml**) define what to 
 |-------|--------------------|--------|
 | What to build (artifacts, context, builder) | **skaffold.yaml** **build.artifacts** | **op build**, **op push**, **op build-push**, **op run** |
 | How to run (start command) | **Procfile** / **project.toml** in each artifact’s **context** | Buildpack (during build); see [procfile.md](procfile.md) |
-| Where to push (registry) | **.registry**, **pipeline.properties**, **SKAFFOLD_DEFAULT_REPO**, **--default-repo** | **op build**, **op push**; **op run** also uses **.run.yaml** **default_repo** |
-| Local run (ports, env, volumes) | **.run.yaml** **contexts.*** | **op run** (local dev only) |
+| Where to push (registry) | **.registry**, **pipeline.properties**, **SKAFFOLD_DEFAULT_REPO**, **--default-repo** | **op build**, **op push**; **op run** also uses **.github/octopilot.yaml** **default_repo** |
+| Local run (ports, env, volumes) | **.github/octopilot.yaml** **contexts.*** | **op run** (local dev only) |
 | Built image refs for CD | **build_result.json** (written by **op push** / **op build-push**) | **op watch-deployment**, **op promote-image** |
 
 For Procfile and project.toml in buildpack contexts, see **[procfile.md](procfile.md)**. For the full op command set and usage, see **[README.md](README.md)**.

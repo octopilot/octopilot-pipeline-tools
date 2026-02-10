@@ -11,6 +11,45 @@ from pathlib import Path
 BUILD_RESULT_FILENAME = "build_result.json"
 
 
+def _ref_to_latest_ref(ref: str) -> str:
+    """Convert image ref (repo/image:tag) to same ref with tag 'latest'."""
+    if ":" not in ref:
+        return f"{ref}:latest"
+    return ref.rsplit(":", 1)[0] + ":latest"
+
+
+def _add_latest_tags(cwd: Path) -> None:
+    """For each image in build_result.json, push the same digest with tag 'latest' (crane copy or docker)."""
+    data = read_build_result(cwd=cwd)
+    for b in data.get("builds") or []:
+        ref = b.get("tag") if isinstance(b, dict) else (b if isinstance(b, str) else None)
+        if not ref or ":" not in ref:
+            continue
+        latest_ref = _ref_to_latest_ref(ref)
+        # Prefer crane (works for multi-arch); fallback to docker tag + push
+        proc = subprocess.run(
+            ["crane", "copy", ref, latest_ref],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode != 0:
+            # Fallback: docker pull, tag, push (single-arch)
+            proc2 = subprocess.run(
+                ["docker", "pull", ref],
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+            )
+            if proc2.returncode != 0:
+                sys.stderr.write(f"Could not add latest tag: crane copy failed and docker pull failed for {ref}\n")
+                continue
+            proc3 = subprocess.run(["docker", "tag", ref, latest_ref], cwd=cwd, capture_output=True, text=True)
+            if proc3.returncode != 0:
+                continue
+            subprocess.run(["docker", "push", latest_ref], cwd=cwd, check=False)
+
+
 def build_result_path(cwd: Path | None = None) -> Path:
     return (cwd or Path.cwd()) / BUILD_RESULT_FILENAME
 
@@ -109,10 +148,16 @@ def run_skaffold_build_push(
     image_pattern: str | None = None,
     use_file_output: bool = True,
     push: bool = False,
+    cache_artifacts: bool = True,
+    tag: str | None = None,
+    add_latest: bool = False,
 ) -> Path:
     """
     Run skaffold build (with optional profile) and write build_result.json.
     When push=True, pass --push so images go to the registry (avoids daemon export issues).
+    When cache_artifacts=False, pass --cache-artifacts=false to force a full build (skip cache).
+    When tag is set (e.g. from release ref or git tag), pass --tag so images use that tag.
+    When add_latest=True and push=True, after build also push each image as :latest (same digest).
     Prefer skaffold build --file-output build_result.json when available.
     Skaffold builds all artifacts (docker + buildpacks) in one invocation.
     """
@@ -132,12 +177,14 @@ def run_skaffold_build_push(
         )
         if push:
             cmd.append("--push")
+        if not cache_artifacts:
+            cmd.append("--cache-artifacts=false")
+        if tag:
+            cmd.extend(["--tag", tag])
         if profile:
             cmd.extend(["--profile", profile])
-        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        proc = subprocess.run(cmd, cwd=cwd)
         if proc.returncode != 0:
-            sys.stderr.write(proc.stderr or "")
-            sys.stderr.write(proc.stdout or "")
             raise SystemExit(proc.returncode)
         # Skaffold --file-output format may differ; normalize to { "builds": [ { "tag": "..." } ] }
         data = json.loads(out_path.read_text())
@@ -158,6 +205,8 @@ def run_skaffold_build_push(
         elif "image" in data or "tag" in data:
             img, t = data.get("image", "app"), data.get("tag", "latest")
             out_path.write_text(json.dumps({"builds": [{"tag": f"{default_repo}/{img}:{t}"}]}, indent=2))
+        if push and add_latest:
+            _add_latest_tags(cwd)
         return out_path
     # No --file-output: run skaffold build and parse stdout
     cmd = [skaffold_cmd, "build"]
@@ -166,6 +215,10 @@ def run_skaffold_build_push(
     cmd.extend(["--default-repo", default_repo])
     if push:
         cmd.append("--push")
+    if not cache_artifacts:
+        cmd.append("--cache-artifacts=false")
+    if tag:
+        cmd.extend(["--tag", tag])
     if profile:
         cmd.extend(["--profile", profile])
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
@@ -180,4 +233,6 @@ def run_skaffold_build_push(
         sys.stderr.write("Could not parse image tag from skaffold output. Use --file-output or set image-pattern.\n")
         raise SystemExit(1)
     write_build_result(builds, cwd=cwd)
+    if push and add_latest:
+        _add_latest_tags(cwd)
     return build_result_path(cwd)
