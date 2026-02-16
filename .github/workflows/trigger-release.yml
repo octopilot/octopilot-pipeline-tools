@@ -38,9 +38,14 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          # Get current version from tag or default to 0.0.0
-          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          CURRENT_VERSION=${CURRENT_VERSION#v}
+          # Get current version from internal/cmd/version.go
+          # Format: var Version = "0.1.0"
+          CURRENT_VERSION=$(grep 'var Version =' internal/cmd/version.go | awk -F '"' '{print $2}')
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "Could not extract version from internal/cmd/version.go"
+            exit 1
+          fi
+          echo "Current version in file: $CURRENT_VERSION"
 
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
