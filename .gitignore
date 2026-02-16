@@ -11,6 +11,6 @@ htmlcov/
 *.pyc
 
 # Binaries
-op
+/op
 octopilot-pipeline-tools
 .gemini/
