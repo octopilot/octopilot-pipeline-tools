@@ -12,7 +12,7 @@ func FindFreePort(startPort, maxTries int) (int, error) {
 		addr := fmt.Sprintf("localhost:%d", port)
 		l, err := net.Listen("tcp", addr)
 		if err == nil {
-			l.Close()
+			_ = l.Close()
 			return port, nil
 		}
 	}

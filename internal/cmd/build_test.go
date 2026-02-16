@@ -33,8 +33,8 @@ func TestBuildExecution_RequiresSkaffoldYaml(t *testing.T) {
 	// Running in empty dir should fail or complain about missing skaffold.yaml
 	tmpDir := t.TempDir()
 	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(cwd) }()
+	_ = os.Chdir(tmpDir)
 
 	// Capture stdout/stderr?
 	// cobra gives us output control

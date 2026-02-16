@@ -23,7 +23,7 @@ func TestGetWatchDestinationRepository(t *testing.T) {
 	assert.Equal(t, "default-repo", GetWatchDestinationRepository("prod"))
 
 	// Case 3: Env var override
-	os.Setenv("GOOGLE_GKE_IMAGE_PROD_REPOSITORY", "prod-env-repo")
+	_ = os.Setenv("GOOGLE_GKE_IMAGE_PROD_REPOSITORY", "prod-env-repo")
 	assert.Equal(t, "prod-env-repo", GetWatchDestinationRepository("prod"))
 }
 

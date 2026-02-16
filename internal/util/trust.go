@@ -1,7 +1,5 @@
 package util
 
-import "fmt"
-
 // TrustCert installs the certificate at certPath into the system trust store.
 // Implementation is platform specific.
 func TrustCert(certPath string) error {
@@ -20,6 +18,3 @@ func IsTrusted(certPath string) bool {
 }
 
 // Fallback for unsupported platforms
-func trustCertUnsupported(certPath string) error {
-	return fmt.Errorf("certificate trust not supported on this platform")
-}

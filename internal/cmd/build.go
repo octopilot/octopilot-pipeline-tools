@@ -101,7 +101,11 @@ var buildCmd = &cobra.Command{
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating build_result.json: %v\n", err)
 			} else {
-				defer f.Close()
+				defer func() {
+					if closeErr := f.Close(); closeErr != nil {
+						fmt.Fprintf(os.Stderr, "Error closing build_result.json: %v\n", closeErr)
+					}
+				}()
 				if err := json.NewEncoder(f).Encode(buildResult); err != nil {
 					fmt.Fprintf(os.Stderr, "Error writing build_result.json: %v\n", err)
 				}

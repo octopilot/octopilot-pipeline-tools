@@ -60,6 +60,6 @@ func init() {
 	promoteCmd.Flags().String("source", "", "Source environment (dev, pp, prod)")
 	promoteCmd.Flags().String("destination", "", "Destination environment (pp, prod)")
 	promoteCmd.Flags().String("build-result-dir", "", "Directory containing build_result.json")
-	promoteCmd.MarkFlagRequired("source")
-	promoteCmd.MarkFlagRequired("destination")
+	_ = promoteCmd.MarkFlagRequired("source")
+	_ = promoteCmd.MarkFlagRequired("destination")
 }

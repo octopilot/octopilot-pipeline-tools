@@ -15,7 +15,7 @@ func TestStartRegistryIntegration(t *testing.T) {
 	}
 
 	// 1. Cleanup any existing registry
-	exec.Command("docker", "rm", "-f", "octopilot-registry").Run()
+	_ = exec.Command("docker", "rm", "-f", "octopilot-registry").Run()
 
 	// 2. Run start-registry (no trust to avoid sudo prompt in tests)
 	rootCmd.SetArgs([]string{"start-registry", "--trust=false"})

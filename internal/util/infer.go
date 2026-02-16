@@ -134,7 +134,7 @@ func inferFromNginx(path string) int {
 func parseInt(s string) int {
 	// simple atoi helper, ignoring error (returns 0)
 	var i int
-	fmt.Sscanf(s, "%d", &i)
+	_, _ = fmt.Sscanf(s, "%d", &i)
 	return i
 }
 

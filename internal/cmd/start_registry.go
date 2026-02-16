@@ -56,7 +56,7 @@ var startRegistryCmd = &cobra.Command{
 		}
 
 		// 4. Start Docker Container
-		exec.Command("docker", "rm", "-f", "octopilot-registry").Run()
+		_ = exec.Command("docker", "rm", "-f", "octopilot-registry").Run()
 
 		fmt.Printf("Starting registry container %s...\n", image)
 		runArgs := []string{

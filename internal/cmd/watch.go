@@ -55,7 +55,7 @@ var watchCmd = &cobra.Command{
 		for {
 			// Trigger flux reconcile (optional but speeds up sync)
 			// flux reconcile helmrelease <component> -n <namespace>
-			exec.Command("flux", "reconcile", "helmrelease", component, "-n", namespace).Run()
+			_ = exec.Command("flux", "reconcile", "helmrelease", component, "-n", namespace).Run()
 
 			// Check current image
 			// kubectl -n <ns> get deployment <comp> -o jsonpath='{.spec.template.spec.containers[0].image}'
@@ -85,6 +85,6 @@ func init() {
 	watchCmd.Flags().String("namespace", "default", "Kubernetes namespace")
 	watchCmd.Flags().String("timeout", "30m", "kubectl rollout status timeout")
 	watchCmd.Flags().String("build-result-dir", "", "Directory containing build_result.json")
-	watchCmd.MarkFlagRequired("component")
-	watchCmd.MarkFlagRequired("environment")
+	_ = watchCmd.MarkFlagRequired("component")
+	_ = watchCmd.MarkFlagRequired("environment")
 }
