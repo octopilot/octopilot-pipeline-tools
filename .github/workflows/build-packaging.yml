@@ -35,9 +35,7 @@ jobs:
           go-version: "1.21"
       - name: Test Go
         run: |
-          cd octopilot-pipeline-tools
           go test -v ./...
       - name: Build Go Binary
         run: |
-          cd octopilot-pipeline-tools
           go build -v -o op ./cmd/op
