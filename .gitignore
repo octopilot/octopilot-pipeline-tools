@@ -9,3 +9,8 @@ venv/
 .coverage
 htmlcov/
 *.pyc
+
+# Binaries
+op
+octopilot-pipeline-tools
+.gemini/

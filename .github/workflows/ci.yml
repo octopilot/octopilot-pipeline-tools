@@ -3,11 +3,10 @@ on:
   push:
     branches: [main, master]
     paths:
-      - "src/**"
-      - "tests/**"
-      - "pyproject.toml"
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
       - "Dockerfile"
-      - ".pre-commit-config.yaml"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, master]
@@ -25,11 +24,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-go@v5
         with:
-          python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: ruff check src tests && ruff format src tests --check
+          go-version: "1.26"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64
 
   test:
     name: Run tests
@@ -37,8 +38,7 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-go@v5
         with:
-          python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/ -v --cov=src/octopilot_pipeline_tools --cov-fail-under=80 --cov-report=term-missing
+          go-version: "1.26"
+      - run: go test -v ./...

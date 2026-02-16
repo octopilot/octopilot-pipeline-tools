@@ -1,104 +1,43 @@
-# Build packaging artifacts (deb, rpm, Chocolatey, Homebrew formula) without releasing.
-# Run manually or when packaging/ or pyproject.toml change. Artifacts are uploaded to the run.
-name: Build packaging
+name: Build and Package
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main, master]
-    paths:
-      - 'packaging/**'
-      - 'pyproject.toml'
-      - 'src/**'
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  version:
+  build-python:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.set.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - id: set
-        run: |
-          V=$(grep -E '^version\s*=' pyproject.toml | sed -E "s/.*=[[:space:]]*[\"']([^\"']+)[\"'].*/\1/")
-          echo "version=${V}" >> $GITHUB_OUTPUT
-
-  build-deb-rpm:
-    name: Build deb & rpm
-    runs-on: ubuntu-latest
-    needs: version
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Ruby (for fpm)
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: true
-
-      - name: Install fpm
-        run: gem install fpm
-
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
-
-      - name: Build deb and rpm
-        run: ./packaging/deb-rpm/build-deb-rpm.sh ${{ needs.version.outputs.version }}
-
-      - name: Upload deb and rpm
-        uses: actions/upload-artifact@v4
-        with:
-          name: deb-rpm
-          path: dist/
-
-  build-chocolatey:
-    name: Build Chocolatey package
-    runs-on: windows-latest
-    needs: version
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set version in nuspec
+          python-version: "3.10"
+      - name: Install dependencies
         run: |
-          $nuspec = "packaging\chocolatey\octopilot-pipeline-tools.nuspec"
-          (Get-Content $nuspec) -replace '<version>[^<]+</version>', "<version>${{ needs.version.outputs.version }}</version>" | Set-Content $nuspec
-
-      - name: Install Chocolatey (pack)
+          python -m pip install --upgrade pip
+          pip install build
+          if [ -f python-legacy/requirements.txt ]; then pip install -r python-legacy/requirements.txt; fi
+      - name: Build Python Package
         run: |
-          Set-ExecutionPolicy Bypass -Scope Process -Force
-          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-          iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          cd python-legacy
+          python -m build
 
-      - name: Pack nupkg
-        run: choco pack packaging\chocolatey\octopilot-pipeline-tools.nuspec --output-directory dist-choco
-        shell: pwsh
-
-      - name: Upload Chocolatey package
-        uses: actions/upload-artifact@v4
-        with:
-          name: chocolatey
-          path: dist-choco/*.nupkg
-
-  formula:
-    name: Homebrew formula (template)
+  test-go:
     runs-on: ubuntu-latest
-    needs: version
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare formula with version
-        run: |
-          VERSION="${{ needs.version.outputs.version }}"
-          TAG="v${VERSION}"
-          sed -e "s|refs/tags/v0.1.0|refs/tags/${TAG}|g" \
-              -e "s|v0.1.0|${TAG}|g" \
-              packaging/homebrew/octopilot-pipeline-tools.rb > octopilot-pipeline-tools.rb
-          echo "Formula uses tag ${TAG}; replace REPLACE_WITH_SHA256_AFTER_RELEASE after creating the release tarball."
-
-      - name: Upload Homebrew formula
-        uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
-          name: homebrew-formula
-          path: octopilot-pipeline-tools.rb
+          go-version: "1.21"
+      - name: Test Go
+        run: |
+          cd octopilot-pipeline-tools
+          go test -v ./...
+      - name: Build Go Binary
+        run: |
+          cd octopilot-pipeline-tools
+          go build -v -o op ./cmd/op
