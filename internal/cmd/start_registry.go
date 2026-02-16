@@ -15,7 +15,7 @@ var startRegistryCmd = &cobra.Command{
 	Use:   "start-registry",
 	Short: "Start local TLS registry.",
 	Long:  `Starts a local Docker registry with TLS on 5001. Generates certs and configures trust.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		trust, _ := cmd.Flags().GetBool("trust")
 		image, _ := cmd.Flags().GetString("image")
 
@@ -34,8 +34,7 @@ var startRegistryCmd = &cobra.Command{
 		if os.IsNotExist(errCrt) || os.IsNotExist(errKey) {
 			fmt.Println("Generating new self-signed certificates...")
 			if err := util.GenerateCerts(certDir); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to generate certs: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to generate certs: %w", err)
 			}
 		}
 
@@ -76,11 +75,11 @@ var startRegistryCmd = &cobra.Command{
 		runCmd.Stdout = os.Stdout
 		runCmd.Stderr = os.Stderr
 		if err := runCmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to start registry: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to start registry: %w", err)
 		}
 
 		fmt.Println("Registry started at https://localhost:5001")
+		return nil
 	},
 }
 

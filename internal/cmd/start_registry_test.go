@@ -18,17 +18,10 @@ func TestStartRegistryIntegration(t *testing.T) {
 	exec.Command("docker", "rm", "-f", "octopilot-registry").Run()
 
 	// 2. Run start-registry (no trust to avoid sudo prompt in tests)
-	// We use the root command to execute the subcommand logic if possible,
-	// or just call the function if exposed. Since logic is in Run, we can execute the binary?
-	// Or we can invoke the cobra command.
-
-	cmd := startRegistryCmd
-	cmd.SetArgs([]string{"--trust=false"}) // Explicitly disable trust
+	rootCmd.SetArgs([]string{"start-registry", "--trust=false"})
 
 	// Execute
-	// Note: Verify logic. It runs exec.Command("docker", "run", ...)
-	// This will actually start a container on the host.
-	err := cmd.Execute()
+	err := rootCmd.Execute()
 	assert.NoError(t, err)
 
 	// 3. Verify Container is running
