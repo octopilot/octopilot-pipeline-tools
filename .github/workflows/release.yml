@@ -55,7 +55,7 @@ jobs:
           go build -o dist/$BINARY_NAME ./cmd/octopilot-pipeline-tools
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
@@ -86,7 +86,7 @@ jobs:
         run: ./packaging/deb-rpm/build-deb-rpm.sh ${{ needs.version.outputs.version }}
 
       - name: Upload deb and rpm
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: deb-rpm
           path: dist/
@@ -115,7 +115,7 @@ jobs:
         shell: pwsh
 
       - name: Upload Chocolatey package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: chocolatey
           path: dist-choco/*.nupkg
