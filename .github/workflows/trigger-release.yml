@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Use latest versions (bumped by dependabot) - do not downgrade
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           token: ${{ github.event.inputs.token || secrets.REPO_PAT || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
