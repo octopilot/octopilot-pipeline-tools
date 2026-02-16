@@ -11,7 +11,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /octopilot-pipeline-tools ./cmd/octopilot-pipeline-tools
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /op ./cmd/op
 
 # Final stage
 FROM alpine:latest
@@ -19,6 +19,6 @@ FROM alpine:latest
 WORKDIR /
 
 # Copy the binary from the builder stage
-COPY --from=builder /octopilot-pipeline-tools /octopilot-pipeline-tools
+COPY --from=builder /op /op
 
-ENTRYPOINT ["/octopilot-pipeline-tools"]
+ENTRYPOINT ["/op"]
