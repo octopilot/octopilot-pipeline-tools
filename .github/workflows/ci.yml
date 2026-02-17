@@ -115,6 +115,7 @@ jobs:
           # Users of `op` will simply download the pre-built binary or use the Action,
           # they do NOT need to implement this bootstrapping pattern.
 
+          export DOCKER_METADATA_OUTPUT_VERSION=${{ github.ref_name }}
           chmod +x dist/op-linux-amd64
           # Run op build - this uses skaffold.yaml (buildpacks)
           # We must set --repo to the target registry
