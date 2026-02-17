@@ -18,6 +18,10 @@ FROM alpine:latest
 
 WORKDIR /
 
+# Install git (required for op build / skaffold)
+RUN apk add --no-cache git
+
+
 # Copy the binary from the builder stage
 COPY --from=builder /op /op
 
