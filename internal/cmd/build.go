@@ -131,6 +131,35 @@ var buildCmd = &cobra.Command{
 						ImageName: imageName,
 						Tag:       fullTagWithDigest,
 					})
+
+					// Tag with version if available
+					if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" {
+						// Construct version tag (replace :latest with :version)
+						// fullTag is ...:latest
+						versionTagStr := strings.TrimSuffix(fullTag, "latest") + version
+						fmt.Printf("Tagging %s as %s...\n", fullTag, versionTagStr)
+
+						ref, err := name.ParseReference(fullTag)
+						if err != nil {
+							return fmt.Errorf("parsing reference %q: %w", fullTag, err)
+						}
+
+						// Get the remote image
+						img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+						if err != nil {
+							return fmt.Errorf("reading image %q: %w", fullTag, err)
+						}
+
+						verRef, err := name.ParseReference(versionTagStr)
+						if err != nil {
+							return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
+						}
+
+						if err := remote.Write(verRef, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+							return fmt.Errorf("tagging version %q: %w", versionTagStr, err)
+						}
+						fmt.Printf("Successfully pushed %s\n", versionTagStr)
+					}
 				} else {
 					fmt.Printf("Skipping non-buildpacks artifact %s (not supported in direct push mode yet)\n", art.ImageName)
 				}
