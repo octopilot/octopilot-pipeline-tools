@@ -1,9 +1,10 @@
 module github.com/octopilot/octopilot-pipeline-tools
 
-go 1.26.0
+go 1.25.6
 
 require (
 	github.com/GoogleContainerTools/skaffold/v2 v2.0.0-00010101000000-000000000000
+	github.com/buildpacks/pack v0.38.2
 	github.com/google/go-containerregistry v0.20.7
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
@@ -76,7 +77,6 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/buildpacks/imgutil v0.0.0-20260211155027-33b8b33f2d7a // indirect
 	github.com/buildpacks/lifecycle v0.21.0 // indirect
-	github.com/buildpacks/pack v0.38.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -315,12 +315,12 @@ require (
 )
 
 replace (
-	github.com/GoogleContainerTools/skaffold/v2 => github.com/octopilot/skaffold/v2 v2.0.0-20260216105401-52962750414a
+	github.com/GoogleContainerTools/skaffold/v2 => github.com/octopilot/skaffold/v2 v2.0.0-20260217103849-39dd52583c24
 
 	// Skaffold replacements
 	github.com/alessio/shellescape => github.com/alessio/shellescape v1.4.2
 	github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20260211155027-33b8b33f2d7a
-	github.com/buildpacks/lifecycle => github.com/buildpacks/lifecycle v0.21.3
+	github.com/buildpacks/lifecycle => github.com/buildpacks/lifecycle v0.21.0
 	github.com/buildpacks/pack => github.com/octopilot/pack v0.0.0-20260208205524-99ebb2c2ac0d
 	github.com/docker/cli => github.com/docker/cli v28.5.2+incompatible
 	github.com/dprotaso/go-yit => github.com/dprotaso/go-yit v0.0.0-20240618133044-5a0af90af097

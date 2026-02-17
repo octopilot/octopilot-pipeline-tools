@@ -17,6 +17,11 @@ type BuildEntry struct {
 	Tag string `json:"tag"`
 }
 
+type Build struct {
+	ImageName string
+	Tag       string
+}
+
 // ReadBuildResult reads build_result.json from the given directory (or cwd if empty).
 func ReadBuildResult(dir string) (*BuildResult, error) {
 	if dir == "" {

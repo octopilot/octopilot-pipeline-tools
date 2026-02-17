@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/parser"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/runner"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/runner/runcontext"
+	"github.com/octopilot/octopilot-pipeline-tools/internal/pack"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -57,6 +59,64 @@ var buildCmd = &cobra.Command{
 		}
 
 		// 4. Build
+		// If push is enabled and we are using buildpacks, we might want to use our direct pack integration
+		// to bypass Skaffold's daemon export issues on multi-arch.
+
+		useDirectPack := false
+		// opts.PushImages check might be unreliable if not set in config, so check flag directly
+		if push, _ := cmd.Flags().GetBool("push"); push {
+			useDirectPack = true
+		}
+
+		if useDirectPack {
+			fmt.Printf("Building with direct Pack integration (repo: %s, push: true)...\n", repo)
+
+			var built []util.Build
+			// Iterate runCtx.Artifacts() which is []*latest.Artifact
+			for _, art := range runCtx.Artifacts() {
+				if art.BuildpackArtifact != nil {
+					// It's a buildpack artifact
+					imageName := art.ImageName
+
+					// Construct tag
+					fullTag := fmt.Sprintf("%s:latest", imageName)
+					if repo != "" {
+						if strings.HasSuffix(repo, "/") {
+							fullTag = fmt.Sprintf("%s%s:latest", repo, imageName)
+						} else {
+							fullTag = fmt.Sprintf("%s/%s:latest", repo, imageName)
+						}
+					}
+
+					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
+
+					po := pack.BuildOptions{
+						ImageName:    fullTag,
+						Builder:      art.BuildpackArtifact.Builder,
+						Path:         filepath.Join(cwd, art.Workspace),
+						Publish:      true,
+						TrustBuilder: true,
+						Env: map[string]string{
+							"BP_GO_PRIVATE": "github.com/octopilot/*",
+						},
+					}
+					if err := pack.Build(ctx, po, os.Stdout); err != nil {
+						fmt.Fprintf(os.Stderr, "Direct pack build failed: %v\n", err)
+						os.Exit(1)
+					}
+					built = append(built, util.Build{
+						ImageName: imageName,
+						Tag:       fullTag,
+					})
+				} else {
+					fmt.Printf("Skipping non-buildpacks artifact %s (not supported in direct push mode yet)\n", art.ImageName)
+				}
+			}
+			// Write build_result.json
+			writeBuildResult(built)
+			return
+		}
+
 		fmt.Printf("Building with Skaffold library (repo: %s)...\n", repo)
 		buildArtifacts, err := r.Build(ctx, os.Stdout, runCtx.Artifacts())
 		if err != nil {
@@ -65,32 +125,40 @@ var buildCmd = &cobra.Command{
 		}
 
 		// 5. Write build_result.json
-		if len(buildArtifacts) > 0 {
-			buildResult := util.BuildResult{
-				Builds: make([]interface{}, 0, len(buildArtifacts)),
-			}
-			for _, ba := range buildArtifacts {
-				buildResult.Builds = append(buildResult.Builds, map[string]string{
-					"imageName": ba.ImageName,
-					"tag":       ba.Tag,
-				})
-			}
+		var built []util.Build
+		for _, ba := range buildArtifacts {
+			built = append(built, util.Build{ImageName: ba.ImageName, Tag: ba.Tag})
+		}
+		writeBuildResult(built)
+	},
+}
 
-			f, err := os.Create("build_result.json")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating build_result.json: %v\n", err)
-			} else {
-				defer func() {
-					if closeErr := f.Close(); closeErr != nil {
-						fmt.Fprintf(os.Stderr, "Error closing build_result.json: %v\n", closeErr)
-					}
-				}()
-				if err := json.NewEncoder(f).Encode(buildResult); err != nil {
-					fmt.Fprintf(os.Stderr, "Error writing build_result.json: %v\n", err)
+func writeBuildResult(builds []util.Build) {
+	if len(builds) > 0 {
+		buildResult := util.BuildResult{
+			Builds: make([]interface{}, 0, len(builds)),
+		}
+		for _, b := range builds {
+			buildResult.Builds = append(buildResult.Builds, map[string]string{
+				"imageName": b.ImageName,
+				"tag":       b.Tag,
+			})
+		}
+
+		f, err := os.Create("build_result.json")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating build_result.json: %v\n", err)
+		} else {
+			defer func() {
+				if closeErr := f.Close(); closeErr != nil {
+					fmt.Fprintf(os.Stderr, "Error closing build_result.json: %v\n", closeErr)
 				}
+			}()
+			if err := json.NewEncoder(f).Encode(buildResult); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing build_result.json: %v\n", err)
 			}
 		}
-	},
+	}
 }
 
 func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptions {
