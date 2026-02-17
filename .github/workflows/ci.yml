@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Detect Contexts
         id: detect
-        uses: octopilot/octopilot-actions/detect-contexts@main
+        uses: octopilot/actions/detect-contexts@main
 
   lint:
     needs: detect
