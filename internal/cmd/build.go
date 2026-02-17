@@ -191,9 +191,19 @@ func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptio
 		repo = util.ResolveDefaultRepo(cwd)
 	}
 
+	// Resolve filename
+	filename, _ := cmd.Flags().GetString("filename")
+	if filename == "" {
+		filename = "skaffold.yaml"
+	}
+	// Make absolute
+	if !filepath.IsAbs(filename) {
+		filename = filepath.Join(cwd, filename)
+	}
+
 	// Prepare Skaffold Options
 	opts := config.SkaffoldOptions{
-		ConfigurationFile: "skaffold.yaml",
+		ConfigurationFile: filename,
 		Command:           "build",
 		CacheArtifacts:    false,
 		DefaultRepo:       config.NewStringOrUndefined(&repo),
@@ -231,4 +241,5 @@ func init() {
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
+	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")
 }
