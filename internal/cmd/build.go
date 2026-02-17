@@ -51,6 +51,10 @@ var buildCmd = &cobra.Command{
 			opts.Platforms = strings.Split(val, ",")
 		}
 
+		if val, _ := cmd.Flags().GetBool("push"); val {
+			opts.PushImages = config.NewBoolOrUndefined(&val)
+		}
+
 		// Handle profile/label/namespace from env (backward compatibility)
 		if val := viper.GetString("SKAFFOLD_PROFILE"); val != "" {
 			opts.Profiles = append(opts.Profiles, val)
@@ -125,5 +129,7 @@ var buildCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
+	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
+	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 }

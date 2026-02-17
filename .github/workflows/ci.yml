@@ -117,7 +117,7 @@ jobs:
           # Run op build - this uses skaffold.yaml (buildpacks)
           # We must set --repo to the target registry
           # We also want multi-arch (amd64/arm64) which requires QEMU setup above
-          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot/octopilot-pipeline-tools --platform linux/amd64,linux/arm64
+          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot/octopilot-pipeline-tools --platform linux/amd64,linux/arm64 --push
 
           # parse digest from build_result.json for attestation
           TAG=$(jq -r '.builds[0].tag' build_result.json)
