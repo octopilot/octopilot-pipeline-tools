@@ -39,6 +39,7 @@ var buildCmd = &cobra.Command{
 			CacheArtifacts:    false,
 			DefaultRepo:       config.NewStringOrUndefined(&repo),
 			AssumeYes:         true, // non-interactive
+			Trigger:           "manual",
 			Profiles:          []string{},
 			CustomLabels:      []string{},
 		}
