@@ -66,6 +66,7 @@ jobs:
     with:
       language: ${{ matrix.language }}
       version: ${{ matrix.version }}
+      context: ${{ matrix.context }}
 
   build-ephemeral:
     needs: [detect, lint, test]
