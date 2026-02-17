@@ -6,4 +6,4 @@ build:
   artifacts:
     - image: octopilot-pipeline-tools
       buildpacks:
-        builder: gcr.io/buildpacks/builder:v1
+        builder: gcr.io/buildpacks/builder:google-22
