@@ -20,40 +20,11 @@ permissions:
   contents: write
 
 jobs:
-  bump-and-tag:
-    runs-on: ubuntu-latest
-    steps:
-      # Use latest versions (bumped by dependabot) - do not downgrade
-      - uses: actions/checkout@v6
-        with:
-          token: ${{ github.event.inputs.token || secrets.REPO_PAT }}
-          fetch-depth: 0
-
-      - name: Set up Go
-        # Use latest versions (bumped by dependabot) - do not downgrade
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.26"
-
-      - name: Bump version
-        id: bump
-        uses: octopilot/actions/bump-version@main
-        with:
-          mode: go
-          bump: ${{ github.event.inputs.bump }}
-          file: internal/cmd/version.go
-
-      - name: Commit, tag and push
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: "internal/cmd/version.go"
-          message: "chore(release): bump version to v${{ steps.bump.outputs.version }}"
-          tag: "v${{ steps.bump.outputs.version }}"
-          author_name: "github-actions[bot]"
-          author_email: "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ steps.bump.outputs.version }}"
-          generate_release_notes: true
+  release:
+    uses: octopilot/octopilot-workflows/.github/workflows/workflow-release.yml@main
+    with:
+      mode: go
+      bump: ${{ github.event.inputs.bump }}
+      file: internal/cmd/version.go
+    secrets:
+      repo_token: ${{ github.event.inputs.token || secrets.REPO_PAT }}
