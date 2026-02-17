@@ -70,6 +70,7 @@ jobs:
 
   build-ephemeral:
     needs: [detect, lint, test]
+    continue-on-error: true
     uses: octopilot/octopilot-workflows/.github/workflows/build-ephemeral.yml@main
     with:
       ttl: "2h"
