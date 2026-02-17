@@ -39,8 +39,12 @@ Global flags:
 Builds artifacts using Skaffold.
 
 ```bash
-op build --repo <registry-repo>
+op build --repo <registry-repo> --push --platform linux/amd64,linux/arm64
 ```
+
+-   **--repo**: Target container registry repository (overrides default).
+-   **--push**: Push the built images to the registry. **Required for multi-arch builds** to bypass Docker daemon limitations.
+-   **--platform**: Comma-separated list of platforms (e.g., `linux/amd64,linux/arm64`).
 
 -   **--repo**: Target container registry repository (overrides default).
 -   **Env Vars**: `SKAFFOLD_PROFILE`, `SKAFFOLD_LABEL`, `SKAFFOLD_NAMESPACE`.
@@ -131,6 +135,25 @@ op run <context-name>
 ## Configuration
 
 `op` reads configuration from `pipeline.properties` or `.github/octopilot.yaml`. It also supports standard environment variables for seamless integration with GitHub Actions and other CI systems.
+
+### Skaffold Configuration (`skaffold.yaml`)
+
+`op` relies on a standard `skaffold.yaml`. To use Cloud Native Buildpacks with `op`, configure your artifacts using the `buildpacks` builder.
+
+**Example `skaffold.yaml`:**
+
+```yaml
+apiVersion: skaffold/v4beta1
+kind: Config
+metadata:
+  name: my-application
+build:
+  artifacts:
+    - image: my-app-service
+      buildpacks:
+        # Use a builder that supports your language/framework
+        builder: ghcr.io/octopilot/builder-jammy-base:latest
+```
 
 ## References
 

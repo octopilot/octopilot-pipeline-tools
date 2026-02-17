@@ -41,8 +41,7 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 
 	// We might need to handle pulling the builder?
 	// The client handles it usually.
-
-	fmt.Fprintf(out, "Building %s using builder %s (publish=%v)...\n", opts.ImageName, opts.Builder, opts.Publish)
+	_, _ = fmt.Fprintf(out, "Building %s using builder %s (publish=%v)...\n", opts.ImageName, opts.Builder, opts.Publish)
 	if err := packClient.Build(ctx, buildOpts); err != nil {
 		return fmt.Errorf("pack build failed: %w", err)
 	}

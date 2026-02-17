@@ -6,4 +6,4 @@ build:
   artifacts:
     - image: octopilot-pipeline-tools
       buildpacks:
-        builder: test-builder:latest
+        builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
