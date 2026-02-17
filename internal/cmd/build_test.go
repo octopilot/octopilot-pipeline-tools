@@ -27,6 +27,14 @@ func TestBuildCommandStructure(t *testing.T) {
 	// Check flags
 	repoFlag := buildCmd.Flags().Lookup("repo")
 	assert.NotNil(t, repoFlag)
+
+	platformFlag := buildCmd.Flags().Lookup("platform")
+	assert.NotNil(t, platformFlag)
+	assert.Equal(t, "", platformFlag.DefValue)
+
+	pushFlag := buildCmd.Flags().Lookup("push")
+	assert.NotNil(t, pushFlag)
+	assert.Equal(t, "false", pushFlag.DefValue)
 }
 
 func TestBuildExecution_RequiresSkaffoldYaml(t *testing.T) {

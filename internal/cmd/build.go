@@ -27,43 +27,10 @@ var buildCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Resolve repo
-		repo, _ := cmd.Flags().GetString("repo")
-		if repo == "" {
-			repo = util.ResolveDefaultRepo(cwd)
-		}
-
-		// Prepare Skaffold Options
-		opts := config.SkaffoldOptions{
-			ConfigurationFile: "skaffold.yaml",
-			Command:           "build",
-			CacheArtifacts:    false,
-			DefaultRepo:       config.NewStringOrUndefined(&repo),
-			AssumeYes:         true, // non-interactive
-			Trigger:           "manual",
-			Profiles:          []string{},
-			CustomLabels:      []string{},
-			Platforms:         []string{},
-		}
-
-		if val, _ := cmd.Flags().GetString("platform"); val != "" {
-			// Split comma-separated platforms
-			opts.Platforms = strings.Split(val, ",")
-		}
-
-		if val, _ := cmd.Flags().GetBool("push"); val {
-			opts.PushImages = config.NewBoolOrUndefined(&val)
-		}
-
-		// Handle profile/label/namespace from env (backward compatibility)
-		if val := viper.GetString("SKAFFOLD_PROFILE"); val != "" {
-			opts.Profiles = append(opts.Profiles, val)
-		}
-		if val := viper.GetString("SKAFFOLD_LABEL"); val != "" {
-			opts.CustomLabels = append(opts.CustomLabels, val)
-		}
-		if val := viper.GetString("SKAFFOLD_NAMESPACE"); val != "" {
-			opts.Namespace = val
+		opts := prepareSkaffoldOptions(cmd, cwd)
+		repo := ""
+		if v := opts.DefaultRepo.Value(); v != nil {
+			repo = *v
 		}
 
 		ctx := context.Background()
@@ -126,9 +93,50 @@ var buildCmd = &cobra.Command{
 	},
 }
 
+func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptions {
+	// Resolve repo
+	repo, _ := cmd.Flags().GetString("repo")
+	if repo == "" {
+		repo = util.ResolveDefaultRepo(cwd)
+	}
+
+	// Prepare Skaffold Options
+	opts := config.SkaffoldOptions{
+		ConfigurationFile: "skaffold.yaml",
+		Command:           "build",
+		CacheArtifacts:    false,
+		DefaultRepo:       config.NewStringOrUndefined(&repo),
+		AssumeYes:         true, // non-interactive
+		Trigger:           "manual",
+		Profiles:          []string{},
+		CustomLabels:      []string{},
+		Platforms:         []string{},
+	}
+
+	if val, _ := cmd.Flags().GetString("platform"); val != "" {
+		// Split comma-separated platforms
+		opts.Platforms = strings.Split(val, ",")
+	}
+
+	if val, _ := cmd.Flags().GetBool("push"); val {
+		opts.PushImages = config.NewBoolOrUndefined(&val)
+	}
+
+	// Handle profile/label/namespace from env (backward compatibility)
+	if val := viper.GetString("SKAFFOLD_PROFILE"); val != "" {
+		opts.Profiles = append(opts.Profiles, val)
+	}
+	if val := viper.GetString("SKAFFOLD_LABEL"); val != "" {
+		opts.CustomLabels = append(opts.CustomLabels, val)
+	}
+	if val := viper.GetString("SKAFFOLD_NAMESPACE"); val != "" {
+		opts.Namespace = val
+	}
+	return opts
+}
+
 func init() {
 	rootCmd.AddCommand(buildCmd)
-	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
