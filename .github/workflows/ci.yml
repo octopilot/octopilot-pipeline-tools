@@ -72,6 +72,8 @@ jobs:
     steps:
       # Use latest versions (bumped by dependabot) - do not downgrade
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       # Use latest versions (bumped by dependabot) - do not downgrade
       - uses: actions/setup-go@v6
         with:
@@ -136,6 +138,15 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
+      - name: Generate Release Notes
+        id: release_notes
+        uses: octopilot/actions/release@main
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          version: ${{ github.ref_name }}
+          provider: anthropic
+
       - name: Upload Binaries to Release
         uses: softprops/action-gh-release@v2
         with:
@@ -143,4 +154,4 @@ jobs:
             dist/op-*
             dist/sbom.tar.gz
           tag_name: ${{ github.ref_name }}
-          # Do not generate notes or body, just append files to the existing release
+          body_path: ${{ steps.release_notes.outputs.body_file }}
