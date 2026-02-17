@@ -1,0 +1,9 @@
+apiVersion: skaffold/v4beta1
+kind: Config
+metadata:
+  name: octopilot-pipeline-tools
+build:
+  artifacts:
+    - image: octopilot-pipeline-tools
+      buildpacks:
+        builder: gcr.io/buildpacks/builder:v1

@@ -137,4 +137,6 @@ op run <context-name>
 - [Cloud Native Buildpacks](https://buildpacks.io/)
 - [Skaffold](https://skaffold.dev/)
 - [Docker Registry](https://docs.docker.com/registry/)
-- [Octopilot Actions](https://github.com/octopilot/octopilot-actions)
+- [Custom Registry Setup](https://github.com/octopilot/registry-tls)
+- [Octopilot Actions](https://github.com/octopilot/actions)
+- [Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md)

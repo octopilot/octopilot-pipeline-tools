@@ -89,12 +89,6 @@ jobs:
             GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-X 'github.com/octopilot/octopilot-pipeline-tools/internal/cmd.Version=${{ github.ref_name }}'" -o "dist/${output_name}" ./cmd/op
           done
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Login to GHCR
         if: github.repository_owner == 'octopilot'
         uses: docker/login-action@v3
@@ -103,17 +97,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image (Dogfooding)
         id: push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          tags: |
-            ghcr.io/octopilot/octopilot-pipeline-tools:${{ github.ref_name }}
-            ghcr.io/octopilot/octopilot-pipeline-tools:latest
-          platforms: linux/amd64,linux/arm64
+        run: |
+          # BOOTSTRAPPING / DOGFOODING NOTE:
+          # This repository builds the `op` tool. To build the container image using Buildpacks 
+          # (which is what `op build` does), we need to use `op` itself.
+          #
+          # Uniquely for this repo, we must first build the binary from source (previous step),
+          # and then use that just-built binary to orchestrate the container build.
+          #
+          # Users of `op` will simply download the pre-built binary or use the Action,
+          # they do NOT need to implement this bootstrapping pattern.
+
+          chmod +x dist/op-linux-amd64
+          # Run op build - this uses skaffold.yaml (buildpacks)
+          # We must set --repo to the target registry
+          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot/octopilot-pipeline-tools
+
+          # parse digest from build_result.json for attestation
+          TAG=$(jq -r '.builds[0].tag' build_result.json)
+          DIGEST=$(echo "$TAG" | awk -F'@' '{print $2}')
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v2
