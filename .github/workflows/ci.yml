@@ -89,6 +89,9 @@ jobs:
             GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-X 'github.com/octopilot/octopilot-pipeline-tools/internal/cmd.Version=${{ github.ref_name }}'" -o "dist/${output_name}" ./cmd/op
           done
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Login to GHCR
         if: github.repository_owner == 'octopilot'
         uses: docker/login-action@v3
@@ -113,7 +116,8 @@ jobs:
           chmod +x dist/op-linux-amd64
           # Run op build - this uses skaffold.yaml (buildpacks)
           # We must set --repo to the target registry
-          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot/octopilot-pipeline-tools
+          # We also want multi-arch (amd64/arm64) which requires QEMU setup above
+          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot/octopilot-pipeline-tools --platform linux/amd64,linux/arm64
 
           # parse digest from build_result.json for attestation
           TAG=$(jq -r '.builds[0].tag' build_result.json)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/parser"
@@ -42,6 +43,12 @@ var buildCmd = &cobra.Command{
 			Trigger:           "manual",
 			Profiles:          []string{},
 			CustomLabels:      []string{},
+			Platforms:         []string{},
+		}
+
+		if val, _ := cmd.Flags().GetString("platform"); val != "" {
+			// Split comma-separated platforms
+			opts.Platforms = strings.Split(val, ",")
 		}
 
 		// Handle profile/label/namespace from env (backward compatibility)
@@ -118,4 +125,5 @@ var buildCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
+	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 }
