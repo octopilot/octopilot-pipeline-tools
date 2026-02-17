@@ -22,11 +22,10 @@ var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build with Skaffold. Use 'op build' for full build.",
 	Long:  `Build with Skaffold. Wraps 'skaffold build' using the Go library.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting cwd: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error getting cwd: %w", err)
 		}
 
 		opts := prepareSkaffoldOptions(cmd, cwd)
@@ -40,22 +39,19 @@ var buildCmd = &cobra.Command{
 		// 1. Parse Config
 		configs, err := parser.GetAllConfigs(ctx, opts)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing skaffold config: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error parsing skaffold config: %w", err)
 		}
 
 		// 2. Create RunContext
 		runCtx, err := runcontext.GetRunContext(ctx, opts, configs)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating run context: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error creating run context: %w", err)
 		}
 
 		// 3. Create Runner
 		r, err := runner.NewForConfig(ctx, runCtx)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating runner: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("error creating runner: %w", err)
 		}
 
 		// 4. Build
@@ -69,7 +65,7 @@ var buildCmd = &cobra.Command{
 		}
 
 		if useDirectPack {
-			fmt.Printf("Building with direct Pack integration (repo: %s, push: true)...\n", repo)
+			fmt.Printf("Building with direct Pack integration (repo: %s, push: true)....\n", repo)
 
 			var built []util.Build
 			// Iterate runCtx.Artifacts() which is []*latest.Artifact
@@ -91,18 +87,16 @@ var buildCmd = &cobra.Command{
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
 					po := pack.BuildOptions{
-						ImageName:    fullTag,
-						Builder:      art.BuildpackArtifact.Builder,
-						Path:         filepath.Join(cwd, art.Workspace),
-						Publish:      true,
-						TrustBuilder: true,
+						ImageName: fullTag,
+						Builder:   art.BuildpackArtifact.Builder,
+						Path:      filepath.Join(cwd, art.Workspace),
+						Publish:   true,
 						Env: map[string]string{
 							"BP_GO_PRIVATE": "github.com/octopilot/*",
 						},
 					}
 					if err := pack.Build(ctx, po, os.Stdout); err != nil {
-						fmt.Fprintf(os.Stderr, "Direct pack build failed: %v\n", err)
-						os.Exit(1)
+						return fmt.Errorf("direct pack build failed: %w", err)
 					}
 					built = append(built, util.Build{
 						ImageName: imageName,
@@ -113,15 +107,16 @@ var buildCmd = &cobra.Command{
 				}
 			}
 			// Write build_result.json
-			writeBuildResult(built)
-			return
+			if err := writeBuildResult(built); err != nil {
+				return err
+			}
+			return nil
 		}
 
-		fmt.Printf("Building with Skaffold library (repo: %s)...\n", repo)
+		fmt.Printf("Building with Skaffold library (repo: %s)....\n", repo)
 		buildArtifacts, err := r.Build(ctx, os.Stdout, runCtx.Artifacts())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Build failed: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("build failed: %w", err)
 		}
 
 		// 5. Write build_result.json
@@ -129,11 +124,14 @@ var buildCmd = &cobra.Command{
 		for _, ba := range buildArtifacts {
 			built = append(built, util.Build{ImageName: ba.ImageName, Tag: ba.Tag})
 		}
-		writeBuildResult(built)
+		if err := writeBuildResult(built); err != nil {
+			return err
+		}
+		return nil
 	},
 }
 
-func writeBuildResult(builds []util.Build) {
+func writeBuildResult(builds []util.Build) error {
 	if len(builds) > 0 {
 		buildResult := util.BuildResult{
 			Builds: make([]interface{}, 0, len(builds)),
@@ -147,18 +145,18 @@ func writeBuildResult(builds []util.Build) {
 
 		f, err := os.Create("build_result.json")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating build_result.json: %v\n", err)
-		} else {
-			defer func() {
-				if closeErr := f.Close(); closeErr != nil {
-					fmt.Fprintf(os.Stderr, "Error closing build_result.json: %v\n", closeErr)
-				}
-			}()
-			if err := json.NewEncoder(f).Encode(buildResult); err != nil {
-				fmt.Fprintf(os.Stderr, "Error writing build_result.json: %v\n", err)
+			return fmt.Errorf("error creating build_result.json: %w", err)
+		}
+		defer func() {
+			if closeErr := f.Close(); closeErr != nil {
+				fmt.Fprintf(os.Stderr, "Error closing build_result.json: %v\n", closeErr)
 			}
+		}()
+		if err := json.NewEncoder(f).Encode(buildResult); err != nil {
+			return fmt.Errorf("error writing build_result.json: %w", err)
 		}
 	}
+	return nil
 }
 
 func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptions {

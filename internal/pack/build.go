@@ -11,13 +11,12 @@ import (
 
 // BuildOptions mimics the options we need for `pack build --publish`
 type BuildOptions struct {
-	ImageName    string
-	Builder      string
-	Path         string
-	Publish      bool
-	ClearCache   bool
-	TrustBuilder bool
-	Env          map[string]string
+	ImageName  string
+	Builder    string
+	Path       string
+	Publish    bool
+	ClearCache bool
+	Env        map[string]string
 	// Registry handling if needed (insecure, etc.)
 }
 
