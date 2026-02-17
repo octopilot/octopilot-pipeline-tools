@@ -27,41 +27,44 @@ on:
         type: boolean
 
 jobs:
-  lint:
-    name: Lint
+  detect:
+    name: Detect Contexts
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      languages: ${{ steps.detect.outputs.languages }}
     steps:
-      # Use latest versions (bumped by dependabot) - do not downgrade
-      - uses: actions/checkout@v6
-      # Use latest versions (bumped by dependabot) - do not downgrade
-      - uses: actions/setup-go@v6
-        with:
-          go-version: "1.26"
-      - name: golangci-lint
-        # Use latest versions (bumped by dependabot) - do not downgrade
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.9.0
-          args: --timeout=10m
+      - uses: actions/checkout@v4
+      - name: Detect Contexts
+        id: detect
+        uses: octopilot/octopilot-actions/detect-contexts@main
+
+  lint:
+    needs: detect
+    if: needs.detect.outputs.languages != ''
+    uses: octopilot/octopilot-workflows/.github/workflows/lint.yml@main
+    with:
+      languages: ${{ needs.detect.outputs.languages }}
 
   test:
-    name: Run tests
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      # Use latest versions (bumped by dependabot) - do not downgrade
-      - uses: actions/checkout@v6
-      # Use latest versions (bumped by dependabot) - do not downgrade
-      - uses: actions/setup-go@v6
-        with:
-          go-version: "1.26"
-      - run: go test -v ./...
-      - name: Build
-        run: go build -v -ldflags="-X 'github.com/octopilot/octopilot-pipeline-tools/internal/cmd.Version=${{ github.ref_name }}'" -o op ./cmd/op
+    needs: detect
+    if: needs.detect.outputs.matrix != '[]'
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.detect.outputs.matrix) }}
+    uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
+    with:
+      language: ${{ matrix.language }}
+
+  build-ephemeral:
+    needs: [detect, lint, test]
+    uses: octopilot/octopilot-workflows/.github/workflows/build-ephemeral.yml@main
+    with:
+      ttl: "2h"
 
   publish:
     name: Publish Release
-    needs: [lint, test]
+    needs: [lint, test, build-ephemeral]
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
     runs-on: ubuntu-latest
     permissions:
