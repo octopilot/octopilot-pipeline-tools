@@ -99,6 +99,10 @@ var buildCmd = &cobra.Command{
 						Env: map[string]string{
 							"BP_GO_PRIVATE": "github.com/octopilot/*",
 						},
+						SBOMDir: func() string {
+							s, _ := cmd.Flags().GetString("sbom-output")
+							return s
+						}(),
 					}
 					if err := pack.Build(ctx, po, os.Stdout); err != nil {
 						return fmt.Errorf("direct pack build failed: %w", err)
@@ -242,4 +246,5 @@ func init() {
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")
+	buildCmd.Flags().String("sbom-output", "", "Directory to output SBOMs")
 }

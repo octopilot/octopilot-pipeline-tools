@@ -117,7 +117,12 @@ jobs:
           # Run op build - this uses skaffold.yaml (buildpacks)
           # We must set --repo to the target registry
           # We also want multi-arch (amd64/arm64) which requires QEMU setup above
-          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot --platform linux/amd64,linux/arm64 --push
+          ./dist/op-linux-amd64 build --repo ghcr.io/octopilot --platform linux/amd64,linux/arm64 --push --sbom-output dist/sbom
+
+          # Package SBOMs
+          if [ -d "dist/sbom" ]; then
+            tar -czvf dist/sbom.tar.gz -C dist/sbom .
+          fi
 
           # parse digest from build_result.json for attestation
           TAG=$(jq -r '.builds[0].tag' build_result.json)
@@ -134,6 +139,8 @@ jobs:
       - name: Upload Binaries to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: |
+            dist/op-*
+            dist/sbom.tar.gz
           tag_name: ${{ github.ref_name }}
           # Do not generate notes or body, just append files to the existing release

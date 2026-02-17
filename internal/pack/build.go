@@ -17,6 +17,7 @@ type BuildOptions struct {
 	Publish    bool
 	ClearCache bool
 	Env        map[string]string
+	SBOMDir    string
 	// Registry handling if needed (insecure, etc.)
 }
 
@@ -29,13 +30,14 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 	}
 
 	buildOpts := client.BuildOptions{
-		Image:        opts.ImageName,
-		Builder:      opts.Builder,
-		AppPath:      opts.Path,
-		Publish:      opts.Publish,
-		ClearCache:   opts.ClearCache,
-		TrustBuilder: func(s string) bool { return true }, // Always trust for now (internal tool)
-		Env:          opts.Env,
+		Image:              opts.ImageName,
+		Builder:            opts.Builder,
+		AppPath:            opts.Path,
+		Publish:            opts.Publish,
+		ClearCache:         opts.ClearCache,
+		TrustBuilder:       func(s string) bool { return true }, // Always trust for now (internal tool)
+		Env:                opts.Env,
+		SBOMDestinationDir: opts.SBOMDir,
 		// Additional options can be mapped here
 	}
 
