@@ -315,7 +315,7 @@ require (
 )
 
 replace (
-	github.com/GoogleContainerTools/skaffold/v2 => github.com/octopilot/skaffold/v2 v2.0.0-20260217103849-39dd52583c24
+	github.com/GoogleContainerTools/skaffold/v2 => github.com/octopilot/skaffold/v2 v2.0.0-20260217103234-de79f7ea27c1
 
 	// Skaffold replacements
 	github.com/alessio/shellescape => github.com/alessio/shellescape v1.4.2
