@@ -12,6 +12,9 @@ import (
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/parser"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/runner"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/runner/runcontext"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/pack"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/util"
 	"github.com/spf13/cobra"
@@ -75,13 +78,15 @@ var buildCmd = &cobra.Command{
 					imageName := art.ImageName
 
 					// Construct tag
-					fullTag := fmt.Sprintf("%s:latest", imageName)
+					var fullTag string
 					if repo != "" {
 						if strings.HasSuffix(repo, "/") {
 							fullTag = fmt.Sprintf("%s%s:latest", repo, imageName)
 						} else {
 							fullTag = fmt.Sprintf("%s/%s:latest", repo, imageName)
 						}
+					} else {
+						fullTag = fmt.Sprintf("%s:latest", imageName)
 					}
 
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
@@ -98,9 +103,29 @@ var buildCmd = &cobra.Command{
 					if err := pack.Build(ctx, po, os.Stdout); err != nil {
 						return fmt.Errorf("direct pack build failed: %w", err)
 					}
+
+					// Resolve digest for attestation
+					ref, err := name.ParseReference(fullTag)
+					if err != nil {
+						return fmt.Errorf("parsing reference %q: %w", fullTag, err)
+					}
+
+					// Fetch the image descriptor to get the digest
+					// We use authn.DefaultKeychain to use the same credentials as docker/pack
+					img, err := remote.Head(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+					if err != nil {
+						return fmt.Errorf("fetching image properties for %q: %w", fullTag, err)
+					}
+
+					digest := img.Digest.String()
+					fmt.Printf("Resolved digest for %s: %s\n", fullTag, digest)
+
+					// Append digest to tag so consumers (CI) can extract it
+					fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, digest)
+
 					built = append(built, util.Build{
 						ImageName: imageName,
-						Tag:       fullTag,
+						Tag:       fullTagWithDigest,
 					})
 				} else {
 					fmt.Printf("Skipping non-buildpacks artifact %s (not supported in direct push mode yet)\n", art.ImageName)
