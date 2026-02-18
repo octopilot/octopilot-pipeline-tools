@@ -14,6 +14,6 @@ build:
       builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
       runImage: op-base
       env:
-        - BP_GO_VERSION=1.25.6
         - GOFLAGS=-buildvcs=false
         - BP_GO_BUILD_FLAGS=-buildvcs=false
+        # BP_GO_VERSION is set by the pipeline

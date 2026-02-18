@@ -76,6 +76,8 @@ jobs:
         uses: docker/setup-qemu-action@v3
       - uses: extractions/setup-just@v3
       - run: just test-integration
+        env:
+          BP_GO_VERSION: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.op }}
 
   publish:
     name: Publish Release
