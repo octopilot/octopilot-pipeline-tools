@@ -7,7 +7,7 @@ import (
 )
 
 // Version can be set via LDFLAGS during build
-var Version = "0.0.29"
+var Version = "0.0.30"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
