@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,12 +119,15 @@ var buildCmd = &cobra.Command{
 					}
 
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
+					fmt.Printf("Current builtImages map: %v\n", builtImages)
 
 					// Check if RunImage is a reference to a previously built artifact
 					runImage := art.BuildpackArtifact.RunImage
 					if resolved, ok := builtImages[runImage]; ok {
 						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
 						runImage = resolved
+					} else {
+						fmt.Printf("runImage %s not found in builtImages map\n", runImage)
 					}
 
 					// Construct env
@@ -137,13 +142,58 @@ var buildCmd = &cobra.Command{
 						}
 					}
 
+					// Handle localhost/127.0.0.1 special case for pack lifecycle in container
+					// See python-legacy/src/octopilot_pipeline_tools/pack_build.py for context.
+					// The lifecycle runs in a container, so "localhost" refers to the container itself.
+					// We need to point it to the host machine where the registry is running.
+					// This is especially needed on Mac/Windows where host networking behavior differs.
+					packImageName := fullTag
+					packRunImage := runImage
+					packInsecureRegistries := opts.InsecureRegistries
+
+					rewriteLocalhost := func(s string) (string, bool) {
+						if strings.Contains(s, "localhost:5001") {
+							return strings.Replace(s, "localhost:5001", "127.0.0.1:5001", -1), true
+						}
+						// If already 127.0.0.1, keep it (effectively rewritten/safe)
+						if strings.Contains(s, "127.0.0.1:5001") {
+							return s, true
+						}
+						return s, false
+					}
+
+					var rewritten bool
+					if newTag, ok := rewriteLocalhost(packImageName); ok {
+						packImageName = newTag
+						rewritten = true
+					}
+					if newRun, ok := rewriteLocalhost(packRunImage); ok {
+						packRunImage = newRun
+						rewritten = true
+					}
+
+					if rewritten {
+						fmt.Printf("Rewriting localhost->127.0.0.1 for pack: Image=%s RunImage=%s\n", packImageName, packRunImage)
+						// Add 127.0.0.1:5001 to insecure registries
+						packInsecureRegistries = append(packInsecureRegistries, "127.0.0.1:5001")
+					}
+
+					packVolumes := []string{}
+					if caPath := os.Getenv("OP_REGISTRY_CA_PATH"); caPath != "" {
+						// Mount CA cert into container
+						// Format: host:target:mode
+						packVolumes = append(packVolumes, fmt.Sprintf("%s:/etc/ssl/certs/registry-ca.crt:ro", caPath))
+						// Tell lifecycle/go-containerregistry to use it
+						packEnv["SSL_CERT_FILE"] = "/etc/ssl/certs/registry-ca.crt"
+						fmt.Printf("Mounting CA cert %s -> /etc/ssl/certs/registry-ca.crt\n", caPath)
+					}
+
 					po := pack.BuildOptions{
-						ImageName: fullTag,
+						ImageName: packImageName,
 						Builder:   art.BuildpackArtifact.Builder,
 						Path:      filepath.Join(cwd, art.Workspace),
 						Publish:   true,
-						RunImage:  runImage,
-
+						RunImage:  packRunImage,
 						Target: func() string {
 							if len(opts.Platforms) > 0 {
 								// Pack only supports one target at a time in this context usually,
@@ -156,9 +206,26 @@ var buildCmd = &cobra.Command{
 							s, _ := cmd.Flags().GetString("sbom-output")
 							return s
 						}(),
+						InsecureRegistries: packInsecureRegistries,
+						Volumes:            packVolumes,
 					}
 					if err := packBuild(ctx, po, os.Stdout); err != nil {
 						return fmt.Errorf("direct pack build failed: %w", err)
+					}
+
+					// Prepare remote options (handle insecure/self-signed registries)
+					remoteOpts := []remote.Option{
+						remote.WithAuthFromKeychain(authn.DefaultKeychain),
+					}
+					for _, reg := range opts.InsecureRegistries {
+						if strings.HasPrefix(fullTag, reg) {
+							// Use custom transport to skip TLS verify for insecure registries
+							t := &http.Transport{
+								TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+							}
+							remoteOpts = append(remoteOpts, remote.WithTransport(t))
+							break
+						}
 					}
 
 					// Resolve digest for attestation
@@ -168,8 +235,7 @@ var buildCmd = &cobra.Command{
 					}
 
 					// Fetch the image descriptor to get the digest
-					// We use authn.DefaultKeychain to use the same credentials as docker/pack
-					img, err := remoteHead(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+					img, err := remoteHead(ref, remoteOpts...)
 					if err != nil {
 						return fmt.Errorf("getting image digest for %q: %w", fullTag, err)
 					}
@@ -202,7 +268,7 @@ var buildCmd = &cobra.Command{
 						}
 
 						// Get the remote image
-						img, err := remoteImage(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+						img, err := remoteImage(ref, remoteOpts...)
 						if err != nil {
 							return fmt.Errorf("reading image %q: %w", fullTag, err)
 						}
@@ -212,7 +278,7 @@ var buildCmd = &cobra.Command{
 							return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
 						}
 
-						if err := remoteWrite(verRef, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+						if err := remoteWrite(verRef, img, remoteOpts...); err != nil {
 							return fmt.Errorf("tagging version %q: %w", versionTagStr, err)
 						}
 						fmt.Printf("Successfully pushed %s\n", versionTagStr)
@@ -382,6 +448,14 @@ func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptio
 	}
 	if val := viper.GetString("SKAFFOLD_NAMESPACE"); val != "" {
 		opts.Namespace = val
+	}
+
+	// Handle insecure registries from env
+	if val := os.Getenv("SKAFFOLD_INSECURE_REGISTRY"); val != "" {
+		opts.InsecureRegistries = append(opts.InsecureRegistries, strings.Split(val, ",")...)
+	}
+	if val := os.Getenv("SKAFFOLD_INSECURE_REGISTRIES"); val != "" {
+		opts.InsecureRegistries = append(opts.InsecureRegistries, strings.Split(val, ",")...)
 	}
 	return opts
 }

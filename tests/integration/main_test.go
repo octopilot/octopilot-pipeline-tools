@@ -21,6 +21,7 @@ import (
 
 func requireRegistry(t *testing.T) string {
 	t.Helper()
+	t.Helper()
 	registryPort := "5001"
 	registryHost := "localhost"
 	registryUrl := fmt.Sprintf("http://%s:%s/v2/", registryHost, registryPort)
@@ -70,30 +71,29 @@ func TestIntegration_Buildpack(t *testing.T) {
 	}
 
 	repoHost := requireRegistry(t)
-
-	// On Docker for Mac, buildpack containers running on "bridge" network cannot easily reach the host registry
-	// due to networking and TLS trust issues. We skip this test on Mac to avoid fragility.
-	// It runs correctly in CI (Linux) where we use OP_PACK_NETWORK=host.
-	if runtime.GOOS == "darwin" {
-		t.Skip("Skipping Buildpack integration test on Mac due to Docker networking/TLS limitations")
-	}
-
 	repo := fmt.Sprintf("%s/integration-test", repoHost)
 
 	testDir := "fixtures/buildpack"
 	absTestDir, _ := filepath.Abs(testDir)
 
 	// We use --push=true to bypass daemon export issues (containerd) by using standard Pack build-to-registry
+	// https://github.com/octopilot/registry-tls provides the TLS registry. We also use it as a service in CI.
+	// docker run -p 5001:5001 -v registry-data:/var/lib/registry registry-tls
 	// This exercises the 'useDirectPack' codepath in build.go
 	cmd := exec.Command(opBin, "build", "--push=true", "--repo="+repo)
 	cmd.Dir = absTestDir
 
 	// Pass current environment
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
+	// Enable pack debug logging
+	cmd.Env = append(cmd.Env, "OP_DEBUG=true")
 
-	// In CI (GitHub Actions), we are likely on Linux and need host networking for the build container
-	// to access the registry on localhost.
-	if os.Getenv("CI") == "true" {
+	// In CI (GitHub Actions) and now on Mac with the TLS registry, we might need host networking
+	// or just standard access. The user said "our octopilot custom registry solves these TLS issues".
+	// Let's try enabling host networking for Mac too if that helps, or just rely on the test environment.
+	// For now, I'll append it if CI OR Darwin, or just always for these tests if safe.
+	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
 		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
 	}
 
@@ -113,20 +113,14 @@ func TestIntegration_BuildpackRunImage(t *testing.T) {
 
 	repoHost := requireRegistry(t)
 
-	// On Docker for Mac, buildpack containers running on "bridge" network cannot easily reach the host registry
-	// due to networking and TLS trust issues. We skip this test on Mac to avoid fragility.
-	// It runs correctly in CI (Linux) where we use OP_PACK_NETWORK=host.
-	if runtime.GOOS == "darwin" {
-		t.Skip("Skipping Buildpack integration test on Mac due to Docker networking/TLS limitations")
-	}
-
 	repo := fmt.Sprintf("%s/integration-test", repoHost)
 
 	// Run the build op with custom skaffold file
 	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64", "-f", "skaffold-runimage.yaml")
 	cmd.Dir = filepath.Join("fixtures", "buildpack")
 	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	if os.Getenv("CI") == "true" {
+	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
+	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
 		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
 	}
 
@@ -146,20 +140,41 @@ func TestIntegration_BuildpackMultiContext(t *testing.T) {
 
 	repoHost := requireRegistry(t)
 
-	// On Docker for Mac, buildpack containers running on "bridge" network cannot easily reach the host registry
-	// so we skip on Mac as usual.
-	if runtime.GOOS == "darwin" {
-		t.Skip("Skipping Buildpack integration test on Mac due to Docker networking/TLS limitations")
-	}
-
 	repo := fmt.Sprintf("%s/integration-test", repoHost)
 
 	// Run the build op with multi-context skaffold file
 	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64")
 	cmd.Dir = filepath.Join("fixtures", "multicontext")
 	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	if os.Getenv("CI") == "true" {
+	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
+	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
 		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
+	}
+
+	// Setup CA cert for pack lifecycle if needed
+	if runtime.GOOS == "darwin" || strings.Contains(repoHost, "localhost") {
+		// Use known container name "octopilot-registry"
+		certDir := filepath.Join("fixtures", "certs")
+		if err := os.MkdirAll(certDir, 0755); err != nil {
+			t.Logf("Failed to create cert dir: %v", err)
+		} else {
+			// Copy certs: use "octopilot-registry" which is set by requireRegistry
+			// Cert path is /etc/envoy/certs/tls.crt
+			cmdCP := exec.Command("docker", "cp", "octopilot-registry:/etc/envoy/certs/tls.crt", certDir)
+			if out, err := cmdCP.CombinedOutput(); err != nil {
+				t.Logf("Failed to copy certs from octopilot-registry: %v. Output: %s", err, string(out))
+			} else {
+				// Set Env. The file is copied as "tls.crt" into certDir
+				caPath, _ := filepath.Abs(filepath.Join(certDir, "tls.crt"))
+				// Check if file exists
+				if _, err := os.Stat(caPath); err == nil {
+					cmd.Env = append(cmd.Env, fmt.Sprintf("OP_REGISTRY_CA_PATH=%s", caPath))
+					t.Logf("Successfully set OP_REGISTRY_CA_PATH=%s", caPath)
+				} else {
+					t.Logf("Cert file not found at %s after copy", caPath)
+				}
+			}
+		}
 	}
 
 	out, err := cmd.CombinedOutput()
