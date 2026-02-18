@@ -82,6 +82,14 @@ jobs:
           version: ${{ github.ref_name }}
           output_dir: dist
 
+      - name: Integration Tests
+        shell: bash
+        env:
+          OP_BINARY: ${{ github.workspace }}/dist/op-linux-amd64
+        run: |
+          chmod +x "$OP_BINARY"
+          go test -v ./tests/integration
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 

@@ -1,0 +1,7 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+  - image: buildpack-app
+    buildpacks:
+      builder: gcr.io/buildpacks/builder:v1

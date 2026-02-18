@@ -3,6 +3,9 @@ FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
+# Install git (required for op build / skaffold)
+RUN apk add --no-cache git
+
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 RUN go mod download

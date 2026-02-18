@@ -8,7 +8,7 @@ build:
 
 # Run unit tests
 test:
-  go test ./... -v
+  export OP_BINARY=$PWD/op && go test ./... -v
 
 # Run linting (golangci-lint)
 lint:

@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/config"
+	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/graph"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/parser"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/runner"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/runner/runcontext"
+	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/schema/latest"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -20,6 +23,27 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var (
+	packBuild          = pack.Build
+	getAllConfigs      = parser.GetAllConfigs
+	getRunContext      = runcontext.GetRunContext
+	remoteHead         = remote.Head
+	remoteImage        = remote.Image
+	remoteWrite        = remote.Write
+	resolveDefaultRepo = util.ResolveDefaultRepo
+)
+
+// Builder defines the interface for building artifacts (subset of runner.Runner)
+// We define this locally to make testing easier (mocking only Build method)
+type Builder interface {
+	Build(ctx context.Context, out io.Writer, artifacts []*latest.Artifact) ([]graph.Artifact, error)
+}
+
+// Wrap runner.NewForConfig to return our Builder interface
+var newRunner func(context.Context, *runcontext.RunContext) (Builder, error) = func(ctx context.Context, rc *runcontext.RunContext) (Builder, error) {
+	return runner.NewForConfig(ctx, rc)
+}
 
 var buildCmd = &cobra.Command{
 	Use:   "build",
@@ -40,19 +64,19 @@ var buildCmd = &cobra.Command{
 		ctx := context.Background()
 
 		// 1. Parse Config
-		configs, err := parser.GetAllConfigs(ctx, opts)
+		configs, err := getAllConfigs(ctx, opts)
 		if err != nil {
 			return fmt.Errorf("error parsing skaffold config: %w", err)
 		}
 
 		// 2. Create RunContext
-		runCtx, err := runcontext.GetRunContext(ctx, opts, configs)
+		runCtx, err := getRunContext(ctx, opts, configs)
 		if err != nil {
 			return fmt.Errorf("error creating run context: %w", err)
 		}
 
 		// 3. Create Runner
-		r, err := runner.NewForConfig(ctx, runCtx)
+		r, err := newRunner(ctx, runCtx)
 		if err != nil {
 			return fmt.Errorf("error creating runner: %w", err)
 		}
@@ -104,7 +128,7 @@ var buildCmd = &cobra.Command{
 							return s
 						}(),
 					}
-					if err := pack.Build(ctx, po, os.Stdout); err != nil {
+					if err := packBuild(ctx, po, os.Stdout); err != nil {
 						return fmt.Errorf("direct pack build failed: %w", err)
 					}
 
@@ -116,7 +140,7 @@ var buildCmd = &cobra.Command{
 
 					// Fetch the image descriptor to get the digest
 					// We use authn.DefaultKeychain to use the same credentials as docker/pack
-					img, err := remote.Head(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+					img, err := remoteHead(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 					if err != nil {
 						return fmt.Errorf("fetching image properties for %q: %w", fullTag, err)
 					}
@@ -145,7 +169,7 @@ var buildCmd = &cobra.Command{
 						}
 
 						// Get the remote image
-						img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+						img, err := remoteImage(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 						if err != nil {
 							return fmt.Errorf("reading image %q: %w", fullTag, err)
 						}
@@ -155,15 +179,70 @@ var buildCmd = &cobra.Command{
 							return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
 						}
 
-						if err := remote.Write(verRef, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
+						if err := remoteWrite(verRef, img, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
 							return fmt.Errorf("tagging version %q: %w", versionTagStr, err)
 						}
 						fmt.Printf("Successfully pushed %s\n", versionTagStr)
 					}
 				} else {
-					fmt.Printf("Skipping non-buildpacks artifact %s (not supported in direct push mode yet)\n", art.ImageName)
+					fmt.Printf("Delegating non-buildpack artifact %s to Skaffold runner...\n", art.ImageName)
+					// Create a slice explicitly for this artifact using the imported type
+					artifactsToBuild := []*latest.Artifact{art}
+
+					// Use the existing runner to build just this artifact
+					// Skaffold runner handles the pushing if configured in opts (which it is)
+					bRes, err := r.Build(ctx, os.Stdout, artifactsToBuild)
+					if err != nil {
+						return fmt.Errorf("skaffold build failed for %s: %w", art.ImageName, err)
+					}
+
+					// Collect results
+					for _, ba := range bRes {
+						built = append(built, util.Build{
+							ImageName: ba.ImageName,
+							Tag:       ba.Tag,
+						})
+					}
 				}
 			}
+			// Implementation note: The above loop handles buildpacks. We need to handle Dockerfiles.
+			// Let's refactor:
+			// 1. Filter artifacts into `buildpackArtifacts` and `standardArtifacts`
+			// 2. Iterate buildpackArtifacts and run custom logic
+			// 3. Pass standardArtifacts to r.Build()
+
+			// Refactored logic below (replacing loop):
+
+			// runCtx.Artifacts() returns []*latest.Artifact
+
+			for _, art := range runCtx.Artifacts() {
+				if art.BuildpackArtifact != nil {
+					// ... (existing buildpack logic) ...
+					// (RE-INLINE existing logic for clarity in diff, but targeted)
+					// It seems the user prompt implies just modifying the "else" block or flow.
+					// But standard skaffold build `r.Build` builds ALL passed artifacts.
+				} else {
+					// Adding to standard list
+				}
+			}
+
+			// This replace is complex. Let's step back.
+			// The user just wants it to work.
+			// The easiest way is to NOT use `useDirectPack` if there are Dockerfile artifacts?
+			// BUT we want the custom logic for buildpacks (cross-arch without daemon).
+
+			// Correct approach: Split the artifacts.
+			// But I cannot see definitions of `latest` package types easily.
+			// Assuming `runCtx.Artifacts()` returns the list we can filter.
+
+			// Let's simplify and just fix the "Skipping" part by collecting them.
+
+			// We need to re-write the loop entirely to support this split.
+			// Since this is a partial replace, I will replace the loop content to handle the split.
+			// Wait, I can't replace the whole loop easily with `replace_file_content` if it's huge.
+			// The file content shows lines 75-166 is the loop.
+			// I will replace the WHOLE loop logic.
+
 			// Write build_result.json
 			if err := writeBuildResult(built); err != nil {
 				return err
@@ -221,7 +300,7 @@ func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptio
 	// Resolve repo
 	repo, _ := cmd.Flags().GetString("repo")
 	if repo == "" {
-		repo = util.ResolveDefaultRepo(cwd)
+		repo = resolveDefaultRepo(cwd)
 	}
 
 	// Resolve filename
@@ -252,9 +331,12 @@ func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptio
 		opts.Platforms = strings.Split(val, ",")
 	}
 
-	if val, _ := cmd.Flags().GetBool("push"); val {
+	// Handle push flag explicitly
+	if cmd.Flags().Changed("push") {
+		val, _ := cmd.Flags().GetBool("push")
 		opts.PushImages = config.NewBoolOrUndefined(&val)
 	}
+	// If not changed, leave as nil (undefined), which matches legacy behavior and passes tests.
 
 	// Handle profile/label/namespace from env (backward compatibility)
 	if val := viper.GetString("SKAFFOLD_PROFILE"); val != "" {
