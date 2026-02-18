@@ -71,6 +71,9 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       - uses: extractions/setup-just@v3
       - run: just test-integration
 
