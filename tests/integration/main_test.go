@@ -5,6 +5,7 @@ package integration
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -67,8 +68,10 @@ func isRegistryRunning(url string) bool {
 func setupBuildEnv(t *testing.T, cmd *exec.Cmd, repoHost string) {
 	t.Helper()
 
-	// Pass current environment
-	cmd.Env = os.Environ()
+	// Initialize Env if not set, otherwise append to it.
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
 	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
 
 	// Enable pack debug logging for troubleshooting
@@ -152,12 +155,13 @@ func TestIntegration_Buildpack(t *testing.T) {
 
 	setupBuildEnv(t, cmd, repoHost)
 
-	// Capture output
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("op build failed: %v\nOutput:\n%s", err, string(out))
+	// Stream output
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("op build failed: %v", err)
 	}
-	fmt.Printf("Buildpack Output: %s\n", string(out))
 }
 
 func TestIntegration_BuildpackRunImage(t *testing.T) {
@@ -176,12 +180,12 @@ func TestIntegration_BuildpackRunImage(t *testing.T) {
 	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
 	setupBuildEnv(t, cmd, repoHost)
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("op build runImage failed: %v\nOutput:\n%s", err, out)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("op build runImage failed: %v", err)
 	}
-	// ... (existing test content)
-	t.Logf("Output:\n%s", out)
 }
 
 func TestIntegration_BuildpackMultiContext(t *testing.T) {
@@ -203,11 +207,15 @@ func TestIntegration_BuildpackMultiContext(t *testing.T) {
 
 	// (Environment setup handled by setupBuildEnv)
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("op build multi-context failed: %v\nOutput:\n%s", err, out)
+	// Capture output for verification AND stream it
+	var stdoutBuf, stderrBuf strings.Builder
+	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("op build multi-context failed: %v\nOutput:\n%s", err, stderrBuf.String())
 	}
-	outputStr := string(out)
+	outputStr := stdoutBuf.String() + stderrBuf.String()
 	t.Logf("Output:\n%s", outputStr)
 
 	// Verify that the runImage was resolved.
@@ -231,10 +239,13 @@ func TestIntegration_Dockerfile(t *testing.T) {
 
 	cmd := exec.Command(opBin, "build", "--push=false", "--repo="+repo)
 	cmd.Dir = absTestDir
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+	setupBuildEnv(t, cmd, repoHost)
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("op build failed: %v\nOutput:\n%s", err, string(out))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("op build dockerfile failed: %v", err)
 	}
-	fmt.Printf("Dockerfile Output: %s\n", string(out))
 }
