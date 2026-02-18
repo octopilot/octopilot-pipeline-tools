@@ -64,89 +64,15 @@ func isRegistryRunning(url string) bool {
 	return false
 }
 
-func TestIntegration_Buildpack(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
-
-	repoHost := requireRegistry(t)
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
-
-	testDir := "fixtures/buildpack"
-	absTestDir, _ := filepath.Abs(testDir)
-
-	// We use --push=true to bypass daemon export issues (containerd) by using standard Pack build-to-registry
-	// https://github.com/octopilot/registry-tls provides the TLS registry. We also use it as a service in CI.
-	// docker run -p 5001:5001 -v registry-data:/var/lib/registry registry-tls
-	// This exercises the 'useDirectPack' codepath in build.go
-	cmd := exec.Command(opBin, "build", "--push=true", "--repo="+repo)
-	cmd.Dir = absTestDir
+func setupBuildEnv(t *testing.T, cmd *exec.Cmd, repoHost string) {
+	t.Helper()
 
 	// Pass current environment
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
-	// Enable pack debug logging
+
+	// Enable pack debug logging for troubleshooting
 	cmd.Env = append(cmd.Env, "OP_DEBUG=true")
-
-	// In CI (GitHub Actions) and now on Mac with the TLS registry, we might need host networking
-	// or just standard access. The user said "our octopilot custom registry solves these TLS issues".
-	// Let's try enabling host networking for Mac too if that helps, or just rely on the test environment.
-	// For now, I'll append it if CI OR Darwin, or just always for these tests if safe.
-	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
-		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
-	}
-
-	// Capture output
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("op build failed: %v\nOutput:\n%s", err, string(out))
-	}
-	fmt.Printf("Buildpack Output: %s\n", string(out))
-}
-
-func TestIntegration_BuildpackRunImage(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
-
-	repoHost := requireRegistry(t)
-
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
-
-	// Run the build op with custom skaffold file
-	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64", "-f", "skaffold-runimage.yaml")
-	cmd.Dir = filepath.Join("fixtures", "buildpack")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
-	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
-		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
-	}
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("op build runImage failed: %v\nOutput:\n%s", err, out)
-	}
-	// ... (existing test content)
-	t.Logf("Output:\n%s", out)
-}
-
-func TestIntegration_BuildpackMultiContext(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
-
-	repoHost := requireRegistry(t)
-
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
-
-	// Run the build op with multi-context skaffold file
-	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64")
-	cmd.Dir = filepath.Join("fixtures", "multicontext")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
 
 	// CRITICAL: Disable default BuildKit attestations (provenance).
 	// Without this, BuildKit creates an OCI Image Index containing both the image manifest
@@ -157,6 +83,8 @@ func TestIntegration_BuildpackMultiContext(t *testing.T) {
 	// Setting this env var forces a standard single-manifest image.
 	cmd.Env = append(cmd.Env, "BUILDX_NO_DEFAULT_ATTESTATIONS=1")
 
+	// In CI (GitHub Actions) and now on Mac with the TLS registry, we might need host networking
+	// or just standard access.
 	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
 		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
 	}
@@ -201,6 +129,79 @@ func TestIntegration_BuildpackMultiContext(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestIntegration_Buildpack(t *testing.T) {
+	opBin := os.Getenv("OP_BINARY")
+	if opBin == "" {
+		t.Skip("OP_BINARY env var not set")
+	}
+
+	repoHost := requireRegistry(t)
+	repo := fmt.Sprintf("%s/integration-test", repoHost)
+
+	testDir := "fixtures/buildpack"
+	absTestDir, _ := filepath.Abs(testDir)
+
+	// We use --push=true to bypass daemon export issues (containerd) by using standard Pack build-to-registry
+	// https://github.com/octopilot/registry-tls provides the TLS registry. We also use it as a service in CI.
+	// docker run -p 5001:5001 -v registry-data:/var/lib/registry registry-tls
+	// This exercises the 'useDirectPack' codepath in build.go
+	cmd := exec.Command(opBin, "build", "--push=true", "--repo="+repo)
+	cmd.Dir = absTestDir
+
+	setupBuildEnv(t, cmd, repoHost)
+
+	// Capture output
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("op build failed: %v\nOutput:\n%s", err, string(out))
+	}
+	fmt.Printf("Buildpack Output: %s\n", string(out))
+}
+
+func TestIntegration_BuildpackRunImage(t *testing.T) {
+	opBin := os.Getenv("OP_BINARY")
+	if opBin == "" {
+		t.Skip("OP_BINARY env var not set")
+	}
+
+	repoHost := requireRegistry(t)
+
+	repo := fmt.Sprintf("%s/integration-test", repoHost)
+
+	// Run the build op with custom skaffold file
+	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64", "-f", "skaffold-runimage.yaml")
+	cmd.Dir = filepath.Join("fixtures", "buildpack")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+	setupBuildEnv(t, cmd, repoHost)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("op build runImage failed: %v\nOutput:\n%s", err, out)
+	}
+	// ... (existing test content)
+	t.Logf("Output:\n%s", out)
+}
+
+func TestIntegration_BuildpackMultiContext(t *testing.T) {
+	opBin := os.Getenv("OP_BINARY")
+	if opBin == "" {
+		t.Skip("OP_BINARY env var not set")
+	}
+
+	repoHost := requireRegistry(t)
+
+	repo := fmt.Sprintf("%s/integration-test", repoHost)
+
+	// Run the build op with multi-context skaffold file
+	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64")
+	cmd.Dir = filepath.Join("fixtures", "multicontext")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+
+	setupBuildEnv(t, cmd, repoHost)
+
+	// (Environment setup handled by setupBuildEnv)
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
