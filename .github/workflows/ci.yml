@@ -77,16 +77,10 @@ jobs:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
 
       - name: Build Binaries (Release Artifacts)
-        run: |
-          platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64")
-          mkdir -p dist
-          for platform in "${platforms[@]}"; do
-            GOOS=${platform%/*}
-            GOARCH=${platform#*/}
-            output_name="op-${GOOS}-${GOARCH}"
-            echo "Building ${output_name}..."
-            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-X 'github.com/octopilot/octopilot-pipeline-tools/internal/cmd.Version=${{ github.ref_name }}'" -o "dist/${output_name}" ./cmd/op
-          done
+        uses: octopilot/actions/build-self-homing@main
+        with:
+          version: ${{ github.ref_name }}
+          output_dir: dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
