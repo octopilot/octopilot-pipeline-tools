@@ -143,7 +143,15 @@ var buildCmd = &cobra.Command{
 						Path:      filepath.Join(cwd, art.Workspace),
 						Publish:   true,
 						RunImage:  runImage,
-						Env:       packEnv,
+
+						Target: func() string {
+							if len(opts.Platforms) > 0 {
+								// Pack only supports one target at a time in this context usually,
+								// or we pick the first one.
+								return opts.Platforms[0]
+							}
+							return ""
+						}(),
 						SBOMDir: func() string {
 							s, _ := cmd.Flags().GetString("sbom-output")
 							return s

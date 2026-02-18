@@ -22,6 +22,7 @@ type BuildOptions struct {
 	Env        map[string]string
 	SBOMDir    string
 	// Registry handling if needed (insecure, etc.)
+	Target string
 }
 
 // Build performs a pack build using the library.
@@ -42,6 +43,8 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 		TrustBuilder:       func(s string) bool { return true }, // Always trust for now (internal tool)
 		Env:                opts.Env,
 		SBOMDestinationDir: opts.SBOMDir,
+		// Platform is a top-level field in client.BuildOptions
+		Platform: opts.Target,
 		ContainerConfig: client.ContainerConfig{
 			Network: os.Getenv("OP_PACK_NETWORK"),
 		},
