@@ -95,6 +95,9 @@ var buildCmd = &cobra.Command{
 			fmt.Printf("Building with direct Pack integration (repo: %s, push: true)....\n", repo)
 
 			var built []util.Build
+			// Track built images for dependency resolution (imageName -> fullTag with digest)
+			builtImages := make(map[string]string)
+
 			// Iterate runCtx.Artifacts() which is []*latest.Artifact
 			for _, art := range runCtx.Artifacts() {
 				if art.BuildpackArtifact != nil {
@@ -115,14 +118,32 @@ var buildCmd = &cobra.Command{
 
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
+					// Check if RunImage is a reference to a previously built artifact
+					runImage := art.BuildpackArtifact.RunImage
+					if resolved, ok := builtImages[runImage]; ok {
+						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
+						runImage = resolved
+					}
+
+					// Construct env
+					packEnv := map[string]string{
+						"BP_GO_PRIVATE": "github.com/octopilot/*",
+					}
+					// Add env vars from artifact definition
+					for _, env := range art.BuildpackArtifact.Env {
+						parts := strings.SplitN(env, "=", 2)
+						if len(parts) == 2 {
+							packEnv[parts[0]] = parts[1]
+						}
+					}
+
 					po := pack.BuildOptions{
 						ImageName: fullTag,
 						Builder:   art.BuildpackArtifact.Builder,
 						Path:      filepath.Join(cwd, art.Workspace),
 						Publish:   true,
-						Env: map[string]string{
-							"BP_GO_PRIVATE": "github.com/octopilot/*",
-						},
+						RunImage:  runImage,
+						Env:       packEnv,
 						SBOMDir: func() string {
 							s, _ := cmd.Flags().GetString("sbom-output")
 							return s
@@ -156,6 +177,9 @@ var buildCmd = &cobra.Command{
 						ImageName: imageName,
 						Tag:       fullTagWithDigest,
 					})
+
+					// Record for dependency resolution
+					builtImages[imageName] = fullTagWithDigest
 
 					// Tag with version if available
 					if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" {
@@ -203,6 +227,8 @@ var buildCmd = &cobra.Command{
 							ImageName: ba.ImageName,
 							Tag:       ba.Tag,
 						})
+						// Record for dependency resolution
+						builtImages[ba.ImageName] = ba.Tag
 					}
 				}
 			}

@@ -16,6 +16,7 @@ type BuildOptions struct {
 	ImageName  string
 	Builder    string
 	Path       string
+	RunImage   string
 	Publish    bool
 	ClearCache bool
 	Env        map[string]string
@@ -34,6 +35,7 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 	buildOpts := client.BuildOptions{
 		Image:              opts.ImageName,
 		Builder:            opts.Builder,
+		RunImage:           opts.RunImage,
 		AppPath:            opts.Path,
 		Publish:            opts.Publish,
 		ClearCache:         opts.ClearCache,

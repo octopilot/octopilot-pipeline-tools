@@ -1,0 +1,8 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+build:
+  artifacts:
+  - image: buildpack-app-custom
+    buildpacks:
+      builder: gcr.io/buildpacks/builder:v1
+      runImage: gcr.io/buildpacks/gcp/run:v1

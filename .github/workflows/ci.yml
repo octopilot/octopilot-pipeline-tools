@@ -64,6 +64,8 @@ jobs:
         image: ghcr.io/octopilot/registry-tls:latest
         ports:
           - 5001:5000
+    env:
+      OP_PACK_NETWORK: host
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v6

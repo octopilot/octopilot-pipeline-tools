@@ -1,0 +1,13 @@
+apiVersion: skaffold/v4beta1
+kind: Config
+build:
+  artifacts:
+  - image: base-image
+    context: base
+    docker:
+      dockerfile: Dockerfile
+  - image: app-image
+    context: app
+    buildpacks:
+      builder: gcr.io/buildpacks/builder:v1
+      runImage: base-image

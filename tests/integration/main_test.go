@@ -105,6 +105,77 @@ func TestIntegration_Buildpack(t *testing.T) {
 	fmt.Printf("Buildpack Output: %s\n", string(out))
 }
 
+func TestIntegration_BuildpackRunImage(t *testing.T) {
+	opBin := os.Getenv("OP_BINARY")
+	if opBin == "" {
+		t.Skip("OP_BINARY env var not set")
+	}
+
+	repoHost := requireRegistry(t)
+
+	// On Docker for Mac, buildpack containers running on "bridge" network cannot easily reach the host registry
+	// due to networking and TLS trust issues. We skip this test on Mac to avoid fragility.
+	// It runs correctly in CI (Linux) where we use OP_PACK_NETWORK=host.
+	if runtime.GOOS == "darwin" {
+		t.Skip("Skipping Buildpack integration test on Mac due to Docker networking/TLS limitations")
+	}
+
+	repo := fmt.Sprintf("%s/integration-test", repoHost)
+
+	// Run the build op with custom skaffold file
+	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64", "-f", "skaffold-runimage.yaml")
+	cmd.Dir = filepath.Join("fixtures", "buildpack")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+	if os.Getenv("CI") == "true" {
+		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("op build runImage failed: %v\nOutput:\n%s", err, out)
+	}
+	// ... (existing test content)
+	t.Logf("Output:\n%s", out)
+}
+
+func TestIntegration_BuildpackMultiContext(t *testing.T) {
+	opBin := os.Getenv("OP_BINARY")
+	if opBin == "" {
+		t.Skip("OP_BINARY env var not set")
+	}
+
+	repoHost := requireRegistry(t)
+
+	// On Docker for Mac, buildpack containers running on "bridge" network cannot easily reach the host registry
+	// so we skip on Mac as usual.
+	if runtime.GOOS == "darwin" {
+		t.Skip("Skipping Buildpack integration test on Mac due to Docker networking/TLS limitations")
+	}
+
+	repo := fmt.Sprintf("%s/integration-test", repoHost)
+
+	// Run the build op with multi-context skaffold file
+	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64")
+	cmd.Dir = filepath.Join("fixtures", "multicontext")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+	if os.Getenv("CI") == "true" {
+		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
+	}
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("op build multi-context failed: %v\nOutput:\n%s", err, out)
+	}
+	outputStr := string(out)
+	t.Logf("Output:\n%s", outputStr)
+
+	// Verify that the runImage was resolved.
+	// We expect a line like: "Resolving runImage base-image to built artifact ..."
+	if !strings.Contains(outputStr, "Resolving runImage base-image to built artifact") {
+		t.Errorf("Expected output to contain 'Resolving runImage base-image to built artifact', but it didn't")
+	}
+}
+
 func TestIntegration_Dockerfile(t *testing.T) {
 	opBin := os.Getenv("OP_BINARY")
 	if opBin == "" {
