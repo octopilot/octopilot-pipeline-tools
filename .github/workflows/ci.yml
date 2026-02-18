@@ -31,13 +31,7 @@ jobs:
     name: Detect Contexts
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.detect.outputs.matrix }}
-      languages: ${{ steps.detect.outputs.languages }}
-      go-version: ${{ steps.detect.outputs.go-version }}
-      rust-version: ${{ steps.detect.outputs.rust-version }}
-      node-version: ${{ steps.detect.outputs.node-version }}
-      python-version: ${{ steps.detect.outputs.python-version }}
-      java-version: ${{ steps.detect.outputs.java-version }}
+      pipeline-context: ${{ steps.detect.outputs.pipeline-context }}
     steps:
       - uses: actions/checkout@v4
       - name: Detect Contexts
@@ -46,27 +40,20 @@ jobs:
 
   lint:
     needs: detect
-    if: needs.detect.outputs.languages != ''
+    if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
     uses: octopilot/octopilot-workflows/.github/workflows/lint.yml@main
     with:
-      languages: ${{ needs.detect.outputs.languages }}
-      go-version: ${{ needs.detect.outputs.go-version }}
-      rust-version: ${{ needs.detect.outputs.rust-version }}
-      node-version: ${{ needs.detect.outputs.node-version }}
-      python-version: ${{ needs.detect.outputs.python-version }}
-      java-version: ${{ needs.detect.outputs.java-version }}
+      pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
 
   test:
     needs: detect
-    if: needs.detect.outputs.matrix != '[]'
+    if: toJSON(fromJson(needs.detect.outputs.pipeline-context).matrix) != '[]'
     strategy:
       matrix:
-        include: ${{ fromJson(needs.detect.outputs.matrix) }}
+        include: ${{ fromJson(needs.detect.outputs.pipeline-context).matrix }}
     uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
     with:
-      language: ${{ matrix.language }}
-      version: ${{ matrix.version }}
-      context: ${{ matrix.context }}
+      pipeline-context: ${{ toJson(matrix) }}
 
   publish:
     name: Publish Release
