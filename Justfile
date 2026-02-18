@@ -7,8 +7,14 @@ build:
     go build -o op ./cmd/op
 
 # Run unit tests
+
+# Run unit tests (skips integration tests)
 test:
-    export OP_BINARY=$PWD/op && go test ./... -v
+    go test ./... -v
+
+# Run integration tests (requires OP_BINARY)
+test-integration: build
+    export OP_BINARY=$PWD/op && go test -tags integration -v ./tests/integration/...
 
 # Run linting (golangci-lint)
 lint:

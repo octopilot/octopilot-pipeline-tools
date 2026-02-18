@@ -142,9 +142,10 @@ var buildCmd = &cobra.Command{
 					// We use authn.DefaultKeychain to use the same credentials as docker/pack
 					img, err := remoteHead(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 					if err != nil {
-						return fmt.Errorf("fetching image properties for %q: %w", fullTag, err)
+						return fmt.Errorf("getting image digest for %q: %w", fullTag, err)
 					}
 
+					// We need the digest to be fully qualified
 					digest := img.Digest.String()
 					fmt.Printf("Resolved digest for %s: %s\n", fullTag, digest)
 

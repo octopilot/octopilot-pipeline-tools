@@ -55,9 +55,26 @@ jobs:
     with:
       pipeline-context: ${{ toJson(matrix) }}
 
+  integration:
+    needs: [detect, lint, test]
+    if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: ghcr.io/octopilot/registry-tls:latest
+        ports:
+          - 5001:5000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
+      - uses: extractions/setup-just@v3
+      - run: just test-integration
+
   publish:
     name: Publish Release
-    needs: [detect, lint, test]
+    needs: [detect, integration]
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
     runs-on: ubuntu-latest
     permissions:
@@ -81,14 +98,6 @@ jobs:
         with:
           version: ${{ github.ref_name }}
           output_dir: dist
-
-      - name: Integration Tests
-        shell: bash
-        env:
-          OP_BINARY: ${{ github.workspace }}/dist/op-linux-amd64
-        run: |
-          chmod +x "$OP_BINARY"
-          go test -v ./tests/integration
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

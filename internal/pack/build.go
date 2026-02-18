@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"os"
+
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -38,7 +40,9 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 		TrustBuilder:       func(s string) bool { return true }, // Always trust for now (internal tool)
 		Env:                opts.Env,
 		SBOMDestinationDir: opts.SBOMDir,
-		// Additional options can be mapped here
+		ContainerConfig: client.ContainerConfig{
+			Network: os.Getenv("OP_PACK_NETWORK"),
+		},
 	}
 
 	// We might need to handle pulling the builder?
