@@ -179,11 +179,17 @@ var buildCmd = &cobra.Command{
 					}
 
 					packVolumes := []string{}
+					// CA CERTIFICATE MOUNTING:
+					// If OP_REGISTRY_CA_PATH is provided (e.g., by integration tests), we mount it into the
+					// lifecycle container. This is crucial for trusting self-signed certs of local registries.
 					if caPath := os.Getenv("OP_REGISTRY_CA_PATH"); caPath != "" {
 						// Mount CA cert into container
 						// Format: host:target:mode
 						packVolumes = append(packVolumes, fmt.Sprintf("%s:/etc/ssl/certs/registry-ca.crt:ro", caPath))
 						// Tell lifecycle/go-containerregistry to use it
+						// Mount as /etc/ssl/certs/registry-ca.crt (standard location or just a known path)
+						// And set SSL_CERT_FILE to point to it.
+						// Pack's lifecycle container respects SSL_CERT_FILE.
 						packEnv["SSL_CERT_FILE"] = "/etc/ssl/certs/registry-ca.crt"
 						fmt.Printf("Mounting CA cert %s -> /etc/ssl/certs/registry-ca.crt\n", caPath)
 					}

@@ -147,22 +147,47 @@ func TestIntegration_BuildpackMultiContext(t *testing.T) {
 	cmd.Dir = filepath.Join("fixtures", "multicontext")
 	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("SKAFFOLD_INSECURE_REGISTRY=%s", repoHost))
+
+	// CRITICAL: Disable default BuildKit attestations (provenance).
+	// Without this, BuildKit creates an OCI Image Index containing both the image manifest
+	// and an attestation manifest (platform: unknown/unknown).
+	// The `pack` lifecycle (via go-containerregistry) fails to handle this Index correctly when
+	// trying to use it as a run-image, resulting in the error:
+	// "failed to export: get run image top layer SHA: image has no layers".
+	// Setting this env var forces a standard single-manifest image.
+	cmd.Env = append(cmd.Env, "BUILDX_NO_DEFAULT_ATTESTATIONS=1")
+
 	if os.Getenv("CI") == "true" || runtime.GOOS == "darwin" {
 		cmd.Env = append(cmd.Env, "OP_PACK_NETWORK=host")
 	}
 
 	// Setup CA cert for pack lifecycle if needed
+	// On macOS/Docker Desktop, the container runs in a VM. To access the registry on the host (or another container mapped to host),
+	// we use a bridge network or host.docker.internal.
+	// The registry uses a self-signed certificate. For `pack` (lifecycle) to trust it, we must:
+	// 1. Extract the CA cert from the running registry container.
+	// 2. Mount it into the build container (handled in internal/cmd/build.go via OP_REGISTRY_CA_PATH).
 	if runtime.GOOS == "darwin" || strings.Contains(repoHost, "localhost") {
-		// Use known container name "octopilot-registry"
 		certDir := filepath.Join("fixtures", "certs")
 		if err := os.MkdirAll(certDir, 0755); err != nil {
 			t.Logf("Failed to create cert dir: %v", err)
 		} else {
-			// Copy certs: use "octopilot-registry" which is set by requireRegistry
-			// Cert path is /etc/envoy/certs/tls.crt
-			cmdCP := exec.Command("docker", "cp", "octopilot-registry:/etc/envoy/certs/tls.crt", certDir)
+			// Find registry container ID dynamically (required for CI where names are generated)
+			containerID := "octopilot-registry" // Default for local manual runs
+			out, err := exec.Command("docker", "ps", "-q", "--filter", "ancestor=ghcr.io/octopilot/registry-tls:latest").Output()
+			if err == nil {
+				ids := strings.Fields(string(out))
+				if len(ids) > 0 {
+					containerID = ids[0]
+					t.Logf("Found registry container ID: %s", containerID)
+				}
+			}
+
+			// Copy certs: using the found container ID
+			// Cert path is /etc/envoy/certs/tls.crt (Envoy is the TLS terminator in this container)
+			cmdCP := exec.Command("docker", "cp", fmt.Sprintf("%s:/etc/envoy/certs/tls.crt", containerID), certDir)
 			if out, err := cmdCP.CombinedOutput(); err != nil {
-				t.Logf("Failed to copy certs from octopilot-registry: %v. Output: %s", err, string(out))
+				t.Logf("Failed to copy certs from registry container (%s): %v. Output: %s", containerID, err, string(out))
 			} else {
 				// Set Env. The file is copied as "tls.crt" into certDir
 				caPath, _ := filepath.Abs(filepath.Join(certDir, "tls.crt"))

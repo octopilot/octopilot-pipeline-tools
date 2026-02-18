@@ -31,6 +31,26 @@ Run all unit tests:
 go test ./...
 ```
 
+### Running Integration Tests Locally (macOS)
+
+Running integration tests on macOS can be tricky due to Docker networking limitations (VM) and TLS certificates. We use a local registry with self-signed certificates (`ghcr.io/octopilot/registry-tls`) to simulate a production-like environment.
+
+**Prerequisites:**
+1.  Run the registry container:
+    ```bash
+    docker run -d --rm --name octopilot-registry -p 5001:5001 ghcr.io/octopilot/registry-tls:latest
+    ```
+2.  Ensure you have `go` 1.26+ installed.
+
+**Running the Test:**
+```bash
+go test -tags integration -v -run TestIntegration_BuildpackMultiContext ./tests/integration/...
+```
+
+**Known Issues & Workarounds:**
+*   **TLS Verification (`x509: certificate signed by unknown authority`)**: The `tests/integration/main_test.go` fixture automatically extracts the CA certificate from the running `octopilot-registry` container and mounts it into the `pack` build container via `OP_REGISTRY_CA_PATH`. **Do not use a standard `registry:2` container**, as it won't have the expected certs or Envoy proxy setup.
+*   **Image Has No Layers (OCI Index Error)**: By default, Docker BuildKit on some platforms generates OCI Image Indexes (manifest lists) that include build attestations (provenance). The `pack` lifecycle v0.17+ (used internally) has issues handling these indexes when pulling from an insecure registry in this specific setup. The test fixture sets `BUILDX_NO_DEFAULT_ATTESTATIONS=1` to force standard single-manifest images.
+
 ## Dependencies & Forks
 
 `octopilot-pipeline-tools` relies on several forked repositories and custom artifacts to support specific requirements (primarily multi-architecture builds via direct `pack` integration) that are not yet available upstream.
