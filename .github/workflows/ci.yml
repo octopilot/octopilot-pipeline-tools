@@ -95,7 +95,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Use detected versions (bumped by dependabot) - do not downgrade
+      - run: echo "BP_GO_VERSION=${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}" >> $GITHUB_ENV
+
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
