@@ -5,5 +5,7 @@ metadata:
 build:
   artifacts:
     - image: octopilot-pipeline-tools
-      buildpacks:
-        builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
+      # buildpacks:
+      #   builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
+      docker:
+        dockerfile: Dockerfile
