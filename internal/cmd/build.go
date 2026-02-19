@@ -295,7 +295,8 @@ var buildCmd = &cobra.Command{
 					// In some registries (GHCR, etc.), a pushed image might not be immediately available
 					// for pulling by a subsequent build step (even if push succeeded).
 					// We poll for it to ensure the next step in the skaffold graph can succeed.
-					if err := waitForImage(fullTag, remoteOpts...); err != nil {
+					timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
+					if err := waitForImage(fullTag, timeout, remoteOpts...); err != nil {
 						fmt.Printf("Warning: failed to wait for image propagation: %v\n", err)
 						// Don't fail the build, hope for the best, but warn.
 					}
@@ -337,7 +338,8 @@ var buildCmd = &cobra.Command{
 						}
 
 						// Wait for image propagation here too
-						if err := waitForImage(ba.Tag, remoteOpts...); err != nil {
+						timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
+						if err := waitForImage(ba.Tag, timeout, remoteOpts...); err != nil {
 							fmt.Printf("Warning: failed to wait for image propagation for %s: %v\n", ba.Tag, err)
 						}
 					}
@@ -407,27 +409,36 @@ var buildCmd = &cobra.Command{
 }
 
 // waitForImage polls the registry until the image is available or timeout
-func waitForImage(tag string, opts ...remote.Option) error {
-	fmt.Printf("Waiting for image propagation: %s\n", tag)
+func waitForImage(tag string, timeout time.Duration, opts ...remote.Option) error {
+	fmt.Printf("Waiting for image propagation: %s (timeout: %s)\n", tag, timeout)
 
 	ref, err := name.ParseReference(tag)
 	if err != nil {
 		return err
 	}
 
-	// Try for up to 60 seconds
-	for i := 0; i < 20; i++ {
-		// Just check HEAD
+	start := time.Now()
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	// Initial check
+	if _, err := remote.Head(ref, opts...); err == nil {
+		fmt.Printf("\nImage found: %s\n", tag)
+		return nil
+	}
+
+	fmt.Print("Waiting")
+	for range ticker.C {
+		fmt.Print(".") // Progress indicator
 		_, err := remote.Head(ref, opts...)
 		if err == nil {
-			fmt.Printf("Image found: %s\n", tag)
+			fmt.Printf("\nImage found: %s\n", tag)
 			return nil
 		}
-		// If manifest unknown, wait. If other error (auth), maybe fail?
-		// For now we assume transient errors or not found means wait.
-
-		// Wait 3s
-		time.Sleep(3 * time.Second)
+		if time.Since(start) > timeout {
+			fmt.Println() // Newline after progress
+			return fmt.Errorf("timeout waiting for image %s after %s", tag, timeout)
+		}
 	}
 	return fmt.Errorf("timeout waiting for image %s", tag)
 }
@@ -530,4 +541,5 @@ func init() {
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")
 	buildCmd.Flags().String("sbom-output", "", "Directory to output SBOMs")
+	buildCmd.Flags().Duration("propagation-timeout", 180*time.Second, "Timeout for waiting for image propagation (default 180s)")
 }
