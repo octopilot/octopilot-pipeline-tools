@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -161,14 +162,14 @@ var buildCmd = &cobra.Command{
 						fullTag = fmt.Sprintf("%s:latest", imageName)
 					}
 
-					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
+				fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
-					// Resolve RunImage
-					runImage := art.BuildpackArtifact.RunImage
-					if resolved, ok := builtImages[runImage]; ok {
-						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
-						runImage = resolved
-					}
+				// Resolve RunImage
+				runImage := art.BuildpackArtifact.RunImage
+				if resolved, ok := builtImages[runImage]; ok {
+					fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
+					runImage = resolved
+				}
 
 					// Construct env
 					packEnv := map[string]string{
@@ -429,49 +430,196 @@ var buildCmd = &cobra.Command{
 						// Don't fail the build, hope for the best, but warn.
 					}
 
+			} else if len(opts.Platforms) > 1 && art.DockerArtifact != nil {
+				// Multi-arch Docker artifact: build each platform separately and assemble the
+				// manifest list ourselves. The Skaffold fork runner has a bug where BuildKit's
+				// provenance/attestation manifest turns per-platform tags into OCI Indexes; the
+				// fork then calls .Image() on that index and fails with
+				// "no child with platform X in index <arm64-tag>@<digest>".
+				// We mirror the buildpack path: per-platform docker build + go-containerregistry
+				// manifest list assembly, with BUILDX_NO_DEFAULT_ATTESTATIONS=1 to suppress
+				// attestation manifests so each per-platform tag is a clean single-arch image.
+
+				var fullTag string
+				if strings.HasSuffix(repo, "/") {
+					fullTag = fmt.Sprintf("%s%s:latest", repo, art.ImageName)
 				} else {
-					fmt.Printf("Delegating non-buildpack artifact %s to Skaffold runner...\n", art.ImageName)
-					// Create a slice explicitly for this artifact using the imported type
-					artifactsToBuild := []*latest.Artifact{art}
+					fullTag = fmt.Sprintf("%s/%s:latest", repo, art.ImageName)
+				}
 
-					// Use the existing runner to build just this artifact
-					// Skaffold runner handles the pushing if configured in opts (which it is)
-					bRes, err := r.Build(ctx, os.Stdout, artifactsToBuild)
-					if err != nil {
-						return fmt.Errorf("skaffold build failed for %s: %w", art.ImageName, err)
-					}
+				contextDir := filepath.Join(cwd, art.Workspace)
+				dockerfilePath := art.DockerArtifact.DockerfilePath
+				if dockerfilePath == "" {
+					dockerfilePath = "Dockerfile"
+				}
+				if !filepath.IsAbs(dockerfilePath) {
+					dockerfilePath = filepath.Join(contextDir, dockerfilePath)
+				}
 
-					// Collect results
-					for _, ba := range bRes {
-						built = append(built, util.Build{
-							ImageName: ba.ImageName,
-							Tag:       ba.Tag,
-						})
-						// Record for dependency resolution
-						builtImages[ba.ImageName] = ba.Tag
-
-						// Prepare remote options (handle insecure/self-signed registries)
-						// We need to rebuild opts because the loop below was inside the buildpack block
-						remoteOpts := []remote.Option{
-							remote.WithAuthFromKeychain(authn.DefaultKeychain),
-						}
-						for _, reg := range opts.InsecureRegistries {
-							if strings.HasPrefix(ba.Tag, reg) {
-								t := &http.Transport{
-									TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-								}
-								remoteOpts = append(remoteOpts, remote.WithTransport(t))
-								break
-							}
-						}
-
-						// Wait for image propagation here too
-						timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
-						if err := waitForImage(ba.Tag, timeout, remoteOpts...); err != nil {
-							fmt.Printf("Warning: failed to wait for image propagation for %s: %v\n", ba.Tag, err)
-						}
+				dockerRemoteOpts := []remote.Option{
+					remote.WithAuthFromKeychain(authn.DefaultKeychain),
+				}
+				for _, reg := range opts.InsecureRegistries {
+					if strings.HasPrefix(fullTag, reg) {
+						dockerRemoteOpts = append(dockerRemoteOpts, remote.WithTransport(&http.Transport{
+							TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+						}))
+						break
 					}
 				}
+
+				var platformManifests []string
+
+				for _, platform := range opts.Platforms {
+					sanitized := strings.ReplaceAll(platform, "/", "-")
+					platformTag := fmt.Sprintf("%s-%s", fullTag, sanitized)
+
+					fmt.Printf("Building Docker artifact %s for platform %s -> %s\n", art.ImageName, platform, platformTag)
+
+					// BUILDX_NO_DEFAULT_ATTESTATIONS=1 prevents BuildKit from wrapping the
+					// pushed image in an OCI Index that contains an attestation child manifest.
+					// Without this, `docker build --push` via BuildKit produces an Index even
+					// for a single platform, breaking our manifest-list assembly below.
+					buildEnv := append(os.Environ(), "BUILDX_NO_DEFAULT_ATTESTATIONS=1")
+					buildArgs := []string{
+						"build",
+						"--platform", platform,
+						"--push",
+						"--tag", platformTag,
+						"--file", dockerfilePath,
+						contextDir,
+					}
+					buildCmd := exec.CommandContext(ctx, "docker", buildArgs...)
+					buildCmd.Stdout = os.Stdout
+					buildCmd.Stderr = os.Stderr
+					buildCmd.Env = buildEnv
+					if err := buildCmd.Run(); err != nil {
+						return fmt.Errorf("docker build failed for %s (%s): %w", art.ImageName, platform, err)
+					}
+
+					platformManifests = append(platformManifests, platformTag)
+				}
+
+				// Assemble manifest list from per-platform images (same logic as buildpack path)
+				fmt.Printf("Creating manifest list %s from %v\n", fullTag, platformManifests)
+
+				var index v1.ImageIndex = empty.Index
+				index = mutate.IndexMediaType(index, types.DockerManifestList)
+
+				for _, pTag := range platformManifests {
+					pRef, err := name.ParseReference(pTag)
+					if err != nil {
+						return fmt.Errorf("parsing platform tag %s: %w", pTag, err)
+					}
+					desc, err := remote.Get(pRef, dockerRemoteOpts...)
+					if err != nil {
+						return fmt.Errorf("getting platform image %s: %w", pTag, err)
+					}
+					img, err := desc.Image()
+					if err != nil {
+						return fmt.Errorf("getting image content for %s: %w", pTag, err)
+					}
+					index = mutate.AppendManifests(index, mutate.IndexAddendum{
+						Add:        img,
+						Descriptor: desc.Descriptor,
+					})
+				}
+
+				ref, err := name.ParseReference(fullTag)
+				if err != nil {
+					return fmt.Errorf("parsing full tag %s: %w", fullTag, err)
+				}
+				if err := remote.WriteIndex(ref, index, dockerRemoteOpts...); err != nil {
+					return fmt.Errorf("writing manifest list %s: %w", fullTag, err)
+				}
+
+				d, err := index.Digest()
+				if err != nil {
+					return fmt.Errorf("computing index digest: %w", err)
+				}
+				finalDigest := d.String()
+				fmt.Printf("Successfully pushed manifest list %s (digest: %s)\n", fullTag, finalDigest)
+
+				fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, finalDigest)
+
+				// Version tag (same logic as buildpack path)
+				if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" {
+					versionTagStr := strings.TrimSuffix(fullTag, "latest") + version
+					fmt.Printf("Tagging %s as %s...\n", fullTag, versionTagStr)
+					verRef, err := name.ParseReference(versionTagStr)
+					if err != nil {
+						return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
+					}
+					srcRef, _ := name.ParseReference(fullTag)
+					desc, err := remote.Get(srcRef, dockerRemoteOpts...)
+					if err != nil {
+						return fmt.Errorf("getting source index %s: %w", fullTag, err)
+					}
+					if desc.MediaType.IsIndex() {
+						idx, err := desc.ImageIndex()
+						if err != nil {
+							return fmt.Errorf("getting index content: %w", err)
+						}
+						if err := remote.WriteIndex(verRef, idx, dockerRemoteOpts...); err != nil {
+							return fmt.Errorf("tagging version index %q: %w", versionTagStr, err)
+						}
+					} else {
+						img, err := desc.Image()
+						if err != nil {
+							return fmt.Errorf("getting image for version tag: %w", err)
+						}
+						if err := remote.Write(verRef, img, dockerRemoteOpts...); err != nil {
+							return fmt.Errorf("tagging version image %q: %w", versionTagStr, err)
+						}
+					}
+					fmt.Printf("Successfully tagged version %s\n", versionTagStr)
+				}
+
+				// Wait for propagation
+				timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
+				if err := waitForImage(fullTag, timeout, dockerRemoteOpts...); err != nil {
+					fmt.Printf("Warning: failed to wait for image propagation: %v\n", err)
+				}
+
+				built = append(built, util.Build{ImageName: art.ImageName, Tag: fullTagWithDigest})
+				builtImages[art.ImageName] = fullTagWithDigest
+
+			} else {
+				// Single-platform or non-Docker artifact: delegate to Skaffold runner.
+				// The Skaffold runner works correctly for single-platform builds.
+				fmt.Printf("Delegating non-buildpack artifact %s to Skaffold runner...\n", art.ImageName)
+				artifactsToBuild := []*latest.Artifact{art}
+
+				bRes, err := r.Build(ctx, os.Stdout, artifactsToBuild)
+				if err != nil {
+					return fmt.Errorf("skaffold build failed for %s: %w", art.ImageName, err)
+				}
+
+				for _, ba := range bRes {
+					built = append(built, util.Build{
+						ImageName: ba.ImageName,
+						Tag:       ba.Tag,
+					})
+					builtImages[ba.ImageName] = ba.Tag
+
+					singleRemoteOpts := []remote.Option{
+						remote.WithAuthFromKeychain(authn.DefaultKeychain),
+					}
+					for _, reg := range opts.InsecureRegistries {
+						if strings.HasPrefix(ba.Tag, reg) {
+							singleRemoteOpts = append(singleRemoteOpts, remote.WithTransport(&http.Transport{
+								TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+							}))
+							break
+						}
+					}
+
+					timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
+					if err := waitForImage(ba.Tag, timeout, singleRemoteOpts...); err != nil {
+						fmt.Printf("Warning: failed to wait for image propagation for %s: %v\n", ba.Tag, err)
+					}
+				}
+			}
 			}
 
 			// Write build_result.json
@@ -513,7 +661,7 @@ func waitForImage(tag string, timeout time.Duration, opts ...remote.Option) erro
 	defer ticker.Stop()
 
 	// Initial check
-	if _, err := remote.Head(ref, opts...); err == nil {
+	if _, err := remoteHead(ref, opts...); err == nil {
 		fmt.Printf("\nImage found: %s\n", tag)
 		return nil
 	}
@@ -521,7 +669,7 @@ func waitForImage(tag string, timeout time.Duration, opts ...remote.Option) erro
 	fmt.Print("Waiting")
 	for range ticker.C {
 		fmt.Print(".") // Progress indicator
-		_, err := remote.Head(ref, opts...)
+		_, err := remoteHead(ref, opts...)
 		if err == nil {
 			fmt.Printf("\nImage found: %s\n", tag)
 			return nil
