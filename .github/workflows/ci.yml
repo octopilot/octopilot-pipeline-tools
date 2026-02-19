@@ -41,19 +41,25 @@ jobs:
   lint:
     needs: detect
     if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
-    uses: octopilot/octopilot-workflows/.github/workflows/lint.yml@main
-    with:
-      pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: octopilot/actions/lint@main
+        with:
+          pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
 
   test:
     needs: detect
     if: toJSON(fromJson(needs.detect.outputs.pipeline-context).matrix) != '[]'
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include: ${{ fromJson(needs.detect.outputs.pipeline-context).matrix }}
-    uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
-    with:
-      pipeline-context: ${{ toJson(matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: octopilot/actions/test@main
+        with:
+          pipeline-context: ${{ toJson(matrix) }}
 
   integration:
     needs: [detect, lint, test]
