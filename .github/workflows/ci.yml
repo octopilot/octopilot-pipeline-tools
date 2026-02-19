@@ -139,33 +139,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        run: |
-          echo "=== Disk before cleanup ==="
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /usr/local/.ghcup \
-            /usr/lib/jvm \
-            /usr/share/swift \
-            /usr/local/share/boost \
-            /usr/share/gradle-8.8 \
-            /opt/hostedtoolcache/go \
-            /opt/hostedtoolcache/node \
-            /opt/hostedtoolcache/PyPy \
-            /opt/hostedtoolcache/Python \
-            /opt/hostedtoolcache/Ruby \
-            || true
-          echo "=== Disk after cleanup ==="
-          df -h /
-
-      - name: Download binaries artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-binaries
-          path: dist/
 
       - run: chmod +x dist/op-linux-amd64
 
