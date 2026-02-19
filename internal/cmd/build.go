@@ -65,20 +65,42 @@ var buildCmd = &cobra.Command{
 		// Clean environment variables that might contain platform suffixes
 		// This ensures that we are targeting the "manifest list" tag (clean) rather than a specific platform tag
 		// which might be passed by CI.
-		cleanEnvVars := []string{"DOCKER_METADATA_OUTPUT_VERSION", "SKAFFOLD_TAG", "VERSION"}
+		cleanEnvVars := []string{"DOCKER_METADATA_OUTPUT_VERSION", "SKAFFOLD_TAG", "VERSION", "TAG", "IMAGE_TAG"}
+		var targetVersion string
+
+		fmt.Println("--- DEBUG: Environment Variables Check ---")
 		for _, key := range cleanEnvVars {
 			if val := os.Getenv(key); val != "" {
-				// Strip _linux_amd64, _linux_arm64, etc.
-				parts := strings.Split(val, "_linux_")
-				if len(parts) > 1 {
-					newVal := parts[0]
-					fmt.Printf("Stripping platform suffix from %s: %s -> %s\n", key, val, newVal)
-					os.Setenv(key, newVal)
+				fmt.Printf("Env %s='%s'\n", key, val)
+				// Clean it if it looks like it has a platform suffix
+				// We expect formats like: v0.0.34_linux_arm64, v0.0.34_linux_amd64
+				if strings.Contains(val, "_linux_") {
+					parts := strings.Split(val, "_linux_")
+					if len(parts) > 0 {
+						newVal := parts[0]
+						fmt.Printf("Stripping platform suffix from %s: %s -> %s\n", key, val, newVal)
+						os.Setenv(key, newVal)
+						if targetVersion == "" {
+							targetVersion = newVal
+						}
+					}
+				} else if targetVersion == "" {
+					targetVersion = val
 				}
 			}
 		}
+		fmt.Println("------------------------------------------")
 
 		opts := prepareSkaffoldOptions(cmd, cwd)
+
+		// Force the tag to be the clean version if we found one
+		// This ensures op-base (built by Skaffold) uses the clean tag (multi-arch index)
+		// instead of the platform-suffixed tag.
+		if targetVersion != "" && opts.CustomTag == "" {
+			fmt.Printf("Forcing Skaffold CustomTag to: %s\n", targetVersion)
+			opts.CustomTag = targetVersion
+		}
+
 		repo := ""
 		if v := opts.DefaultRepo.Value(); v != nil {
 			repo = *v
