@@ -2,56 +2,71 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/util"
 	"github.com/spf13/cobra"
 )
 
+// craneCopy is a var so it can be replaced in tests.
+var craneCopy = func(src, dst string, opts ...crane.Option) error {
+	return crane.Copy(src, dst, opts...)
+}
+
 var promoteCmd = &cobra.Command{
 	Use:   "promote-image",
 	Short: "Copy image from source to destination registry (using crane library).",
-	Run: func(cmd *cobra.Command, args []string) {
+	Long: `Promote (copy) a container image from a source environment registry to a
+destination registry without rebuilding. Reads the image reference from
+build_result.json.
+
+When skaffold.yaml defines multiple artifacts (e.g. a base image and an
+application image), use --image-name to select which artifact to promote.
+By default the last entry in build_result.json is used (the application
+image; base images appear first by convention).`,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		sourceEnv, _ := cmd.Flags().GetString("source")
 		destEnv, _ := cmd.Flags().GetString("destination")
 		buildResultDir, _ := cmd.Flags().GetString("build-result-dir")
+		imageName, _ := cmd.Flags().GetString("image-name")
 
 		srcRepo, destRepo := util.GetPromoteRepositories(sourceEnv, destEnv)
 		if srcRepo == "" || destRepo == "" {
-			fmt.Fprintln(os.Stderr, "Error: Could not resolve repositories. Set GOOGLE_GKE_IMAGE_* env vars.")
-			os.Exit(1)
+			return fmt.Errorf("could not resolve repositories — set GOOGLE_GKE_IMAGE_* env vars or config")
 		}
 
-		// Read tag from build_result.json
 		res, err := util.ReadBuildResult(buildResultDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading build_result.json: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("reading build_result.json: %w", err)
 		}
 
-		tag, err := util.GetFirstTag(res)
+		// Select the correct artifact (by name or last entry).
+		fullRef, err := util.SelectTag(res, imageName)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting tag: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("selecting image: %w", err)
 		}
 
-		srcRef := fmt.Sprintf("%s/%s", srcRepo, tag)
-		destRef := fmt.Sprintf("%s/%s", destRepo, tag)
+		// fullRef is the fully-qualified stored ref:
+		//   ghcr.io/octopilot/op:v1.0.0@sha256:abc123...
+		//
+		// srcRef: use the stored ref directly (it already includes the source registry).
+		// destRef: replace the source registry prefix with the destination prefix.
+		srcRef := fullRef
+		imageRelPath := fullRef
+		if strings.HasPrefix(fullRef, srcRepo+"/") {
+			imageRelPath = strings.TrimPrefix(fullRef, srcRepo+"/")
+		}
+		destRef := fmt.Sprintf("%s/%s", strings.TrimSuffix(destRepo, "/"), imageRelPath)
 
-		fmt.Printf("Promoting %s -> %s\n", srcRef, destRef)
+		fmt.Printf("Promoting %s\n     -> %s\n", srcRef, destRef)
 
-		// Use crane library
-		// crane.Copy(src, dest, options...)
-		// We might need authentication options if not using standard docker config.
-		// crane uses ~/.docker/config.json by default which is what we want.
-
-		if err := crane.Copy(srcRef, destRef); err != nil {
-			fmt.Fprintf(os.Stderr, "Promotion failed: %v\n", err)
-			os.Exit(1)
+		if err := craneCopy(srcRef, destRef); err != nil {
+			return fmt.Errorf("promotion failed: %w", err)
 		}
 
 		fmt.Println("Promotion successful.")
+		return nil
 	},
 }
 
@@ -59,7 +74,8 @@ func init() {
 	rootCmd.AddCommand(promoteCmd)
 	promoteCmd.Flags().String("source", "", "Source environment (dev, pp, prod)")
 	promoteCmd.Flags().String("destination", "", "Destination environment (pp, prod)")
-	promoteCmd.Flags().String("build-result-dir", "", "Directory containing build_result.json")
+	promoteCmd.Flags().String("build-result-dir", "", "Directory containing build_result.json (default: cwd)")
+	promoteCmd.Flags().String("image-name", "", "Artifact name to promote (default: last entry in build_result.json)")
 	_ = promoteCmd.MarkFlagRequired("source")
 	_ = promoteCmd.MarkFlagRequired("destination")
 }

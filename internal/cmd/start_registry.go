@@ -86,5 +86,6 @@ var startRegistryCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(startRegistryCmd)
 	startRegistryCmd.Flags().Bool("trust", false, "Trust the generated certificate on the host")
-	startRegistryCmd.Flags().String("image", "registry:2", "Registry image to use")
+	startRegistryCmd.Flags().String("image", "ghcr.io/octopilot/registry-tls:latest",
+		"Registry container image (must expose port 5000 with TLS)")
 }

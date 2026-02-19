@@ -9,14 +9,19 @@ import (
 
 const BuildResultFilename = "build_result.json"
 
-type BuildResult struct {
-	Builds []interface{} `json:"builds"`
-}
-
+// BuildEntry is a single artifact record in build_result.json.
 type BuildEntry struct {
-	Tag string `json:"tag"`
+	ImageName string `json:"imageName"`
+	Tag       string `json:"tag"` // fully-qualified ref: registry/image:tag@sha256:digest
 }
 
+// BuildResult is the contract written by `op build --push` and consumed by
+// promote-image, watch-deployment, and attestation steps.
+type BuildResult struct {
+	Builds []BuildEntry `json:"builds"`
+}
+
+// Build is the internal struct used during the build phase before writing.
 type Build struct {
 	ImageName string
 	Tag       string
@@ -34,36 +39,53 @@ func ReadBuildResult(dir string) (*BuildResult, error) {
 	path := filepath.Join(dir, BuildResultFilename)
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 
 	var res BuildResult
 	if err := json.Unmarshal(data, &res); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	if len(res.Builds) == 0 {
+		return nil, fmt.Errorf("%s: no builds found", path)
 	}
 	return &res, nil
 }
 
-// GetFirstTag returns the first tag from the build result.
-// It handles both string entries and object entries with "tag" field.
+// GetFirstTag returns the tag of the first artifact in build_result.json.
+// For multi-artifact builds prefer GetTagForImage to select by name.
 func GetFirstTag(res *BuildResult) (string, error) {
 	if len(res.Builds) == 0 {
 		return "", fmt.Errorf("no builds found")
 	}
+	return res.Builds[0].Tag, nil
+}
 
-	first := res.Builds[0]
-
-	// Case 1: String
-	if s, ok := first.(string); ok {
-		return s, nil
-	}
-
-	// Case 2: Object
-	if m, ok := first.(map[string]interface{}); ok {
-		if t, ok := m["tag"].(string); ok {
-			return t, nil
+// GetTagForImage returns the fully-qualified tag for the named artifact.
+// Returns an error if the image name is not present in the result.
+func GetTagForImage(res *BuildResult, imageName string) (string, error) {
+	for _, b := range res.Builds {
+		if b.ImageName == imageName {
+			return b.Tag, nil
 		}
 	}
+	names := make([]string, len(res.Builds))
+	for i, b := range res.Builds {
+		names[i] = b.ImageName
+	}
+	return "", fmt.Errorf("image %q not found in build_result.json (available: %v)", imageName, names)
+}
 
-	return "", fmt.Errorf("invalid build entry format")
+// SelectTag returns the tag for imageName when set, otherwise falls back to
+// the last entry in builds (the application image, not the base image).
+// This is the recommended selector for commands that need to pick one artifact.
+func SelectTag(res *BuildResult, imageName string) (string, error) {
+	if imageName != "" {
+		return GetTagForImage(res, imageName)
+	}
+	// Default: last entry (application image — base images come first by convention).
+	if len(res.Builds) == 0 {
+		return "", fmt.Errorf("no builds found")
+	}
+	return res.Builds[len(res.Builds)-1].Tag, nil
 }

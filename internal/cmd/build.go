@@ -682,12 +682,12 @@ func waitForImage(tag string, timeout time.Duration, opts ...remote.Option) erro
 func writeBuildResult(builds []util.Build) error {
 	if len(builds) > 0 {
 		buildResult := util.BuildResult{
-			Builds: make([]interface{}, 0, len(builds)),
+			Builds: make([]util.BuildEntry, 0, len(builds)),
 		}
 		for _, b := range builds {
-			buildResult.Builds = append(buildResult.Builds, map[string]string{
-				"imageName": b.ImageName,
-				"tag":       b.Tag,
+			buildResult.Builds = append(buildResult.Builds, util.BuildEntry{
+				ImageName: b.ImageName,
+				Tag:       b.Tag,
 			})
 		}
 
