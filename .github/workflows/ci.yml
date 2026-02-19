@@ -133,7 +133,9 @@ jobs:
       id-token: write
       attestations: write
     outputs:
-      digest: ${{ steps.push.outputs.digest }}
+      # Digest of the final 'op' container image (not op-base).
+      # steps.push.outputs.digest picks builds[0] = op-base; use the explicit extraction instead.
+      digest: ${{ steps.op-digest.outputs.digest }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -193,11 +195,25 @@ jobs:
           build_bypass: true
           op_binary: ./dist/op-linux-amd64
 
+      # The octopilot action extracts steps.push.outputs.digest from builds[0] in
+      # build_result.json. When skaffold.yaml has multiple artifacts (op-base + op),
+      # builds[0] is op-base — the wrong image to attest. Extract the op image digest
+      # explicitly so the attestation targets the actual published container.
+      - name: Extract op image digest
+        id: op-digest
+        run: |
+          TAG=$(jq -r '.builds[] | select(.imageName == "op") | .tag' build_result.json)
+          DIGEST=$(echo "$TAG" | awk -F'@' '{print $2}')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "Attesting op image: $TAG"
+
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ghcr.io/octopilot/octopilot-pipeline-tools
-          subject-digest: ${{ steps.push.outputs.digest }}
+          # subject-name must match the registry path where the image is stored.
+          # skaffold.yaml image: op → ghcr.io/octopilot/op (not octopilot-pipeline-tools).
+          subject-name: ghcr.io/${{ github.repository_owner }}/op
+          subject-digest: ${{ steps.op-digest.outputs.digest }}
           push-to-registry: true
 
       - name: Upload SBOM artifact
@@ -214,7 +230,7 @@ jobs:
   # and pushed. Downloads both artifacts and creates the GitHub release.
   publish-release:
     name: Publish GitHub Release
-    needs: [detect, build-container]
+    needs: [detect, build-binaries, build-container]
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
     runs-on: ubuntu-latest
     permissions:
