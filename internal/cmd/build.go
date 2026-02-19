@@ -20,7 +20,11 @@ import (
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/schema/latest"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/pack"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/util"
 	"github.com/spf13/cobra"
@@ -56,6 +60,22 @@ var buildCmd = &cobra.Command{
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("error getting cwd: %w", err)
+		}
+
+		// Clean environment variables that might contain platform suffixes
+		// This ensures that we are targeting the "manifest list" tag (clean) rather than a specific platform tag
+		// which might be passed by CI.
+		cleanEnvVars := []string{"DOCKER_METADATA_OUTPUT_VERSION", "SKAFFOLD_TAG", "VERSION"}
+		for _, key := range cleanEnvVars {
+			if val := os.Getenv(key); val != "" {
+				// Strip _linux_amd64, _linux_arm64, etc.
+				parts := strings.Split(val, "_linux_")
+				if len(parts) > 1 {
+					newVal := parts[0]
+					fmt.Printf("Stripping platform suffix from %s: %s -> %s\n", key, val, newVal)
+					os.Setenv(key, newVal)
+				}
+			}
 		}
 
 		opts := prepareSkaffoldOptions(cmd, cwd)
@@ -120,22 +140,18 @@ var buildCmd = &cobra.Command{
 					}
 
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
-					fmt.Printf("Current builtImages map: %v\n", builtImages)
 
-					// Check if RunImage is a reference to a previously built artifact
+					// Resolve RunImage
 					runImage := art.BuildpackArtifact.RunImage
 					if resolved, ok := builtImages[runImage]; ok {
 						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
 						runImage = resolved
-					} else {
-						fmt.Printf("runImage %s not found in builtImages map\n", runImage)
 					}
 
 					// Construct env
 					packEnv := map[string]string{
 						"BP_GO_PRIVATE": "github.com/octopilot/*",
 					}
-					// Add env vars from artifact definition
 					for _, env := range art.BuildpackArtifact.Env {
 						parts := strings.SplitN(env, "=", 2)
 						if len(parts) == 2 {
@@ -143,90 +159,88 @@ var buildCmd = &cobra.Command{
 						}
 					}
 
-					// Handle localhost/127.0.0.1 special case for pack lifecycle in container
-					// See python-legacy/src/octopilot_pipeline_tools/pack_build.py for context.
-					// The lifecycle runs in a container, so "localhost" refers to the container itself.
-					// We need to point it to the host machine where the registry is running.
-					// This is especially needed on Mac/Windows where host networking behavior differs.
-					packImageName := fullTag
-					packRunImage := runImage
-					packInsecureRegistries := opts.InsecureRegistries
+					// Prepare platform list
+					targetPlatforms := opts.Platforms
+					if len(targetPlatforms) == 0 {
+						targetPlatforms = []string{""} // Default/Host
+					}
 
-					rewriteLocalhost := func(s string) (string, bool) {
-						if strings.Contains(s, "localhost:5001") {
-							return strings.Replace(s, "localhost:5001", "127.0.0.1:5001", -1), true
+					var platformManifests []string
+
+					// Build for each platform
+					for _, platform := range targetPlatforms {
+						currentTag := fullTag
+						// If explicit multi-platform build, use distinct tags for intermediate images
+						if len(targetPlatforms) > 1 && platform != "" {
+							sanitized := strings.ReplaceAll(platform, "/", "-")
+							currentTag = fmt.Sprintf("%s-%s", fullTag, sanitized)
 						}
-						// If already 127.0.0.1, keep it (effectively rewritten/safe)
-						if strings.Contains(s, "127.0.0.1:5001") {
-							return s, true
-						}
-						return s, false
-					}
 
-					var rewritten bool
-					if newTag, ok := rewriteLocalhost(packImageName); ok {
-						packImageName = newTag
-						rewritten = true
-					}
-					if newRun, ok := rewriteLocalhost(packRunImage); ok {
-						packRunImage = newRun
-						rewritten = true
-					}
+						fmt.Printf("  -> Platform: %s, Tag: %s\n", platform, currentTag)
 
-					if rewritten {
-						fmt.Printf("Rewriting localhost->127.0.0.1 for pack: Image=%s RunImage=%s\n", packImageName, packRunImage)
-						// Add 127.0.0.1:5001 to insecure registries
-						packInsecureRegistries = append(packInsecureRegistries, "127.0.0.1:5001")
-					}
+						// Handle localhost/127.0.0.1 special case
+						packImageName := currentTag
+						packRunImage := runImage
+						packInsecureRegistries := opts.InsecureRegistries
 
-					packVolumes := []string{}
-					// CA CERTIFICATE MOUNTING:
-					// If OP_REGISTRY_CA_PATH is provided (e.g., by integration tests), we mount it into the
-					// lifecycle container. This is crucial for trusting self-signed certs of local registries.
-					if caPath := os.Getenv("OP_REGISTRY_CA_PATH"); caPath != "" {
-						// Mount CA cert into container
-						// Format: host:target:mode
-						packVolumes = append(packVolumes, fmt.Sprintf("%s:/etc/ssl/certs/registry-ca.crt:ro", caPath))
-						// Tell lifecycle/go-containerregistry to use it
-						// Mount as /etc/ssl/certs/registry-ca.crt (standard location or just a known path)
-						// And set SSL_CERT_FILE to point to it.
-						// Pack's lifecycle container respects SSL_CERT_FILE.
-						packEnv["SSL_CERT_FILE"] = "/etc/ssl/certs/registry-ca.crt"
-						fmt.Printf("Mounting CA cert %s -> /etc/ssl/certs/registry-ca.crt\n", caPath)
-					}
-
-					po := pack.BuildOptions{
-						ImageName: packImageName,
-						Builder:   art.BuildpackArtifact.Builder,
-						Path:      filepath.Join(cwd, art.Workspace),
-						Publish:   true,
-						RunImage:  packRunImage,
-						Target: func() string {
-							if len(opts.Platforms) > 0 {
-								// Pack only supports one target at a time in this context usually,
-								// or we pick the first one.
-								return opts.Platforms[0]
+						rewriteLocalhost := func(s string) (string, bool) {
+							if strings.Contains(s, "localhost:5001") {
+								return strings.Replace(s, "localhost:5001", "127.0.0.1:5001", -1), true
 							}
-							return ""
-						}(),
-						SBOMDir: func() string {
-							s, _ := cmd.Flags().GetString("sbom-output")
-							return s
-						}(),
-						InsecureRegistries: packInsecureRegistries,
-						Volumes:            packVolumes,
-					}
-					if err := packBuild(ctx, po, os.Stdout); err != nil {
-						return fmt.Errorf("direct pack build failed: %w", err)
+							if strings.Contains(s, "127.0.0.1:5001") {
+								return s, true
+							}
+							return s, false
+						}
+
+						var rewritten bool
+						if newTag, ok := rewriteLocalhost(packImageName); ok {
+							packImageName = newTag
+							rewritten = true
+						}
+						if newRun, ok := rewriteLocalhost(packRunImage); ok {
+							packRunImage = newRun
+							rewritten = true
+						}
+
+						if rewritten {
+							packInsecureRegistries = append(packInsecureRegistries, "127.0.0.1:5001")
+						}
+
+						packVolumes := []string{}
+						if caPath := os.Getenv("OP_REGISTRY_CA_PATH"); caPath != "" {
+							packVolumes = append(packVolumes, fmt.Sprintf("%s:/etc/ssl/certs/registry-ca.crt:ro", caPath))
+							packEnv["SSL_CERT_FILE"] = "/etc/ssl/certs/registry-ca.crt"
+						}
+
+						po := pack.BuildOptions{
+							ImageName: packImageName,
+							Builder:   art.BuildpackArtifact.Builder,
+							Path:      filepath.Join(cwd, art.Workspace),
+							Publish:   true,
+							RunImage:  packRunImage,
+							Target:    platform,
+							SBOMDir: func() string {
+								s, _ := cmd.Flags().GetString("sbom-output")
+								return s
+							}(),
+							InsecureRegistries: packInsecureRegistries,
+							Volumes:            packVolumes,
+						}
+						if err := packBuild(ctx, po, os.Stdout); err != nil {
+							return fmt.Errorf("direct pack build failed for %s (%s): %w", imageName, platform, err)
+						}
+
+						// Keep track of the pushed tag (original registry host, not 127.0.0.1)
+						platformManifests = append(platformManifests, currentTag)
 					}
 
-					// Prepare remote options (handle insecure/self-signed registries)
+					// Prepare remote options for index creation/push
 					remoteOpts := []remote.Option{
 						remote.WithAuthFromKeychain(authn.DefaultKeychain),
 					}
 					for _, reg := range opts.InsecureRegistries {
 						if strings.HasPrefix(fullTag, reg) {
-							// Use custom transport to skip TLS verify for insecure registries
 							t := &http.Transport{
 								TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 							}
@@ -235,24 +249,79 @@ var buildCmd = &cobra.Command{
 						}
 					}
 
-					// Resolve digest for attestation
-					ref, err := name.ParseReference(fullTag)
-					if err != nil {
-						return fmt.Errorf("parsing reference %q: %w", fullTag, err)
-					}
+					finalDigest := ""
 
-					// Fetch the image descriptor to get the digest
-					img, err := remoteHead(ref, remoteOpts...)
-					if err != nil {
-						return fmt.Errorf("getting image digest for %q: %w", fullTag, err)
-					}
+					// Create Manifest List (Index) if we built multiple platforms
+					if len(targetPlatforms) > 1 {
+						fmt.Printf("Creating manifest list %s from %v\n", fullTag, platformManifests)
 
-					// We need the digest to be fully qualified
-					digest := img.Digest.String()
-					fmt.Printf("Resolved digest for %s: %s\n", fullTag, digest)
+						var idx mutate.IndexAddendum
+						_ = idx
+
+						// Start with empty index
+						// We'll default to OCI, but can switch to Docker
+						// GHCR usually works fine with OCI Index
+						var index v1.ImageIndex = empty.Index
+						index = mutate.IndexMediaType(index, types.DockerManifestList)
+
+						for _, pTag := range platformManifests {
+							pRef, err := name.ParseReference(pTag)
+							if err != nil {
+								return fmt.Errorf("parsing platform tag %s: %w", pTag, err)
+							}
+
+							// Get the remote image descriptor and image
+							desc, err := remote.Get(pRef, remoteOpts...)
+							if err != nil {
+								return fmt.Errorf("getting platform image %s: %w", pTag, err)
+							}
+
+							img, err := desc.Image()
+							if err != nil {
+								return fmt.Errorf("getting image content for %s: %w", pTag, err)
+							}
+
+							index = mutate.AppendManifests(index, mutate.IndexAddendum{
+								Add:        img,
+								Descriptor: desc.Descriptor,
+							})
+						}
+
+						// Push the index
+						ref, err := name.ParseReference(fullTag)
+						if err != nil {
+							return fmt.Errorf("parsing full tag %s: %w", fullTag, err)
+						}
+
+						if err := remote.WriteIndex(ref, index, remoteOpts...); err != nil {
+							return fmt.Errorf("writing manifest list %s: %w", fullTag, err)
+						}
+
+						// Get the digest of the index we just pushed
+						// Note: WriteIndex doesn't return digest directly easily without computing it
+						// We can compute it from index.Digest()
+						d, err := index.Digest()
+						if err != nil {
+							return fmt.Errorf("computing index digest: %w", err)
+						}
+						finalDigest = d.String()
+						fmt.Printf("Successfully pushed manifest list %s (digest: %s)\n", fullTag, finalDigest)
+
+					} else {
+						// Single platform, just get the digest
+						ref, err := name.ParseReference(fullTag)
+						if err != nil {
+							return fmt.Errorf("parsing reference %q: %w", fullTag, err)
+						}
+						img, err := remoteHead(ref, remoteOpts...)
+						if err != nil {
+							return fmt.Errorf("getting image digest for %q: %w", fullTag, err)
+						}
+						finalDigest = img.Digest.String()
+					}
 
 					// Append digest to tag so consumers (CI) can extract it
-					fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, digest)
+					fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, finalDigest)
 
 					built = append(built, util.Build{
 						ImageName: imageName,
@@ -269,24 +338,61 @@ var buildCmd = &cobra.Command{
 						versionTagStr := strings.TrimSuffix(fullTag, "latest") + version
 						fmt.Printf("Tagging %s as %s...\n", fullTag, versionTagStr)
 
-						ref, err := name.ParseReference(fullTag)
-						if err != nil {
-							return fmt.Errorf("parsing reference %q: %w", fullTag, err)
-						}
+						if len(targetPlatforms) > 1 {
+							// Push the same index to the new tag
+							// We can just rely on remote.WriteIndex again or `remote.Tag` if it existed
+							// We can reconstruct the index or just fetch it.
+							// Actually we already have `index` variable above inside the if block.
+							// Logic is split. Better:
 
-						// Get the remote image
-						img, err := remoteImage(ref, remoteOpts...)
-						if err != nil {
-							return fmt.Errorf("reading image %q: %w", fullTag, err)
-						}
+							verRef, err := name.ParseReference(versionTagStr)
+							if err != nil {
+								return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
+							}
 
-						verRef, err := name.ParseReference(versionTagStr)
-						if err != nil {
-							return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
-						}
+							// If we built an index, we should copy it (referencing same manifests)
+							// Or just pull the index we just pushed and push it to new tag.
+							srcRef, _ := name.ParseReference(fullTag)
+							desc, err := remote.Get(srcRef, remoteOpts...)
+							if err != nil {
+								return fmt.Errorf("getting source index %s: %w", fullTag, err)
+							}
 
-						if err := remoteWrite(verRef, img, remoteOpts...); err != nil {
-							return fmt.Errorf("tagging version %q: %w", versionTagStr, err)
+							if desc.MediaType.IsIndex() {
+								idx, err := desc.ImageIndex()
+								if err != nil {
+									return fmt.Errorf("getting index content: %w", err)
+								}
+								if err := remote.WriteIndex(verRef, idx, remoteOpts...); err != nil {
+									return fmt.Errorf("tagging version index %q: %w", versionTagStr, err)
+								}
+							} else {
+								img, err := desc.Image()
+								if err != nil {
+									return fmt.Errorf("getting image content: %w", err)
+								}
+								if err := remote.Write(verRef, img, remoteOpts...); err != nil {
+									return fmt.Errorf("tagging version image %q: %w", versionTagStr, err)
+								}
+							}
+
+						} else {
+							// Single image copy
+							ref, err := name.ParseReference(fullTag)
+							if err != nil {
+								return fmt.Errorf("parsing reference %q: %w", fullTag, err)
+							}
+							img, err := remoteImage(ref, remoteOpts...)
+							if err != nil {
+								return fmt.Errorf("reading image %q: %w", fullTag, err)
+							}
+							verRef, err := name.ParseReference(versionTagStr)
+							if err != nil {
+								return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
+							}
+							if err := remoteWrite(verRef, img, remoteOpts...); err != nil {
+								return fmt.Errorf("tagging version %q: %w", versionTagStr, err)
+							}
 						}
 						fmt.Printf("Successfully pushed %s\n", versionTagStr)
 					}
@@ -345,43 +451,6 @@ var buildCmd = &cobra.Command{
 					}
 				}
 			}
-			// Implementation note: The above loop handles buildpacks. We need to handle Dockerfiles.
-			// Let's refactor:
-			// 1. Filter artifacts into `buildpackArtifacts` and `standardArtifacts`
-			// 2. Iterate buildpackArtifacts and run custom logic
-			// 3. Pass standardArtifacts to r.Build()
-
-			// Refactored logic below (replacing loop):
-
-			// runCtx.Artifacts() returns []*latest.Artifact
-
-			for _, art := range runCtx.Artifacts() {
-				if art.BuildpackArtifact != nil {
-					// ... (existing buildpack logic) ...
-					// (RE-INLINE existing logic for clarity in diff, but targeted)
-					// It seems the user prompt implies just modifying the "else" block or flow.
-					// But standard skaffold build `r.Build` builds ALL passed artifacts.
-				} else {
-					// Adding to standard list
-				}
-			}
-
-			// This replace is complex. Let's step back.
-			// The user just wants it to work.
-			// The easiest way is to NOT use `useDirectPack` if there are Dockerfile artifacts?
-			// BUT we want the custom logic for buildpacks (cross-arch without daemon).
-
-			// Correct approach: Split the artifacts.
-			// But I cannot see definitions of `latest` package types easily.
-			// Assuming `runCtx.Artifacts()` returns the list we can filter.
-
-			// Let's simplify and just fix the "Skipping" part by collecting them.
-
-			// We need to re-write the loop entirely to support this split.
-			// Since this is a partial replace, I will replace the loop content to handle the split.
-			// Wait, I can't replace the whole loop easily with `replace_file_content` if it's huge.
-			// The file content shows lines 75-166 is the loop.
-			// I will replace the WHOLE loop logic.
 
 			// Write build_result.json
 			if err := writeBuildResult(built); err != nil {
