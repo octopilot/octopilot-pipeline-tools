@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/graph"
@@ -289,6 +290,16 @@ var buildCmd = &cobra.Command{
 						}
 						fmt.Printf("Successfully pushed %s\n", versionTagStr)
 					}
+
+					// WAIT FOR IMAGE PROPAGATION
+					// In some registries (GHCR, etc.), a pushed image might not be immediately available
+					// for pulling by a subsequent build step (even if push succeeded).
+					// We poll for it to ensure the next step in the skaffold graph can succeed.
+					if err := waitForImage(fullTag, remoteOpts...); err != nil {
+						fmt.Printf("Warning: failed to wait for image propagation: %v\n", err)
+						// Don't fail the build, hope for the best, but warn.
+					}
+
 				} else {
 					fmt.Printf("Delegating non-buildpack artifact %s to Skaffold runner...\n", art.ImageName)
 					// Create a slice explicitly for this artifact using the imported type
@@ -309,6 +320,26 @@ var buildCmd = &cobra.Command{
 						})
 						// Record for dependency resolution
 						builtImages[ba.ImageName] = ba.Tag
+
+						// Prepare remote options (handle insecure/self-signed registries)
+						// We need to rebuild opts because the loop below was inside the buildpack block
+						remoteOpts := []remote.Option{
+							remote.WithAuthFromKeychain(authn.DefaultKeychain),
+						}
+						for _, reg := range opts.InsecureRegistries {
+							if strings.HasPrefix(ba.Tag, reg) {
+								t := &http.Transport{
+									TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+								}
+								remoteOpts = append(remoteOpts, remote.WithTransport(t))
+								break
+							}
+						}
+
+						// Wait for image propagation here too
+						if err := waitForImage(ba.Tag, remoteOpts...); err != nil {
+							fmt.Printf("Warning: failed to wait for image propagation for %s: %v\n", ba.Tag, err)
+						}
 					}
 				}
 			}
@@ -373,6 +404,32 @@ var buildCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+// waitForImage polls the registry until the image is available or timeout
+func waitForImage(tag string, opts ...remote.Option) error {
+	fmt.Printf("Waiting for image propagation: %s\n", tag)
+
+	ref, err := name.ParseReference(tag)
+	if err != nil {
+		return err
+	}
+
+	// Try for up to 60 seconds
+	for i := 0; i < 20; i++ {
+		// Just check HEAD
+		_, err := remote.Head(ref, opts...)
+		if err == nil {
+			fmt.Printf("Image found: %s\n", tag)
+			return nil
+		}
+		// If manifest unknown, wait. If other error (auth), maybe fail?
+		// For now we assume transient errors or not found means wait.
+
+		// Wait 3s
+		time.Sleep(3 * time.Second)
+	}
+	return fmt.Errorf("timeout waiting for image %s", tag)
 }
 
 func writeBuildResult(builds []util.Build) error {
