@@ -64,9 +64,9 @@ func TestRunCmd_ContextList(t *testing.T) {
 	// Change directory for the command
 	orig, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
-	runCmd.Flags().Set("skaffold-file", "skaffold.yaml")
+	_ = runCmd.Flags().Set("skaffold-file", "skaffold.yaml")
 	err := runCmd.RunE(runCmd, []string{"context", "list"})
 	require.NoError(t, err)
 }
@@ -77,9 +77,9 @@ func TestRunCmd_UnknownContext(t *testing.T) {
 
 	orig, _ := os.Getwd()
 	require.NoError(t, os.Chdir(dir))
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
-	runCmd.Flags().Set("skaffold-file", "skaffold.yaml")
+	_ = runCmd.Flags().Set("skaffold-file", "skaffold.yaml")
 	err := runCmd.RunE(runCmd, []string{"nonexistent"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nonexistent")

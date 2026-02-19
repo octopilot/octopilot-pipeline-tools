@@ -133,8 +133,8 @@ func TestBuild_MixedArtifacts(t *testing.T) {
 	// But `buildCmd` has flags defined in `init()`.
 
 	// Let's set the flag on `buildCmd`.
-	buildCmd.Flags().Set("push", "true")
-	buildCmd.Flags().Set("repo", "") // Let mock resolve it
+	_ = buildCmd.Flags().Set("push", "true")
+	_ = buildCmd.Flags().Set("repo", "") // Let mock resolve it
 
 	err := buildCmd.RunE(buildCmd, []string{})
 	// If the real GetRunContext fails (e.g. valid file check), we might get error.

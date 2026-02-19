@@ -74,6 +74,9 @@ jobs:
       OP_PACK_NETWORK: host
     steps:
       - uses: actions/checkout@v4
+      - uses: octopilot/actions/janitor@main
+        with:
+          pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
@@ -102,6 +105,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - uses: octopilot/actions/janitor@main
+        with:
+          pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
 
       - run: echo "BP_GO_VERSION=${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}" >> $GITHUB_ENV
 
@@ -148,26 +155,8 @@ jobs:
           fetch-depth: 0
 
       - name: Free runner disk space
-        run: |
-          echo "=== Disk before cleanup ==="
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /usr/local/.ghcup \
-            /usr/lib/jvm \
-            /usr/share/swift \
-            /usr/local/share/boost \
-            /usr/share/gradle-8.8 \
-            /opt/hostedtoolcache/go \
-            /opt/hostedtoolcache/node \
-            /opt/hostedtoolcache/PyPy \
-            /opt/hostedtoolcache/Python \
-            /opt/hostedtoolcache/Ruby \
-            || true
-          echo "=== Disk after cleanup ==="
-          df -h /
+        uses: octopilot/actions/janitor@main
+        # No pipeline-context: this job is Docker-only, remove all toolcaches.
 
       - name: Download binaries artifact
         uses: actions/download-artifact@v4

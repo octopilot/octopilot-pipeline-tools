@@ -685,10 +685,7 @@ func writeBuildResult(builds []util.Build) error {
 			Builds: make([]util.BuildEntry, 0, len(builds)),
 		}
 		for _, b := range builds {
-			buildResult.Builds = append(buildResult.Builds, util.BuildEntry{
-				ImageName: b.ImageName,
-				Tag:       b.Tag,
-			})
+			buildResult.Builds = append(buildResult.Builds, util.BuildEntry(b))
 		}
 
 		f, err := os.Create("build_result.json")

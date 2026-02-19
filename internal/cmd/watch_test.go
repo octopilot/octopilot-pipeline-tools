@@ -58,13 +58,13 @@ func TestWatchCmd_MatchesImmediately(t *testing.T) {
 	watchPollInterval = 1 * time.Millisecond
 	defer func() { watchPollInterval = oldInterval }()
 
-	watchCmd.Flags().Set("component", "my-deployment")
-	watchCmd.Flags().Set("environment", "dev")
-	watchCmd.Flags().Set("namespace", "default")
-	watchCmd.Flags().Set("timeout", "1m")
-	watchCmd.Flags().Set("build-result-dir", dir)
-	watchCmd.Flags().Set("image-name", "op")
-	watchCmd.Flags().Set("poll-timeout", "5s")
+	_ = watchCmd.Flags().Set("component", "my-deployment")
+	_ = watchCmd.Flags().Set("environment", "dev")
+	_ = watchCmd.Flags().Set("namespace", "default")
+	_ = watchCmd.Flags().Set("timeout", "1m")
+	_ = watchCmd.Flags().Set("build-result-dir", dir)
+	_ = watchCmd.Flags().Set("image-name", "op")
+	_ = watchCmd.Flags().Set("poll-timeout", "5s")
 
 	err := watchCmd.RunE(watchCmd, nil)
 	require.NoError(t, err)
@@ -94,13 +94,13 @@ func TestWatchCmd_PollTimeout(t *testing.T) {
 	watchPollInterval = 1 * time.Millisecond
 	defer func() { watchPollInterval = oldInterval }()
 
-	watchCmd.Flags().Set("component", "my-deployment")
-	watchCmd.Flags().Set("environment", "dev")
-	watchCmd.Flags().Set("namespace", "default")
-	watchCmd.Flags().Set("timeout", "1m")
-	watchCmd.Flags().Set("build-result-dir", dir)
-	watchCmd.Flags().Set("image-name", "op")
-	watchCmd.Flags().Set("poll-timeout", "50ms")
+	_ = watchCmd.Flags().Set("component", "my-deployment")
+	_ = watchCmd.Flags().Set("environment", "dev")
+	_ = watchCmd.Flags().Set("namespace", "default")
+	_ = watchCmd.Flags().Set("timeout", "1m")
+	_ = watchCmd.Flags().Set("build-result-dir", dir)
+	_ = watchCmd.Flags().Set("image-name", "op")
+	_ = watchCmd.Flags().Set("poll-timeout", "50ms")
 
 	err := watchCmd.RunE(watchCmd, nil)
 	require.Error(t, err)

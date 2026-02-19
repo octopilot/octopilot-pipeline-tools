@@ -16,8 +16,10 @@ test:
 test-integration: build
     export OP_BINARY=$PWD/op && go test -tags integration -v ./tests/integration/...
 
-# Run linting (golangci-lint)
+# Run linting (golangci-lint). Install once with: just install-tools
 lint:
+    #!/usr/bin/env bash
+    export PATH="$(go env GOPATH)/bin:$PATH"
     golangci-lint run
 
 # Clean build artifacts (local)
@@ -62,6 +64,14 @@ deps:
     go mod download
     go mod tidy
     go mod vendor
+
+# Install dev tools (golangci-lint). Run once after cloning.
+# GOTOOLCHAIN pins the compiler version to match go.mod so golangci-lint
+# is built with the same Go that the project targets.
+install-tools:
+    #!/usr/bin/env bash
+    GOVERSION=$(grep '^go ' go.mod | awk '{print $2}')
+    GOTOOLCHAIN="go${GOVERSION}" go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 # Install the binary to GOPATH/bin
 install:

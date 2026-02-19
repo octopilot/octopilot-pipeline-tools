@@ -36,10 +36,10 @@ func TestPromote_SingleArtifact(t *testing.T) {
 	}
 	defer func() { craneCopy = old }()
 
-	promoteCmd.Flags().Set("source", "dev")
-	promoteCmd.Flags().Set("destination", "pp")
-	promoteCmd.Flags().Set("build-result-dir", dir)
-	promoteCmd.Flags().Set("image-name", "")
+	_ = promoteCmd.Flags().Set("source", "dev")
+	_ = promoteCmd.Flags().Set("destination", "pp")
+	_ = promoteCmd.Flags().Set("build-result-dir", dir)
+	_ = promoteCmd.Flags().Set("image-name", "")
 
 	err := promoteCmd.RunE(promoteCmd, nil)
 	require.NoError(t, err)
@@ -66,10 +66,10 @@ func TestPromote_MultiArtifact_SelectsByName(t *testing.T) {
 	}
 	defer func() { craneCopy = old }()
 
-	promoteCmd.Flags().Set("source", "dev")
-	promoteCmd.Flags().Set("destination", "pp")
-	promoteCmd.Flags().Set("build-result-dir", dir)
-	promoteCmd.Flags().Set("image-name", "op")
+	_ = promoteCmd.Flags().Set("source", "dev")
+	_ = promoteCmd.Flags().Set("destination", "pp")
+	_ = promoteCmd.Flags().Set("build-result-dir", dir)
+	_ = promoteCmd.Flags().Set("image-name", "op")
 
 	err := promoteCmd.RunE(promoteCmd, nil)
 	require.NoError(t, err)
@@ -96,10 +96,10 @@ func TestPromote_MultiArtifact_DefaultsToLast(t *testing.T) {
 	}
 	defer func() { craneCopy = old }()
 
-	promoteCmd.Flags().Set("source", "dev")
-	promoteCmd.Flags().Set("destination", "pp")
-	promoteCmd.Flags().Set("build-result-dir", dir)
-	promoteCmd.Flags().Set("image-name", "")
+	_ = promoteCmd.Flags().Set("source", "dev")
+	_ = promoteCmd.Flags().Set("destination", "pp")
+	_ = promoteCmd.Flags().Set("build-result-dir", dir)
+	_ = promoteCmd.Flags().Set("image-name", "")
 
 	err := promoteCmd.RunE(promoteCmd, nil)
 	require.NoError(t, err)
@@ -111,10 +111,10 @@ func TestPromote_MissingBuildResult(t *testing.T) {
 	t.Setenv("GOOGLE_GKE_IMAGE_REPOSITORY", "ghcr.io/acme")
 	t.Setenv("GOOGLE_GKE_IMAGE_PP_REPOSITORY", "europe-west1-docker.pkg.dev/proj/reg")
 
-	promoteCmd.Flags().Set("source", "dev")
-	promoteCmd.Flags().Set("destination", "pp")
-	promoteCmd.Flags().Set("build-result-dir", t.TempDir()) // empty dir
-	promoteCmd.Flags().Set("image-name", "")
+	_ = promoteCmd.Flags().Set("source", "dev")
+	_ = promoteCmd.Flags().Set("destination", "pp")
+	_ = promoteCmd.Flags().Set("build-result-dir", t.TempDir()) // empty dir
+	_ = promoteCmd.Flags().Set("image-name", "")
 
 	err := promoteCmd.RunE(promoteCmd, nil)
 	assert.Error(t, err)
