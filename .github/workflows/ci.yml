@@ -139,9 +139,6 @@ jobs:
         with:
           fetch-depth: 0
 
-
-      - run: chmod +x dist/op-linux-amd64
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
