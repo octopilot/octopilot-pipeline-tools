@@ -69,10 +69,8 @@ var buildCmd = &cobra.Command{
 		cleanEnvVars := []string{"DOCKER_METADATA_OUTPUT_VERSION", "SKAFFOLD_TAG", "VERSION", "TAG", "IMAGE_TAG"}
 		var targetVersion string
 
-		fmt.Println("--- DEBUG: Environment Variables Check ---")
 		for _, key := range cleanEnvVars {
 			if val := os.Getenv(key); val != "" {
-				fmt.Printf("Env %s='%s'\n", key, val)
 				// Clean it if it looks like it has a platform suffix
 				// We expect formats like: v0.0.34_linux_arm64, v0.0.34_linux_amd64
 				if strings.Contains(val, "_linux_") {
@@ -90,7 +88,6 @@ var buildCmd = &cobra.Command{
 				}
 			}
 		}
-		fmt.Println("------------------------------------------")
 
 		opts := prepareSkaffoldOptions(cmd, cwd)
 
