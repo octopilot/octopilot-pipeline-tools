@@ -1,0 +1,10 @@
+run:
+  # The vendor tree includes Skaffold, pack, go-containerregistry and other
+  # large dependencies. Package loading alone can exceed the default 1m timeout
+  # on cold CI runners.
+  timeout: 10m
+
+issues:
+  # Show all issues rather than capping per linter / per location.
+  max-issues-per-linter: 0
+  max-same-issues: 0
