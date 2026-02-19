@@ -11,8 +11,7 @@ build:
   - image: op
     context: .
     buildpacks:
-      # builder: ghcr.io/octopilot/builder-jammy-base:0.1.198 - this image is too large for the github action runner, resulting in disk space issues
-      builder: paketobuildpacks/build-jammy-tiny:0.2.9
+      builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
       runImage: op-base
       env:
         - GOFLAGS=-buildvcs=false

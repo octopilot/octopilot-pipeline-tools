@@ -20,9 +20,42 @@ test-integration: build
 lint:
     golangci-lint run
 
-# Clean build artifacts
+# Clean build artifacts (local)
 clean:
     rm -f op build_result.json
+    rm -rf dist/
+
+# Deep clean: also prune Docker images and builder cache
+clean-all: clean
+    -docker system prune -af 2>/dev/null || true
+    -docker builder prune -af 2>/dev/null || true
+
+# Free GitHub Actions runner disk space before large Docker builds.
+# Removes pre-installed SDKs/toolchains not needed for container builds
+# (~15 GB freed on ubuntu-latest: Android SDK, .NET, Haskell, unused tool caches).
+# Safe to run anywhere; silently skips paths that do not exist.
+free-disk:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=== Disk usage before cleanup ==="
+    df -h /
+    sudo rm -rf \
+        /usr/local/lib/android \
+        /usr/share/dotnet \
+        /opt/ghc \
+        /usr/local/.ghcup \
+        /usr/lib/jvm \
+        /usr/share/swift \
+        /usr/local/share/boost \
+        /usr/share/gradle-8.8 \
+        /opt/hostedtoolcache/go \
+        /opt/hostedtoolcache/node \
+        /opt/hostedtoolcache/PyPy \
+        /opt/hostedtoolcache/Python \
+        /opt/hostedtoolcache/Ruby \
+        2>/dev/null || true
+    echo "=== Disk usage after cleanup ==="
+    df -h /
 
 # Install dependencies and tools
 deps:

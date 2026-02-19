@@ -79,18 +79,20 @@ jobs:
         env:
           BP_GO_VERSION: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.op }}
 
-  publish:
-    name: Publish Release
+  # ── Job 1: cross-compile Go binaries for all platforms ────────────────────
+  # Runs on a fresh runner; no Docker images pulled, minimal disk use.
+  # Outputs: dist/op-* uploaded as the "dist-binaries" artifact.
+  build-binaries:
+    name: Build Release Binaries
     needs: [detect, integration]
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
       id-token: write
       attestations: write
     steps:
-      # Use latest versions (bumped by dependabot) - do not downgrade
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -101,11 +103,71 @@ jobs:
         with:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
 
-      - name: Build Binaries (Release Artifacts)
+      - name: Build Release Binaries
         uses: octopilot/actions/build-self-homing@main
         with:
           version: ${{ github.ref_name }}
           output_dir: dist
+
+      - name: Upload binaries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-binaries
+          # op-* binaries only; SBOM comes from the container build job
+          path: dist/op-*
+          retention-days: 1
+
+  # ── Job 2: build & push multi-arch Docker image ────────────────────────────
+  # Starts on a completely fresh runner, immediately frees unused disk
+  # (Android SDK, .NET, Haskell, etc. = ~15 GB), then downloads only the
+  # pre-built linux/amd64 op binary needed to drive the buildpack build.
+  # Outputs: image digest used for attestation + SBOM artifact.
+  build-container:
+    name: Build and Push Container
+    needs: [detect, build-binaries]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Free runner disk space
+        run: |
+          echo "=== Disk before cleanup ==="
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /usr/lib/jvm \
+            /usr/share/swift \
+            /usr/local/share/boost \
+            /usr/share/gradle-8.8 \
+            /opt/hostedtoolcache/go \
+            /opt/hostedtoolcache/node \
+            /opt/hostedtoolcache/PyPy \
+            /opt/hostedtoolcache/Python \
+            /opt/hostedtoolcache/Ruby \
+            || true
+          echo "=== Disk after cleanup ==="
+          df -h /
+
+      - name: Download binaries artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-binaries
+          path: dist/
+
+      - run: chmod +x dist/op-linux-amd64
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -118,9 +180,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image (Bootstrap)
+      - name: Build and Push Docker Image
         id: push
         uses: octopilot/actions/octopilot@main
+        env:
+          BP_GO_VERSION: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
         with:
           version: ${{ github.ref_name }}
           registry: ghcr.io/${{ github.repository_owner }}
@@ -135,6 +199,43 @@ jobs:
           subject-name: ghcr.io/octopilot/octopilot-pipeline-tools
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-sbom
+          # The octopilot action packages SBOMs as sbom.tar.gz next to sbom_output dir
+          path: dist/sbom.tar.gz
+          if-no-files-found: warn
+          retention-days: 1
+
+  # ── Job 3: publish GitHub release ─────────────────────────────────────────
+  # Only runs after both the binaries AND the container are successfully built
+  # and pushed. Downloads both artifacts and creates the GitHub release.
+  publish-release:
+    name: Publish GitHub Release
+    needs: [detect, build-container]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download binaries artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-binaries
+          path: dist/
+
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-sbom
+          path: dist/
+        continue-on-error: true  # SBOM is best-effort; don't block the release
 
       - name: Find Previous Tag
         id: prev_tag
@@ -152,7 +253,7 @@ jobs:
           since_tag: ${{ steps.prev_tag.outputs.tag }}
           provider: anthropic
 
-      - name: Upload Binaries to Release
+      - name: Upload Binaries and SBOM to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
