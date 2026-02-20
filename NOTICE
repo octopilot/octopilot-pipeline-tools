@@ -1,0 +1,18 @@
+Octopilot Pipeline Tools (op)
+Copyright 2024 Octopilot (https://octopilot.app)
+
+This product includes software developed by Octopilot.
+
+The `op` CLI is a Go implementation of the Octopilot build pipeline,
+providing multi-architecture container builds via Cloud Native Buildpacks
+and Skaffold, with SLSA attestation and a GitOps-native release workflow.
+
+If you use or redistribute this software, this NOTICE file must be
+included in full in any distribution, documentation, or derived work
+(Apache License 2.0, Section 4(d)).
+
+For documentation and usage, visit:
+  https://octopilot.app
+
+Source code:
+  https://github.com/octopilot/octopilot-pipeline-tools

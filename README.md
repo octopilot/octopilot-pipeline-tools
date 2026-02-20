@@ -1,5 +1,7 @@
 # Octopilot Pipeline Tools (`op`)
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 `op` is an organisation-agnostic CLI tool that provides a **"path to production"** for your applications. It streamlines CI/CD pipelines and local development workflows by unifying **Skaffold** and **Cloud Native Buildpacks**.
 
 **Why `op`?**
