@@ -1,15 +1,12 @@
 Octopilot Pipeline Tools (op)
 Copyright 2024 Octopilot (https://octopilot.app)
 
-This product includes software developed by Octopilot.
+This software is licensed under the PolyForm Shield License 1.0.0.
+You may use, modify, and distribute this software for any purpose
+EXCEPT building products or services that compete with Octopilot or
+any products Octopilot provides using this software.
 
-The `op` CLI is a Go implementation of the Octopilot build pipeline,
-providing multi-architecture container builds via Cloud Native Buildpacks
-and Skaffold, with SLSA attestation and a GitOps-native release workflow.
-
-If you use or redistribute this software, this NOTICE file must be
-included in full in any distribution, documentation, or derived work
-(Apache License 2.0, Section 4(d)).
+Required Notice: Copyright 2024 Octopilot (https://octopilot.app)
 
 For documentation and usage, visit:
   https://octopilot.app

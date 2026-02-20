@@ -1,6 +1,6 @@
 # Octopilot Pipeline Tools (`op`)
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/License-PolyForm%20Shield%201.0.0-blue.svg)](https://polyformproject.org/licenses/shield/1.0.0)
 
 `op` is an organisation-agnostic CLI tool that provides a **"path to production"** for your applications. It streamlines CI/CD pipelines and local development workflows by unifying **Skaffold** and **Cloud Native Buildpacks**.
 
