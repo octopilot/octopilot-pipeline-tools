@@ -77,6 +77,8 @@ jobs:
       - uses: octopilot/actions/janitor@main
         with:
           pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
+      - name: Verify local registry is accessible
+        uses: octopilot/actions/verify-registry@main
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
