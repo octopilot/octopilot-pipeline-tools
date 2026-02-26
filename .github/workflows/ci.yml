@@ -141,7 +141,8 @@ jobs:
   build-container:
     name: Build and Push Container
     needs: [detect, build-binaries]
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    # On tags: release image (v1.0.x). On push to main: push op:main for integration (--artifact support).
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) || (github.ref == 'refs/heads/main' && github.event_name == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: read

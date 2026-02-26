@@ -133,6 +133,24 @@ var buildCmd = &cobra.Command{
 			return fmt.Errorf("error creating run context: %w", err)
 		}
 
+		// Optional: filter to a single artifact (for matrix/fan-out integration builds)
+		artifactsToRun := runCtx.Artifacts()
+		if onlyArtifact, _ := cmd.Flags().GetString("artifact"); onlyArtifact != "" {
+			var filtered []*latest.Artifact
+			for _, a := range artifactsToRun {
+				if a.ImageName == onlyArtifact {
+					filtered = append(filtered, a)
+					break
+				}
+			}
+			if len(filtered) == 0 {
+				return fmt.Errorf("--artifact %q not found in skaffold config (available: %v)",
+					onlyArtifact, artifactImageNames(artifactsToRun))
+			}
+			artifactsToRun = filtered
+			fmt.Printf("Building single artifact: %s\n", onlyArtifact)
+		}
+
 		// 3. Create Runner
 		r, err := newRunner(ctx, runCtx)
 		if err != nil {
@@ -156,8 +174,7 @@ var buildCmd = &cobra.Command{
 			// Track built images for dependency resolution (imageName -> fullTag with digest)
 			builtImages := make(map[string]string)
 
-			// Iterate runCtx.Artifacts() which is []*latest.Artifact
-			for _, art := range runCtx.Artifacts() {
+			for _, art := range artifactsToRun {
 				if art.BuildpackArtifact != nil {
 					// It's a buildpack artifact
 					imageName := art.ImageName
@@ -651,7 +668,7 @@ var buildCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Building with Skaffold library (repo: %s)....\n", repo)
-		buildArtifacts, err := r.Build(ctx, os.Stdout, runCtx.Artifacts())
+		buildArtifacts, err := r.Build(ctx, os.Stdout, artifactsToRun)
 		if err != nil {
 			return fmt.Errorf("build failed: %w", err)
 		}
@@ -801,6 +818,15 @@ func prepareSkaffoldOptionsWithRepo(cmd *cobra.Command, cwd string, repo string)
 	return opts
 }
 
+// artifactImageNames returns image names from artifacts for error messages.
+func artifactImageNames(artifacts []*latest.Artifact) []string {
+	names := make([]string, 0, len(artifacts))
+	for _, a := range artifacts {
+		names = append(names, a.ImageName)
+	}
+	return names
+}
+
 // deriveTTLSuffix returns the last segment of the image name (e.g. cronjob-log-monitor-chart -> chart).
 // Used for ttl.sh tagging: ttl.sh/<uuid>-<suffix>:<tag>.
 func deriveTTLSuffix(imageName string) string {
@@ -825,6 +851,7 @@ func init() {
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
 	buildCmd.Flags().String("ttl-uuid", "", "When set, push to ttl.sh/<ttl-uuid>-<suffix>:<ttl-tag> for ephemeral integration builds (overrides repo)")
 	buildCmd.Flags().String("ttl-tag", "1h", "Tag for ttl.sh pushes when --ttl-uuid is set (default 1h)")
+	buildCmd.Flags().String("artifact", "", "Build only this artifact (exact image name from skaffold, e.g. ghcr.io/org/myimage)")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")
