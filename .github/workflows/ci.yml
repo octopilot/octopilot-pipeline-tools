@@ -33,7 +33,7 @@ jobs:
     outputs:
       pipeline-context: ${{ steps.detect.outputs.pipeline-context }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Detect Contexts
         id: detect
         uses: octopilot/actions/detect-contexts@main
@@ -43,7 +43,7 @@ jobs:
     if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: octopilot/actions/lint@main
         with:
           pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
@@ -56,7 +56,7 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.detect.outputs.pipeline-context).matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: octopilot/actions/test@main
         with:
           pipeline-context: ${{ toJson(matrix) }}
@@ -73,7 +73,7 @@ jobs:
     env:
       OP_PACK_NETWORK: host
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # - uses: octopilot/actions/janitor@main
       #   with:
       #     pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
