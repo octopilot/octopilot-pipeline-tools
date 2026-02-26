@@ -104,6 +104,21 @@ var buildCmd = &cobra.Command{
 			repo = *v
 		}
 
+		ttlUUID, _ := cmd.Flags().GetString("ttl-uuid")
+		ttlTag, _ := cmd.Flags().GetString("ttl-tag")
+		if ttlTag == "" {
+			ttlTag = "1h"
+		}
+		if ttlUUID != "" {
+			repo = "ttl.sh"
+			// Ephemeral ttl.sh builds: single platform
+			if len(opts.Platforms) == 0 {
+				opts.Platforms = []string{"linux/amd64"}
+			} else if len(opts.Platforms) > 1 {
+				opts.Platforms = opts.Platforms[:1]
+			}
+		}
+
 		ctx := context.Background()
 
 		// 1. Parse Config
@@ -147,9 +162,12 @@ var buildCmd = &cobra.Command{
 					// It's a buildpack artifact
 					imageName := art.ImageName
 
-					// Construct tag
+					// Construct tag (ttl.sh ephemeral or repo)
 					var fullTag string
-					if repo != "" {
+					if ttlUUID != "" {
+						suffix := deriveTTLSuffix(imageName)
+						fullTag = fmt.Sprintf("ttl.sh/%s-%s:%s", ttlUUID, suffix, ttlTag)
+					} else if repo != "" {
 						if strings.HasSuffix(repo, "/") {
 							fullTag = fmt.Sprintf("%s%s:latest", repo, imageName)
 						} else {
@@ -427,7 +445,7 @@ var buildCmd = &cobra.Command{
 						// Don't fail the build, hope for the best, but warn.
 					}
 
-			} else if len(opts.Platforms) > 1 && art.DockerArtifact != nil {
+			} else if (len(opts.Platforms) > 1 || ttlUUID != "") && art.DockerArtifact != nil {
 				// Multi-arch Docker artifact: build each platform separately and assemble the
 				// manifest list ourselves. The Skaffold fork runner has a bug where BuildKit's
 				// provenance/attestation manifest turns per-platform tags into OCI Indexes; the
@@ -438,7 +456,10 @@ var buildCmd = &cobra.Command{
 				// attestation manifests so each per-platform tag is a clean single-arch image.
 
 				var fullTag string
-				if strings.HasSuffix(repo, "/") {
+				if ttlUUID != "" {
+					suffix := deriveTTLSuffix(art.ImageName)
+					fullTag = fmt.Sprintf("ttl.sh/%s-%s:%s", ttlUUID, suffix, ttlTag)
+				} else if strings.HasSuffix(repo, "/") {
 					fullTag = fmt.Sprintf("%s%s:latest", repo, art.ImageName)
 				} else {
 					fullTag = fmt.Sprintf("%s/%s:latest", repo, art.ImageName)
@@ -470,6 +491,9 @@ var buildCmd = &cobra.Command{
 				for _, platform := range opts.Platforms {
 					sanitized := strings.ReplaceAll(platform, "/", "-")
 					platformTag := fmt.Sprintf("%s-%s", fullTag, sanitized)
+					if ttlUUID != "" && len(opts.Platforms) == 1 {
+						platformTag = fullTag
+					}
 
 					fmt.Printf("Building Docker artifact %s for platform %s -> %s\n", art.ImageName, platform, platformTag)
 
@@ -705,11 +729,21 @@ func writeBuildResult(builds []util.Build) error {
 }
 
 func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptions {
-	// Resolve repo
+	// Resolve repo (ttl.sh when --ttl-uuid is set)
+	ttlUUID, _ := cmd.Flags().GetString("ttl-uuid")
+	if ttlUUID != "" {
+		repo := "ttl.sh"
+		// opts built below with this repo; actual tag per artifact is set in RunE
+		return prepareSkaffoldOptionsWithRepo(cmd, cwd, repo)
+	}
 	repo, _ := cmd.Flags().GetString("repo")
 	if repo == "" {
 		repo = resolveDefaultRepo(cwd)
 	}
+	return prepareSkaffoldOptionsWithRepo(cmd, cwd, repo)
+}
+
+func prepareSkaffoldOptionsWithRepo(cmd *cobra.Command, cwd string, repo string) config.SkaffoldOptions {
 
 	// Resolve filename
 	filename, _ := cmd.Flags().GetString("filename")
@@ -767,9 +801,30 @@ func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptio
 	return opts
 }
 
+// deriveTTLSuffix returns the last segment of the image name (e.g. cronjob-log-monitor-chart -> chart).
+// Used for ttl.sh tagging: ttl.sh/<uuid>-<suffix>:<tag>.
+func deriveTTLSuffix(imageName string) string {
+	// Strip tag if present (host/path:tag -> host/path)
+	base := imageName
+	if idx := strings.LastIndex(base, ":"); idx > 0 {
+		base = base[:idx]
+	}
+	// Last path component (ghcr.io/org/cronjob-log-monitor -> cronjob-log-monitor)
+	if idx := strings.LastIndex(base, "/"); idx >= 0 {
+		base = base[idx+1:]
+	}
+	parts := strings.Split(base, "-")
+	if len(parts) == 0 {
+		return "image"
+	}
+	return parts[len(parts)-1]
+}
+
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
+	buildCmd.Flags().String("ttl-uuid", "", "When set, push to ttl.sh/<ttl-uuid>-<suffix>:<ttl-tag> for ephemeral integration builds (overrides repo)")
+	buildCmd.Flags().String("ttl-tag", "1h", "Tag for ttl.sh pushes when --ttl-uuid is set (default 1h)")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")
