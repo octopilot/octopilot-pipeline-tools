@@ -206,7 +206,7 @@ jobs:
           echo "Attesting op image: $TAG"
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           # subject-name must match the registry path where the image is stored.
           # skaffold.yaml image: op → ghcr.io/octopilot/op (not octopilot-pipeline-tools).
