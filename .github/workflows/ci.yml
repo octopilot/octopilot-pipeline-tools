@@ -74,9 +74,9 @@ jobs:
       OP_PACK_NETWORK: host
     steps:
       - uses: actions/checkout@v4
-      - uses: octopilot/actions/janitor@main
-        with:
-          pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
+      # - uses: octopilot/actions/janitor@main
+      #   with:
+      #     pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
       # TODO: re-enable this once we have a better way to test the registry
       # - name: Verify local registry is accessible
       #   uses: octopilot/actions/verify-registry@main
@@ -157,8 +157,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        uses: octopilot/actions/janitor@main
+      # - name: Free runner disk space
+      #   uses: octopilot/actions/janitor@main
         # No pipeline-context: this job is Docker-only, remove all toolcaches.
 
       - name: Download binaries artifact
