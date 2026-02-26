@@ -320,7 +320,7 @@ var buildCmd = &cobra.Command{
 						index = mutate.IndexMediaType(index, types.DockerManifestList)
 
 						for _, pTag := range platformManifests {
-							pRef, err := name.ParseReference(pTag)
+							pRef, err := parseReferenceForRemote(pTag, opts.InsecureRegistries)
 							if err != nil {
 								return fmt.Errorf("parsing platform tag %s: %w", pTag, err)
 							}
@@ -343,7 +343,7 @@ var buildCmd = &cobra.Command{
 						}
 
 						// Push the index
-						ref, err := name.ParseReference(fullTag)
+						ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
 						if err != nil {
 							return fmt.Errorf("parsing full tag %s: %w", fullTag, err)
 						}
@@ -364,7 +364,7 @@ var buildCmd = &cobra.Command{
 
 					} else {
 						// Single platform, just get the digest
-						ref, err := name.ParseReference(fullTag)
+						ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
 						if err != nil {
 							return fmt.Errorf("parsing reference %q: %w", fullTag, err)
 						}
@@ -400,14 +400,14 @@ var buildCmd = &cobra.Command{
 							// Actually we already have `index` variable above inside the if block.
 							// Logic is split. Better:
 
-							verRef, err := name.ParseReference(versionTagStr)
+							verRef, err := parseReferenceForRemote(versionTagStr, opts.InsecureRegistries)
 							if err != nil {
 								return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
 							}
 
 							// If we built an index, we should copy it (referencing same manifests)
 							// Or just pull the index we just pushed and push it to new tag.
-							srcRef, _ := name.ParseReference(fullTag)
+							srcRef, _ := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
 							desc, err := remote.Get(srcRef, remoteOpts...)
 							if err != nil {
 								return fmt.Errorf("getting source index %s: %w", fullTag, err)
@@ -433,7 +433,7 @@ var buildCmd = &cobra.Command{
 
 						} else {
 							// Single image copy
-							ref, err := name.ParseReference(fullTag)
+							ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
 							if err != nil {
 								return fmt.Errorf("parsing reference %q: %w", fullTag, err)
 							}
@@ -441,7 +441,7 @@ var buildCmd = &cobra.Command{
 							if err != nil {
 								return fmt.Errorf("reading image %q: %w", fullTag, err)
 							}
-							verRef, err := name.ParseReference(versionTagStr)
+							verRef, err := parseReferenceForRemote(versionTagStr, opts.InsecureRegistries)
 							if err != nil {
 								return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
 							}
@@ -457,7 +457,7 @@ var buildCmd = &cobra.Command{
 					// for pulling by a subsequent build step (even if push succeeded).
 					// We poll for it to ensure the next step in the skaffold graph can succeed.
 					timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
-					if err := waitForImage(fullTag, timeout, remoteOpts...); err != nil {
+					if err := waitForImage(fullTag, timeout, opts.InsecureRegistries, remoteOpts...); err != nil {
 						fmt.Printf("Warning: failed to wait for image propagation: %v\n", err)
 						// Don't fail the build, hope for the best, but warn.
 					}
@@ -545,7 +545,7 @@ var buildCmd = &cobra.Command{
 				index = mutate.IndexMediaType(index, types.DockerManifestList)
 
 				for _, pTag := range platformManifests {
-					pRef, err := name.ParseReference(pTag)
+					pRef, err := parseReferenceForRemote(pTag, opts.InsecureRegistries)
 					if err != nil {
 						return fmt.Errorf("parsing platform tag %s: %w", pTag, err)
 					}
@@ -563,7 +563,7 @@ var buildCmd = &cobra.Command{
 					})
 				}
 
-				ref, err := name.ParseReference(fullTag)
+				ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
 				if err != nil {
 					return fmt.Errorf("parsing full tag %s: %w", fullTag, err)
 				}
@@ -584,11 +584,11 @@ var buildCmd = &cobra.Command{
 				if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" {
 					versionTagStr := strings.TrimSuffix(fullTag, "latest") + version
 					fmt.Printf("Tagging %s as %s...\n", fullTag, versionTagStr)
-					verRef, err := name.ParseReference(versionTagStr)
+					verRef, err := parseReferenceForRemote(versionTagStr, opts.InsecureRegistries)
 					if err != nil {
 						return fmt.Errorf("parsing version reference %q: %w", versionTagStr, err)
 					}
-					srcRef, _ := name.ParseReference(fullTag)
+					srcRef, _ := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
 					desc, err := remote.Get(srcRef, dockerRemoteOpts...)
 					if err != nil {
 						return fmt.Errorf("getting source index %s: %w", fullTag, err)
@@ -615,7 +615,7 @@ var buildCmd = &cobra.Command{
 
 				// Wait for propagation
 				timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
-				if err := waitForImage(fullTag, timeout, dockerRemoteOpts...); err != nil {
+				if err := waitForImage(fullTag, timeout, opts.InsecureRegistries, dockerRemoteOpts...); err != nil {
 					fmt.Printf("Warning: failed to wait for image propagation: %v\n", err)
 				}
 
@@ -653,7 +653,7 @@ var buildCmd = &cobra.Command{
 					}
 
 					timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
-					if err := waitForImage(ba.Tag, timeout, singleRemoteOpts...); err != nil {
+					if err := waitForImage(ba.Tag, timeout, opts.InsecureRegistries, singleRemoteOpts...); err != nil {
 						fmt.Printf("Warning: failed to wait for image propagation for %s: %v\n", ba.Tag, err)
 					}
 				}
@@ -685,11 +685,23 @@ var buildCmd = &cobra.Command{
 	},
 }
 
+// parseReferenceForRemote parses an image reference for use with remote get/write.
+// When the tag's registry is in insecureRegistries, uses name.Insecure so that HTTP
+// (no TLS) is allowed; InsecureSkipVerify in remote options handles self-signed TLS.
+func parseReferenceForRemote(tag string, insecureRegistries []string) (name.Reference, error) {
+	for _, reg := range insecureRegistries {
+		if strings.HasPrefix(tag, reg) {
+			return name.ParseReference(tag, name.Insecure)
+		}
+	}
+	return name.ParseReference(tag)
+}
+
 // waitForImage polls the registry until the image is available or timeout
-func waitForImage(tag string, timeout time.Duration, opts ...remote.Option) error {
+func waitForImage(tag string, timeout time.Duration, insecureRegistries []string, opts ...remote.Option) error {
 	fmt.Printf("Waiting for image propagation: %s (timeout: %s)\n", tag, timeout)
 
-	ref, err := name.ParseReference(tag)
+	ref, err := parseReferenceForRemote(tag, insecureRegistries)
 	if err != nil {
 		return err
 	}
@@ -808,12 +820,17 @@ func prepareSkaffoldOptionsWithRepo(cmd *cobra.Command, cwd string, repo string)
 		opts.Namespace = val
 	}
 
-	// Handle insecure registries from env
+	// Handle insecure registries from env and CLI (self-signed TLS or HTTP)
 	if val := os.Getenv("SKAFFOLD_INSECURE_REGISTRY"); val != "" {
 		opts.InsecureRegistries = append(opts.InsecureRegistries, strings.Split(val, ",")...)
 	}
 	if val := os.Getenv("SKAFFOLD_INSECURE_REGISTRIES"); val != "" {
 		opts.InsecureRegistries = append(opts.InsecureRegistries, strings.Split(val, ",")...)
+	}
+	if cmd.Flags().Changed("insecure-registry") {
+		if val, _ := cmd.Flags().GetString("insecure-registry"); val != "" {
+			opts.InsecureRegistries = append(opts.InsecureRegistries, strings.Split(val, ",")...)
+		}
 	}
 	return opts
 }
@@ -852,6 +869,7 @@ func init() {
 	buildCmd.Flags().String("ttl-uuid", "", "When set, push to ttl.sh/<ttl-uuid>-<suffix>:<ttl-tag> for ephemeral integration builds (overrides repo)")
 	buildCmd.Flags().String("ttl-tag", "1h", "Tag for ttl.sh pushes when --ttl-uuid is set (default 1h)")
 	buildCmd.Flags().String("artifact", "", "Build only this artifact (exact image name from skaffold, e.g. ghcr.io/org/myimage)")
+	buildCmd.Flags().String("insecure-registry", "", "Registry host(s) to treat as insecure (self-signed TLS or HTTP). Comma-separated (e.g. localhost:5001,myreg:5000). Also set via SKAFFOLD_INSECURE_REGISTRY or SKAFFOLD_INSECURE_REGISTRIES.")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")

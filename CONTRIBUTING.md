@@ -45,7 +45,6 @@ octopilot-pipeline-tools/
 │   │   ├── promote.go          # op promote-image — crane library
 │   │   ├── watch.go            # op watch-deployment — kubectl + flux
 │   │   ├── run.go              # op run — docker run wrapper
-│   │   ├── start_registry.go   # op start-registry — TLS registry management
 │   │   └── root.go             # CLI root, config loading (Cobra + Viper)
 │   ├── pack/build.go           # Pack library integration (direct build, no subprocess)
 │   └── util/                   # Shared helpers: build_result, config, registry, etc.

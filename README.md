@@ -172,17 +172,6 @@ op watch-deployment \
 
 ### 5. Local Development
 
-#### Start Local Registry
-
-Starts a local TLS-enabled Docker registry on port 5001. Generates self-signed certificates and optionally installs them for system and Colima trust.
-
-```bash
-op start-registry           # start registry, prompt for cert trust
-op start-registry --trust   # install cert for system trust (may prompt for sudo)
-```
-
-> Add `127.0.0.1 registry.local` to `/etc/hosts` before running.
-
 #### Run a Context
 
 Runs a built image for a Skaffold context locally using `docker run`, applying ports, env vars, and volumes from `.github/octopilot.yaml`.
@@ -248,6 +237,15 @@ contexts:
       PORT: "8080"
 ```
 
+### Pushing to an external registry (self-signed TLS or HTTP)
+
+The registry is assumed to be provided externally (e.g. your own TLS registry or a local one). To push to a registry that uses **self-signed certificates** or **plain HTTP** (no TLS), mark it as insecure so `op` and Pack skip TLS verification and allow HTTP:
+
+- **Environment:** `SKAFFOLD_INSECURE_REGISTRY=localhost:5001` or `SKAFFOLD_INSECURE_REGISTRIES=host1:5000,host2:5000` (comma-separated).
+- **CLI:** `op build --push --insecure-registry localhost:5001` or `--insecure-registry host1:5000,host2:5000`.
+
+Each value is a registry host (and optional port) that will receive **skipped TLS verification** (self-signed certs accepted) and **HTTP** when used with go-containerregistry and Pack.
+
 ---
 
 ## Development Workflow (`just`)
@@ -275,4 +273,3 @@ just deps             # go mod download + tidy + vendor
 - [Octopilot Actions](https://github.com/octopilot/actions)
 - [Octopilot Builder](https://github.com/octopilot/buildpacks)
 - [go-containerregistry / crane](https://github.com/google/go-containerregistry)
-- [Custom TLS Registry](https://github.com/octopilot/registry-tls)
