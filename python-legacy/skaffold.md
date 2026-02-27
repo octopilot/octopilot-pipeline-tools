@@ -36,11 +36,11 @@ build:
     - image: myapp-api
       context: api
       buildpacks:
-        builder: paketobuildpacks/builder-jammy-base
+        builder: ghcr.io/octopilot/builder-jammy-base:latest
     - image: myapp-frontend
       context: frontend
       buildpacks:
-        builder: paketobuildpacks/builder-jammy-base
+        builder: ghcr.io/octopilot/builder-jammy-base:latest
 
 deploy: {}
 ```
@@ -49,7 +49,7 @@ deploy: {}
   - **image** — image name (no registry). op forms the full image as `<default_repo>/<image>:<tag>`.
   - **context** — directory containing the app source (e.g. `api`, `frontend`). Must exist relative to the repo root. This is the **build context** for that artifact; Procfile and project.toml live in this directory when using buildpacks (see [procfile.md](procfile.md)).
   - **buildpacks** or **docker** — how to build:
-    - **buildpacks.builder** — Cloud Native Buildpacks builder image (e.g. `paketobuildpacks/builder-jammy-base`). No Dockerfile; the buildpack uses Procfile/project.toml in the context.
+    - **buildpacks.builder** — For the **op** toolchain you must use **`ghcr.io/octopilot/builder-jammy-base`** (with a tag such as `latest`). Other builders (e.g. `paketobuildpacks/builder-jammy-base`, `gcr.io/buildpacks/builder`) are **not compatible** with op. No Dockerfile; the buildpack uses Procfile/project.toml in the context.
     - **docker.dockerfile** — path to a Dockerfile in that context. op **build-push** skips these; **op build** and **op push** still build them via Skaffold.
 
 - **build.local** — empty `{}` is typical; op and Skaffold use the local Docker (or pack, for **op build-push**) environment.
@@ -69,7 +69,7 @@ build:
     - image: myapp-api
       context: api
       buildpacks:
-        builder: paketobuildpacks/builder-jammy-base
+        builder: ghcr.io/octopilot/builder-jammy-base:latest
 ```
 
 - **frontend** is built with **Docker** (Dockerfile in `frontend/`). **op build-push** only builds buildpacks artifacts, so it would build only **api**; use **op build** or **skaffold build** to build both.
@@ -101,7 +101,7 @@ When an artifact has **buildpacks.builder** in skaffold.yaml:
 
 So the **context** in skaffold.yaml is the same directory where you put **Procfile** and **project.toml** for that artifact. For full detail, see [procfile.md](procfile.md).
 
-**Builder image:** Common choice is **paketobuildpacks/builder-jammy-base** (Ubuntu 22.04, multiple languages). You can use another builder (e.g. **builder-jammy-full**) as long as it’s compatible with the **pack** CLI when using **op build-push**.
+**Builder image (op toolchain):** Only **`ghcr.io/octopilot/builder-jammy-base`** may be used with the op toolchain. Other builders (e.g. `paketobuildpacks/builder-jammy-base`, `gcr.io/buildpacks/builder`) are **not compatible** with op's Pack integration and must not be used.
 
 ---
 

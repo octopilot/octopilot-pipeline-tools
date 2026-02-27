@@ -30,10 +30,10 @@ artifacts:
   - image: myapp-api
     context: api
     buildpacks:
-      builder: paketobuildpacks/builder-jammy-base
+      builder: ghcr.io/octopilot/builder-jammy-base:latest
 ```
 
-then the Procfile for that artifact is **`api/Procfile`**. Same for `frontend/` — a Procfile for the frontend artifact would be **`frontend/Procfile`**.
+then the Procfile for that artifact is **`api/Procfile`**. (The op toolchain requires `ghcr.io/octopilot/builder-jammy-base`; other builders are not compatible.) Same for `frontend/` — a Procfile for the frontend artifact would be **`frontend/Procfile`**.
 
 So: **one Procfile per artifact** that uses buildpacks and needs an explicit process type. Each artifact has its own context directory; put the Procfile in that directory’s root.
 
@@ -125,11 +125,11 @@ artifacts:
   - image: myapp-frontend
     context: frontend
     buildpacks:
-      builder: paketobuildpacks/builder-jammy-base
+      builder: ghcr.io/octopilot/builder-jammy-base:latest
   - image: myapp-api
     context: api
     buildpacks:
-      builder: paketobuildpacks/builder-jammy-base
+      builder: ghcr.io/octopilot/builder-jammy-base:latest
 ```
 
 - **frontend:** No Procfile; use **project.toml** with `BP_WEB_SERVER=nginx`, `BP_WEB_SERVER_ROOT=public` (or similar) so the buildpack serves static files.
@@ -168,7 +168,7 @@ artifacts:
   - image: myapp-api
     context: api
     buildpacks:
-      builder: paketobuildpacks/builder-jammy-base
+      builder: ghcr.io/octopilot/builder-jammy-base:latest
 ```
 
 - **frontend:** Built with **Docker** (e.g. custom toolchain or Rust); **frontend/Dockerfile** defines the image and start command. No Procfile.

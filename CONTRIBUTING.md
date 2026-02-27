@@ -179,6 +179,7 @@ just free-disk
 
 - **Source**: [https://github.com/octopilot/buildpacks](https://github.com/octopilot/buildpacks)
 - **Purpose**: Custom Cloud Native Buildpacks builder based on Ubuntu Jammy. Includes the `octopilot/rust` buildpack and is optimised for the pipeline's caching and multi-arch requirements.
+- **Compatibility**: **Only this builder** may be used in the `op` toolchain. Other builders (e.g. `gcr.io/buildpacks/builder`, `paketobuildpacks/builder-jammy-base`) are **not compatible** with `op`'s Pack integration. All `skaffold.yaml` configs and integration test fixtures must use `ghcr.io/octopilot/builder-jammy-base`.
 
 ### 4. Rust Buildpack (`ghcr.io/octopilot/rust`)
 
