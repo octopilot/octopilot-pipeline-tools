@@ -196,6 +196,70 @@ var buildCmd = &cobra.Command{
 
 				fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
+				// Chart artifacts (image name ends with "-chart"): use Publish=false so the
+				// buildpack's helm push is the only push. The buildpack pushes a proper Helm OCI
+				// artifact (application/vnd.cncf.helm.chart.content.v1.tar+gzip) and writes the
+				// ref to BP_HELM_OCI_OUTPUT for us to consume.
+				if strings.HasSuffix(imageName, "-chart") {
+					helmOutDir, err := os.MkdirTemp("", "op-helm-out-")
+					if err != nil {
+						return fmt.Errorf("creating helm output dir: %w", err)
+					}
+					defer os.RemoveAll(helmOutDir)
+
+					// BP_HELM_OCI_REF is the OCI repo (no tag); helm push adds chart version as tag
+					refBase := fullTag
+					if idx := strings.LastIndex(fullTag, ":"); idx > 0 {
+						refBase = fullTag[:idx]
+					}
+					packEnv := map[string]string{
+						"BP_GO_PRIVATE":       "github.com/octopilot/*",
+						"BP_HELM_OCI_REF":     refBase,
+						"BP_HELM_OCI_OUTPUT":  "/out",
+					}
+					for _, env := range art.BuildpackArtifact.Env {
+						parts := strings.SplitN(env, "=", 2)
+						if len(parts) == 2 {
+							packEnv[parts[0]] = parts[1]
+						}
+					}
+
+					runImage := art.BuildpackArtifact.RunImage
+					if resolved, ok := builtImages[runImage]; ok {
+						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
+						runImage = resolved
+					}
+
+					po := pack.BuildOptions{
+						ImageName: fullTag,
+						Builder:   art.BuildpackArtifact.Builder,
+						Path:      filepath.Join(cwd, art.Workspace),
+						Publish:   false,
+						RunImage:  runImage,
+						Target:    "",
+						Env:       packEnv,
+						SBOMDir: func() string {
+							s, _ := cmd.Flags().GetString("sbom-output")
+							return s
+						}(),
+						InsecureRegistries: opts.InsecureRegistries,
+						Volumes:            []string{helmOutDir + ":/out"},
+					}
+					if err := packBuild(ctx, po, os.Stdout); err != nil {
+						return fmt.Errorf("direct pack build (chart) failed for %s: %w", imageName, err)
+					}
+
+					refBytes, err := os.ReadFile(filepath.Join(helmOutDir, "ref"))
+					if err != nil {
+						return fmt.Errorf("reading helm push ref for %s: %w", imageName, err)
+					}
+					chartRef := strings.TrimSpace(string(refBytes))
+					built = append(built, util.Build{ImageName: imageName, Tag: chartRef})
+					builtImages[imageName] = chartRef
+					fmt.Printf("Chart artifact %s -> %s\n", imageName, chartRef)
+					continue
+				}
+
 				// Resolve RunImage
 				runImage := art.BuildpackArtifact.RunImage
 				if resolved, ok := builtImages[runImage]; ok {
