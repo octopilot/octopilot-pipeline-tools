@@ -1,0 +1,2 @@
+Helm chart installed (op integration test).
+Message: {{ .Values.message }}

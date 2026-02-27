@@ -1,0 +1,7 @@
+apiVersion: v2
+name: integration-test-chart
+description: Minimal chart for op integration tests (Helm buildpack)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers: []

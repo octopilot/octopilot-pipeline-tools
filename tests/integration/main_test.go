@@ -249,3 +249,30 @@ func TestIntegration_Dockerfile(t *testing.T) {
 		t.Fatalf("op build dockerfile failed: %v", err)
 	}
 }
+
+func TestIntegration_HelmChart(t *testing.T) {
+	opBin := os.Getenv("OP_BINARY")
+	if opBin == "" {
+		t.Skip("OP_BINARY env var not set")
+	}
+
+	repoHost := requireRegistry(t)
+	repo := fmt.Sprintf("%s/integration-test", repoHost)
+
+	testDir := filepath.Join("fixtures", "helm")
+	absTestDir, _ := filepath.Abs(testDir)
+
+	// Skaffold artifact image is helm-integration-test-chart (-chart suffix). Op build uses
+	// chart path: Publish=false, buildpack runs helm push, op reads ref from BP_HELM_OCI_OUTPUT.
+	cmd := exec.Command(opBin, "build", "--push=true", "--repo="+repo)
+	cmd.Dir = absTestDir
+	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+	setupBuildEnv(t, cmd, repoHost)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("op build helm chart failed: %v", err)
+	}
+}

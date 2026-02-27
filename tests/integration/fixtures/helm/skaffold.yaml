@@ -1,0 +1,9 @@
+apiVersion: skaffold/v4beta1
+kind: Config
+build:
+  artifacts:
+  # Image name must end with -chart so op uses chart path (Publish=false, helm push in buildpack)
+  - image: helm-integration-test-chart
+    context: chart
+    buildpacks:
+      builder: ghcr.io/octopilot/builder-jammy-base:latest

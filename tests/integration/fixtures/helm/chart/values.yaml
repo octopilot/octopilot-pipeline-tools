@@ -1,0 +1,2 @@
+# Default values for integration-test-chart
+message: "Hello from op integration test"
