@@ -9,5 +9,5 @@ build:
   - image: app-image
     context: app
     buildpacks:
-      builder: gcr.io/buildpacks/builder:v1
+      builder: paketobuildpacks/builder-jammy-base
       runImage: base-image
