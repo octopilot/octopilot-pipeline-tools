@@ -217,6 +217,8 @@ build:
           - BP_GO_BUILD_FLAGS=-buildvcs=false
 ```
 
+**Buildpacks builder:** Only `ghcr.io/octopilot/builder-jammy-base` (with a tag such as `latest` or a version) is compatible with the `op` toolchain. Other builders (e.g. `gcr.io/buildpacks/builder`, `paketobuildpacks/builder-jammy-base`) must not be used—they are not compatible with `op`'s Pack integration and pipeline behaviour.
+
 > `op build --push --platform linux/amd64,linux/arm64` handles both artifact types: Dockerfile artifacts are built per-platform and assembled into a manifest list; buildpack artifacts are built per-platform with the Pack library.
 
 ### `.github/octopilot.yaml`

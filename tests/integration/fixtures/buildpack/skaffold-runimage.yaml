@@ -4,5 +4,5 @@ build:
   artifacts:
   - image: buildpack-app-custom
     buildpacks:
-      builder: gcr.io/buildpacks/builder:v1
+      builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-d84dd54
       runImage: gcr.io/buildpacks/gcp/run:v1
