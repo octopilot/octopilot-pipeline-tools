@@ -31,19 +31,23 @@ func (l *logWriter) Write(p []byte) (n int, err error) {
 		return n, err
 	}
 	l.b.Write(p)
-	for {
-		line, err := l.b.ReadString('\n')
-		if err == io.EOF {
-			if line != "" {
-				l.b.WriteString(line)
-			}
+for {
+	line, err := l.b.ReadString('\n')
+	if line != "" {
+		// If ReadString returns an error (usually io.EOF), it means we have a partial line.
+		// We write it back to the buffer to be completed on the next Write call and stop processing for now.
+		if err != nil {
+			l.b.WriteString(line)
 			break
 		}
-		if line == "" {
-			break
-		}
+		// It's a full line, log it.
 		l.t.Logf("%s", strings.TrimSuffix(line, "\n"))
 	}
+	// If there was an error (e.g., io.EOF on an empty buffer), we should stop.
+	if err != nil {
+		break
+	}
+}
 	return n, nil
 }
 
