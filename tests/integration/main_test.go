@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -15,6 +16,42 @@ import (
 	"testing"
 	"time"
 )
+
+// logWriter writes to w and also logs each line via t.Logf (visible with go test -v), so
+// integration subprocess output is not sunk by go test's stdout capture.
+type logWriter struct {
+	t *testing.T
+	w io.Writer
+	b bytes.Buffer
+}
+
+func (l *logWriter) Write(p []byte) (n int, err error) {
+	n, err = l.w.Write(p)
+	if err != nil {
+		return n, err
+	}
+	l.b.Write(p)
+	for {
+		line, err := l.b.ReadString('\n')
+		if err == io.EOF {
+			if line != "" {
+				l.b.WriteString(line)
+			}
+			break
+		}
+		if line == "" {
+			break
+		}
+		l.t.Logf("%s", strings.TrimSuffix(line, "\n"))
+	}
+	return n, nil
+}
+
+func streamToTestLog(t *testing.T, cmd *exec.Cmd) {
+	t.Helper()
+	cmd.Stdout = &logWriter{t: t, w: os.Stdout}
+	cmd.Stderr = &logWriter{t: t, w: os.Stderr}
+}
 
 // We assume the binary 'op' is built and available in the root or dist/
 // Or we can build it as part of the test setup.
@@ -134,98 +171,17 @@ func setupBuildEnv(t *testing.T, cmd *exec.Cmd, repoHost string) {
 	}
 }
 
-func TestIntegration_Buildpack(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
-
-	repoHost := requireRegistry(t)
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
-
-	testDir := "fixtures/buildpack"
-	absTestDir, _ := filepath.Abs(testDir)
-
-	// We use --push=true to bypass daemon export issues (containerd) by using standard Pack build-to-registry
-	// https://github.com/octopilot/registry-tls provides the TLS registry. We also use it as a service in CI.
-	// docker run -p 5001:5001 -v registry-data:/var/lib/registry registry-tls
-	// This exercises the 'useDirectPack' codepath in build.go
-	cmd := exec.Command(opBin, "build", "--push=true", "--repo="+repo)
-	cmd.Dir = absTestDir
-
-	setupBuildEnv(t, cmd, repoHost)
-
-	// Stream output
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("op build failed: %v", err)
-	}
+// integrationTarget defines one fixture to build. Each target corresponds to a
+// directory under tests/integration/fixtures/ (buildpack, dockerfile, multicontext, helm).
+type integrationTarget struct {
+	name     string
+	dir      string
+	push     bool
+	args     []string // extra args (e.g. -f skaffold-runimage.yaml, --platform=...)
+	checkOut string   // if set, output must contain this string (e.g. runImage resolution)
 }
 
-func TestIntegration_BuildpackRunImage(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
-
-	repoHost := requireRegistry(t)
-
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
-
-	// Run the build op with custom skaffold file
-	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64", "-f", "skaffold-runimage.yaml")
-	cmd.Dir = filepath.Join("fixtures", "buildpack")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	setupBuildEnv(t, cmd, repoHost)
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("op build runImage failed: %v", err)
-	}
-}
-
-func TestIntegration_BuildpackMultiContext(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
-
-	repoHost := requireRegistry(t)
-
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
-
-	// Run the build op with multi-context skaffold file
-	cmd := exec.Command(opBin, "build", "--push", "--platform=linux/arm64")
-	cmd.Dir = filepath.Join("fixtures", "multicontext")
-	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-
-	setupBuildEnv(t, cmd, repoHost)
-
-	// (Environment setup handled by setupBuildEnv)
-
-	// Capture output for verification AND stream it
-	var stdoutBuf, stderrBuf strings.Builder
-	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
-	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("op build multi-context failed: %v\nOutput:\n%s", err, stderrBuf.String())
-	}
-	outputStr := stdoutBuf.String() + stderrBuf.String()
-	t.Logf("Output:\n%s", outputStr)
-
-	// Verify that the runImage was resolved.
-	// We expect a line like: "Resolving runImage base-image to built artifact ..."
-	if !strings.Contains(outputStr, "Resolving runImage base-image to built artifact") {
-		t.Errorf("Expected output to contain 'Resolving runImage base-image to built artifact', but it didn't")
-	}
-}
-
-func TestIntegration_Dockerfile(t *testing.T) {
+func TestIntegration(t *testing.T) {
 	opBin := os.Getenv("OP_BINARY")
 	if opBin == "" {
 		t.Skip("OP_BINARY env var not set")
@@ -234,45 +190,77 @@ func TestIntegration_Dockerfile(t *testing.T) {
 	repoHost := requireRegistry(t)
 	repo := fmt.Sprintf("%s/integration-test", repoHost)
 
-	testDir := "fixtures/dockerfile"
-	absTestDir, _ := filepath.Abs(testDir)
-
-	cmd := exec.Command(opBin, "build", "--push=false", "--repo="+repo)
-	cmd.Dir = absTestDir
-	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	setupBuildEnv(t, cmd, repoHost)
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("op build dockerfile failed: %v", err)
+	targets := []integrationTarget{
+		{
+			name: "Buildpack",
+			dir:  "fixtures/buildpack",
+			push: true,
+			args: nil,
+		},
+		{
+			name: "BuildpackRunImage",
+			dir:  "fixtures/buildpack",
+			push: true,
+			args: []string{"--platform=linux/arm64", "-f", "skaffold-runimage.yaml"},
+		},
+		{
+			name: "BuildpackMultiContext",
+			dir:  "fixtures/multicontext",
+			push: true,
+			args: []string{"--platform=linux/arm64"},
+			checkOut: "Resolving runImage base-image to built artifact",
+		},
+		{
+			name: "Dockerfile",
+			dir:  "fixtures/dockerfile",
+			push: false,
+			args: nil,
+		},
+		{
+			name: "HelmChart",
+			dir:  "fixtures/helm",
+			push: true,
+			args: nil,
+		},
 	}
-}
 
-func TestIntegration_HelmChart(t *testing.T) {
-	opBin := os.Getenv("OP_BINARY")
-	if opBin == "" {
-		t.Skip("OP_BINARY env var not set")
-	}
+	for _, target := range targets {
+		t.Run(target.name, func(t *testing.T) {
+			absTestDir, _ := filepath.Abs(target.dir)
 
-	repoHost := requireRegistry(t)
-	repo := fmt.Sprintf("%s/integration-test", repoHost)
+			args := []string{"build", "--repo=" + repo}
+			if target.push {
+				args = append(args, "--push=true")
+			} else {
+				args = append(args, "--push=false")
+			}
+			args = append(args, target.args...)
 
-	testDir := filepath.Join("fixtures", "helm")
-	absTestDir, _ := filepath.Abs(testDir)
+			cmd := exec.Command(opBin, args...)
+			cmd.Dir = absTestDir
+			cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
+			setupBuildEnv(t, cmd, repoHost)
 
-	// Skaffold artifact image is helm-integration-test-chart (-chart suffix). Op build uses
-	// chart path: Publish=false, buildpack runs helm push, op reads ref from BP_HELM_OCI_OUTPUT.
-	cmd := exec.Command(opBin, "build", "--push=true", "--repo="+repo)
-	cmd.Dir = absTestDir
-	cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
-	setupBuildEnv(t, cmd, repoHost)
+			if target.checkOut != "" {
+				var stdoutBuf, stderrBuf strings.Builder
+				cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf, &logWriter{t: t, w: io.Discard})
+				cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf, &logWriter{t: t, w: io.Discard})
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("op build failed: %v\nStderr:\n%s", err, stderrBuf.String())
+				}
+				outputStr := stdoutBuf.String() + stderrBuf.String()
+				if !strings.Contains(outputStr, target.checkOut) {
+					t.Errorf("output should contain %q;\noutput:\n%s", target.checkOut, outputStr)
+				}
+				return
+			}
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("op build helm chart failed: %v", err)
+			var stderrBuf strings.Builder
+			cmd.Stdout = io.MultiWriter(os.Stdout, &logWriter{t: t, w: io.Discard})
+			cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf, &logWriter{t: t, w: io.Discard})
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("op build failed: %v\nStderr:\n%s", err, stderrBuf.String())
+			}
+		})
 	}
 }
