@@ -245,25 +245,22 @@ func TestIntegration(t *testing.T) {
 			cmd.Env = append(os.Environ(), fmt.Sprintf("SKAFFOLD_DEFAULT_REPO=%s", repo))
 			setupBuildEnv(t, cmd, repoHost)
 
+			var stdoutBuf, stderrBuf strings.Builder
+			stdoutWriters := []io.Writer{os.Stdout, &logWriter{t: t, w: io.Discard}}
 			if target.checkOut != "" {
-				var stdoutBuf, stderrBuf strings.Builder
-				cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf, &logWriter{t: t, w: io.Discard})
-				cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf, &logWriter{t: t, w: io.Discard})
-				if err := cmd.Run(); err != nil {
-					t.Fatalf("op build failed: %v\nStderr:\n%s", err, stderrBuf.String())
-				}
+				stdoutWriters = append(stdoutWriters, &stdoutBuf)
+			}
+			cmd.Stdout = io.MultiWriter(stdoutWriters...)
+			cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf, &logWriter{t: t, w: io.Discard})
+
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("op build failed: %v\nStderr:\n%s", err, stderrBuf.String())
+			}
+			if target.checkOut != "" {
 				outputStr := stdoutBuf.String() + stderrBuf.String()
 				if !strings.Contains(outputStr, target.checkOut) {
 					t.Errorf("output should contain %q;\noutput:\n%s", target.checkOut, outputStr)
 				}
-				return
-			}
-
-			var stderrBuf strings.Builder
-			cmd.Stdout = io.MultiWriter(os.Stdout, &logWriter{t: t, w: io.Discard})
-			cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf, &logWriter{t: t, w: io.Discard})
-			if err := cmd.Run(); err != nil {
-				t.Fatalf("op build failed: %v\nStderr:\n%s", err, stderrBuf.String())
 			}
 		})
 	}
