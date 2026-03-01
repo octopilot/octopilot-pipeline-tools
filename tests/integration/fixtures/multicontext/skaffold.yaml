@@ -9,5 +9,9 @@ build:
   - image: app-image
     context: app
     buildpacks:
+<<<<<<< Updated upstream
       builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-d84dd54
+=======
+      builder: paketobuildpacks/builder-jammy-base
+>>>>>>> Stashed changes
       runImage: base-image
