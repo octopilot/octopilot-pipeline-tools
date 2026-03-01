@@ -194,19 +194,31 @@ func TestIntegration(t *testing.T) {
 	repoHost := requireRegistry(t)
 	repo := fmt.Sprintf("%s/integration-test", repoHost)
 
+	// Integration targets: each exercises a distinct op build code path. A local registry
+	// must be running (e.g. localhost:5001). OP_PACK_NETWORK=host is set so Pack lifecycle
+	// containers can reach the registry at localhost; do not rewrite to host.docker.internal
+	// when this env is set (see internal/cmd/build.go).
 	targets := []integrationTarget{
+		// Buildpack: single buildpack artifact, direct Pack integration, push to registry.
+		// Uses ghcr.io/octopilot/builder-jammy-base (see .cursor/rules/op-buildpacks-builder.mdc).
 		{
 			name: "Buildpack",
 			dir:  "fixtures/buildpack",
 			push: true,
 			args: nil,
 		},
+		// BuildpackRunImage: buildpack with explicit runImage and --platform=linux/arm64;
+		// ensures cross-platform build and runImage handling (skaffold-runimage.yaml).
 		{
 			name: "BuildpackRunImage",
 			dir:  "fixtures/buildpack",
 			push: true,
 			args: []string{"--platform=linux/arm64", "-f", "skaffold-runimage.yaml"},
 		},
+		// BuildpackMultiContext: multi-artifact pipeline; base-image (Docker) built first,
+		// then app-image (buildpack) with runImage: base-image. Verifies builtImages
+		// resolution and that "Resolving runImage base-image to built artifact" is printed.
+		// Do not remove runImage resolution in internal/cmd/build.go non-chart path.
 		{
 			name: "BuildpackMultiContext",
 			dir:  "fixtures/multicontext",
@@ -214,12 +226,17 @@ func TestIntegration(t *testing.T) {
 			args: []string{"--platform=linux/arm64"},
 			checkOut: "Resolving runImage base-image to built artifact",
 		},
+		// Dockerfile: Skaffold Dockerfile build only (no buildpack); push=false (local build).
 		{
 			name: "Dockerfile",
 			dir:  "fixtures/dockerfile",
 			push: false,
 			args: nil,
 		},
+		// HelmChart: buildpack artifact whose image name ends with "-chart"; op uses
+		// Publish=false and the buildpack pushes the Helm OCI chart; op reads ref from
+		// BP_HELM_OCI_OUTPUT. Chart path uses chartPack* variables and hostRegistryForPack
+		// rewrite (distinct from non-chart buildpack path).
 		{
 			name: "HelmChart",
 			dir:  "fixtures/helm",

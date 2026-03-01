@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -174,6 +175,17 @@ var buildCmd = &cobra.Command{
 			// Track built images for dependency resolution (imageName -> fullTag with digest)
 			builtImages := make(map[string]string)
 
+			// Pack runs the lifecycle in a Docker container. On Mac/Windows the container cannot
+			// reach the host registry at localhost; use host.docker.internal. On Linux 127.0.0.1 works.
+			// When OP_PACK_NETWORK=host the container shares the host network, so localhost works — do not rewrite.
+			hostRegistryForPack := "127.0.0.1:5001"
+			if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+				hostRegistryForPack = "host.docker.internal:5001"
+			}
+			if os.Getenv("OP_PACK_NETWORK") == "host" {
+				hostRegistryForPack = "" // container sees host's localhost; keep refs as localhost:5001 / 127.0.0.1:5001
+			}
+
 			for _, art := range artifactsToRun {
 				if art.BuildpackArtifact != nil {
 					// It's a buildpack artifact
@@ -201,21 +213,48 @@ var buildCmd = &cobra.Command{
 				// artifact (application/vnd.cncf.helm.chart.content.v1.tar+gzip) and writes the
 				// ref to BP_HELM_OCI_OUTPUT for us to consume.
 				if strings.HasSuffix(imageName, "-chart") {
-					helmOutDir, err := os.MkdirTemp("", "op-helm-out-")
+					// Use a dir under cwd so that when op runs in a container (e.g. GitHub Actions),
+					// the dir is on the workspace bind mount. For Pack we must pass the host path
+					// (GITHUB_WORKSPACE) as the volume source so the build container, which runs
+					// on the host via the Docker socket, can write the ref where op can read it.
+					helmOutDir, err := os.MkdirTemp(cwd, ".op-helm-out-")
 					if err != nil {
 						return fmt.Errorf("creating helm output dir: %w", err)
 					}
 					defer os.RemoveAll(helmOutDir)
+
+					volumeSource := helmOutDir
+					if hostWS := os.Getenv("GITHUB_WORKSPACE"); hostWS != "" {
+						volumeSource = filepath.Join(hostWS, filepath.Base(helmOutDir))
+					}
 
 					// BP_HELM_OCI_REF is the OCI repo (no tag); helm push adds chart version as tag
 					refBase := fullTag
 					if idx := strings.LastIndex(fullTag, ":"); idx > 0 {
 						refBase = fullTag[:idx]
 					}
+					// Rewrite localhost/127.0.0.1 to hostRegistryForPack so the buildpack container can reach the host registry (no-op when OP_PACK_NETWORK=host).
+					rewrite := func(s string) string {
+						if hostRegistryForPack == "" {
+							return s
+						}
+						return strings.ReplaceAll(strings.ReplaceAll(s, "localhost:5001", hostRegistryForPack), "127.0.0.1:5001", hostRegistryForPack)
+					}
+					chartPackImageName := rewrite(fullTag)
+					chartPackRefBase := rewrite(refBase)
+					chartPackRunImage := art.BuildpackArtifact.RunImage
+					if resolved, ok := builtImages[chartPackRunImage]; ok {
+						chartPackRunImage = resolved
+					}
+					chartPackRunImage = rewrite(chartPackRunImage)
+					chartInsecureRegistries := opts.InsecureRegistries
+					if hostRegistryForPack != "" && (strings.Contains(fullTag, "localhost:5001") || strings.Contains(fullTag, "127.0.0.1:5001")) {
+						chartInsecureRegistries = append(chartInsecureRegistries, hostRegistryForPack)
+					}
 					packEnv := map[string]string{
-						"BP_GO_PRIVATE":       "github.com/octopilot/*",
-						"BP_HELM_OCI_REF":     refBase,
-						"BP_HELM_OCI_OUTPUT":  "/out",
+						"BP_GO_PRIVATE":      "github.com/octopilot/*",
+						"BP_HELM_OCI_REF":    chartPackRefBase,
+						"BP_HELM_OCI_OUTPUT": "/out",
 					}
 					for _, env := range art.BuildpackArtifact.Env {
 						parts := strings.SplitN(env, "=", 2)
@@ -224,26 +263,20 @@ var buildCmd = &cobra.Command{
 						}
 					}
 
-					runImage := art.BuildpackArtifact.RunImage
-					if resolved, ok := builtImages[runImage]; ok {
-						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
-						runImage = resolved
-					}
-
 					po := pack.BuildOptions{
-						ImageName: fullTag,
+						ImageName: chartPackImageName,
 						Builder:   art.BuildpackArtifact.Builder,
 						Path:      filepath.Join(cwd, art.Workspace),
 						Publish:   false,
-						RunImage:  runImage,
+						RunImage:  chartPackRunImage,
 						Target:    "",
 						Env:       packEnv,
 						SBOMDir: func() string {
 							s, _ := cmd.Flags().GetString("sbom-output")
 							return s
 						}(),
-						InsecureRegistries: opts.InsecureRegistries,
-						Volumes:            []string{helmOutDir + ":/out"},
+						InsecureRegistries: chartInsecureRegistries,
+						Volumes:            []string{volumeSource + ":/out"},
 					}
 					if err := packBuild(ctx, po, os.Stdout); err != nil {
 						return fmt.Errorf("direct pack build (chart) failed for %s: %w", imageName, err)
@@ -260,15 +293,17 @@ var buildCmd = &cobra.Command{
 					continue
 				}
 
-				// Resolve RunImage
+				// Non-chart buildpack path (including multicontext: runImage may reference a
+				// previously built artifact like base-image). Resolve runImage so pack uses
+				// the actual built tag; do not use chartPack* variables here.
 				runImage := art.BuildpackArtifact.RunImage
 				if resolved, ok := builtImages[runImage]; ok {
 					fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
 					runImage = resolved
 				}
 
-					// Construct env
-					packEnv := map[string]string{
+				// Construct env
+				packEnv := map[string]string{
 						"BP_GO_PRIVATE": "github.com/octopilot/*",
 					}
 					for _, env := range art.BuildpackArtifact.Env {
@@ -297,33 +332,34 @@ var buildCmd = &cobra.Command{
 
 						fmt.Printf("  -> Platform: %s, Tag: %s\n", platform, currentTag)
 
-						// Handle localhost/127.0.0.1 special case
+						// Pack runs the lifecycle in a Docker container; hostRegistryForPack is set above (host-aware).
 						packImageName := currentTag
 						packRunImage := runImage
 						packInsecureRegistries := opts.InsecureRegistries
 
-						rewriteLocalhost := func(s string) (string, bool) {
-							if strings.Contains(s, "localhost:5001") {
-								return strings.Replace(s, "localhost:5001", "127.0.0.1:5001", -1), true
+						rewriteForPackContainer := func(s string) (string, bool) {
+							if hostRegistryForPack == "" {
+								return s, false
 							}
-							if strings.Contains(s, "127.0.0.1:5001") {
-								return s, true
+							if strings.Contains(s, "localhost:5001") || strings.Contains(s, "127.0.0.1:5001") {
+								out := strings.ReplaceAll(strings.ReplaceAll(s, "localhost:5001", hostRegistryForPack), "127.0.0.1:5001", hostRegistryForPack)
+								return out, true
 							}
 							return s, false
 						}
 
 						var rewritten bool
-						if newTag, ok := rewriteLocalhost(packImageName); ok {
+						if newTag, ok := rewriteForPackContainer(packImageName); ok {
 							packImageName = newTag
 							rewritten = true
 						}
-						if newRun, ok := rewriteLocalhost(packRunImage); ok {
+						if newRun, ok := rewriteForPackContainer(packRunImage); ok {
 							packRunImage = newRun
 							rewritten = true
 						}
 
 						if rewritten {
-							packInsecureRegistries = append(packInsecureRegistries, "127.0.0.1:5001")
+							packInsecureRegistries = append(packInsecureRegistries, hostRegistryForPack)
 						}
 
 						packVolumes := []string{}
