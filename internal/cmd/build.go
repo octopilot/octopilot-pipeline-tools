@@ -276,7 +276,7 @@ var buildCmd = &cobra.Command{
 							return s
 						}(),
 						InsecureRegistries: chartInsecureRegistries,
-						Volumes:            []string{volumeSource + ":/out"},
+						Volumes:            []string{volumeSource + ":/out:rw"},
 					}
 					if err := packBuild(ctx, po, os.Stdout); err != nil {
 						return fmt.Errorf("direct pack build (chart) failed for %s: %w", imageName, err)
