@@ -264,13 +264,14 @@ var buildCmd = &cobra.Command{
 					}
 
 					po := pack.BuildOptions{
-						ImageName: chartPackImageName,
-						Builder:   art.BuildpackArtifact.Builder,
-						Path:      filepath.Join(cwd, art.Workspace),
-						Publish:   false,
-						RunImage:  chartPackRunImage,
-						Target:    "",
-						Env:       packEnv,
+						ImageName:  chartPackImageName,
+						Builder:    art.BuildpackArtifact.Builder,
+						Path:       filepath.Join(cwd, art.Workspace),
+						Publish:    false,
+						ClearCache: true, // ensure build phase runs so helm buildpack can push and write ref
+						RunImage:   chartPackRunImage,
+						Target:     "",
+						Env:        packEnv,
 						SBOMDir: func() string {
 							s, _ := cmd.Flags().GetString("sbom-output")
 							return s
