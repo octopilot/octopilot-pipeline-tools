@@ -154,6 +154,8 @@ just free-disk
 
 `octopilot-pipeline-tools` depends on forked versions of upstream projects to support multi-architecture builds with the Pack and Skaffold Go libraries. Forks are maintained on dedicated branches until changes are accepted upstream.
 
+**Why the release / built `op` doesn't use your local pack:** The binary is built from the **pinned pseudo-version** in `go.mod` (e.g. `github.com/octopilot/pack v0.0.0-20260217113002-be07f29a9a33`). That version is resolved from the Go module proxy or cache, **not** from your local `../pack` checkout. So any fix in the pack repo must be **committed and pushed**, then `go.mod` in this repo updated to the new commit, and `go mod vendor` run, so that the next build (local or CI/release) uses the fixed pack. See **Locking the release to a fixed pack** below.
+
 ### 1. Skaffold (`octopilot/skaffold` — branch `buildpacks-publish-fix`)
 
 - **Fork**: [https://github.com/octopilot/skaffold](https://github.com/octopilot/skaffold)
@@ -172,7 +174,7 @@ just free-disk
 - **Upstream**: `buildpacks/pack`
 - **Key changes**:
   - Exposes `BuildOptions` and internal registry handling as a library so `internal/pack/build.go` can call `client.Build()` directly without a subprocess.
-  - Publish-then-pull workaround for `containerd`-backed Docker daemons (fixes [#2272](https://github.com/buildpacks/pack/issues/2272)) when building without `--publish`.
+  - Publish-then-pull workaround for `containerd`-backed Docker daemons (fixes [#2272](https://github.com/buildpacks/pack/issues/2272)) when building without `--publish`. The workaround builds the publish image as `workaroundRegistry + "/" + Context().RepositoryStr() + ":" + Identifier()` so refs like `localhost:5001/ghcr.io/org/app:latest` are not double-prefixed.
   - Supports specifying the target platform (`Platform` field) in `BuildOptions` for direct multi-arch builds.
 
 ### 3. Builder Image (`ghcr.io/octopilot/builder-jammy-base`)
@@ -189,14 +191,29 @@ just free-disk
 
 ## Making Changes to the Forks
 
-Both forks have local checkouts at:
-- `/Users/casibbald/Workspace/octopilot/skaffold` (branch `buildpacks-publish-fix`)
-- `/Users/casibbald/Workspace/octopilot/pack` (branch `containerd-workaround`)
+Both forks have local checkouts (e.g. sibling dirs in the same workspace). The **release and any built `op` binary use the pinned versions in `go.mod`**, not your local clone. To lock down the remote built tools after changing a fork:
 
-After pushing changes to a fork branch, update the `replace` directive in `go.mod` with the new pseudo-version:
+### Locking the release to a fixed pack
+
+1. **Commit and push** your changes in the `octopilot/pack` repo (e.g. branch `containerd-workaround`).
+2. In **octopilot-pipeline-tools**, update the pack replace to the new commit and refresh vendor:
+
+   ```bash
+   cd octopilot-pipeline-tools
+   # Point replace to the new commit (use the full commit SHA from pack)
+   go get github.com/octopilot/pack@<new-commit-sha>
+   # If the replace is in go.mod, you may need to edit go.mod replace line to the new pseudo-version, then:
+   go mod tidy
+   go mod vendor
+   ```
+   To have Go fill in the new pseudo-version automatically, run (from octopilot-pipeline-tools):  
+   `GOPROXY=direct go get github.com/octopilot/pack@<full-commit-sha>`  
+   then `go mod vendor`. That updates the `replace github.com/buildpacks/pack => github.com/octopilot/pack ...` line. Alternatively, edit `go.mod` manually to the new pseudo-version, then `go mod tidy` and `go mod vendor`.
+3. **Commit** `go.mod`, `go.sum`, and the updated `vendor/` in octopilot-pipeline-tools and push. From then on, local builds and CI/release will use the fixed pack.
+
+### Updating Skaffold fork reference
 
 ```bash
-# Get the new pseudo-version after pushing the fork branch
 go get github.com/octopilot/skaffold/v2@<commit-sha>
 go mod vendor
 go mod tidy
