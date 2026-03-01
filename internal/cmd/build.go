@@ -253,8 +253,18 @@ var buildCmd = &cobra.Command{
 					}
 					packEnv := map[string]string{
 						"BP_GO_PRIVATE":      "github.com/octopilot/*",
-						"BP_HELM_OCI_REF":    chartPackRefBase,
+						"BP_HELM_OCI_REF":   chartPackRefBase,
 						"BP_HELM_OCI_OUTPUT": "/out",
+					}
+					// So helm push uses HTTP for local/insecure registries (--plain-http).
+					if idx := strings.Index(chartPackRefBase, "/"); idx > 0 {
+						chartRegistryHost := chartPackRefBase[:idx]
+						for _, reg := range chartInsecureRegistries {
+							if reg == chartRegistryHost {
+								packEnv["BP_HELM_OCI_PLAIN_HTTP"] = "true"
+								break
+							}
+						}
 					}
 					for _, env := range art.BuildpackArtifact.Env {
 						parts := strings.SplitN(env, "=", 2)
@@ -283,11 +293,10 @@ var buildCmd = &cobra.Command{
 						return fmt.Errorf("direct pack build (chart) failed for %s: %w", imageName, err)
 					}
 
-					refBytes, err := os.ReadFile(filepath.Join(helmOutDir, "ref"))
+					chartRef, err := readChartRef(helmOutDir, fullTag, filepath.Join(cwd, art.Workspace), imageName)
 					if err != nil {
-						return fmt.Errorf("reading helm push ref for %s: %w", imageName, err)
+						return err
 					}
-					chartRef := strings.TrimSpace(string(refBytes))
 					built = append(built, util.Build{ImageName: imageName, Tag: chartRef})
 					builtImages[imageName] = chartRef
 					fmt.Printf("Chart artifact %s -> %s\n", imageName, chartRef)
@@ -784,6 +793,47 @@ var buildCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+// readChartRef reads the helm push ref from helmOutDir/ref. If the buildpack did not write it
+// (e.g. published buildpack without that behavior, or env not passed), falls back to deriving
+// a chart ref from fullTag (refBase) and the chart version in workspace Chart.yaml.
+func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, error) {
+	refPath := filepath.Join(helmOutDir, "ref")
+	refBytes, err := os.ReadFile(refPath)
+	if err == nil {
+		return strings.TrimSpace(string(refBytes)), nil
+	}
+	// Fallback: ref not written by buildpack; derive from image ref and Chart.yaml version
+	refBase := fullTag
+	if idx := strings.LastIndex(fullTag, ":"); idx > 0 {
+		refBase = fullTag[:idx]
+	}
+	chartYaml := filepath.Join(workspaceDir, "Chart.yaml")
+	yb, yerr := os.ReadFile(chartYaml)
+	if yerr != nil {
+		return "", fmt.Errorf("reading helm push ref for %s: %w (fallback: could not read Chart.yaml: %v)", imageName, err, yerr)
+	}
+	version := parseChartVersionFromYAML(string(yb))
+	if version == "" {
+		version = "latest"
+	}
+	chartRef := refBase + ":" + version
+	fmt.Printf("Chart ref file not found; using derived ref %s (from Chart.yaml version)\n", chartRef)
+	return chartRef, nil
+}
+
+// parseChartVersionFromYAML extracts the first "version:" value from Chart.yaml-style content.
+func parseChartVersionFromYAML(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "version:") {
+			v := strings.TrimSpace(strings.TrimPrefix(line, "version:"))
+			v = strings.Trim(v, "\"'")
+			return v
+		}
+	}
+	return ""
 }
 
 // parseReferenceForRemote parses an image reference for use with remote get/write.
