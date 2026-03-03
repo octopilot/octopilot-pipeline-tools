@@ -7,4 +7,4 @@ build:
   - image: helm-integration-test
     context: chart
     buildpacks:
-      builder: ghcr.io/octopilot/builder-jammy-base:latest
+      builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-6c1a65b
