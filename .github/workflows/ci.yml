@@ -126,7 +126,7 @@ jobs:
           output_dir: dist
 
       - name: Upload binaries artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-binaries
           # op-* binaries only; SBOM comes from the container build job
@@ -216,7 +216,7 @@ jobs:
           push-to-registry: true
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-sbom
           # The octopilot action packages SBOMs as sbom.tar.gz next to sbom_output dir
