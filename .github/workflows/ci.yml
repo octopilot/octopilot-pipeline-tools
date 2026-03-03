@@ -163,7 +163,7 @@ jobs:
         # No pipeline-context: this job is Docker-only, remove all toolcaches.
 
       - name: Download binaries artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist-binaries
           path: dist/
@@ -240,13 +240,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download binaries artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist-binaries
           path: dist/
 
       - name: Download SBOM artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist-sbom
           path: dist/
