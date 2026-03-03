@@ -11,7 +11,7 @@ build:
   - image: op
     context: .
     buildpacks:
-      builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
+      builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-d5eb42a
       runImage: op-base
       env:
         - GOFLAGS=-buildvcs=false
