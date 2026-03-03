@@ -12,9 +12,9 @@ build:
 test:
     go test ./... -v
 
-# Run integration tests (requires OP_BINARY)
+# Run integration tests (requires OP_BINARY). Long timeout for CI image pulls.
 test-integration: build
-    export OP_BINARY=$PWD/op && go test -tags integration -v ./tests/integration/...
+    export OP_BINARY=$PWD/op && go test -tags integration -v -timeout 45m ./tests/integration/...
 
 # Run linting (golangci-lint). Install once with: just install-tools
 lint:
