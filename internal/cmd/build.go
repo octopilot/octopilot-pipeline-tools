@@ -208,60 +208,57 @@ var buildCmd = &cobra.Command{
 
 				fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
-				// Chart artifacts (image name ends with "-chart"): use Publish=false so the
-				// buildpack's helm push is the only push. The buildpack pushes a proper Helm OCI
-				// artifact (application/vnd.cncf.helm.chart.content.v1.tar+gzip) and writes the
-				// ref to BP_HELM_OCI_OUTPUT for us to consume.
+				// Chart artifacts (image name ends with "-chart"): run only the helm buildpack inside
+				// the builder (no pack, no run image). The buildpack pushes the Helm OCI chart and
+				// writes the ref to BP_HELM_OCI_OUTPUT; we consume that and never build a container image.
 				if strings.HasSuffix(imageName, "-chart") {
-					// Use a dir under cwd so that when op runs in a container (e.g. GitHub Actions),
-					// the dir is on the workspace bind mount. For Pack we must pass the host path
-					// (GITHUB_WORKSPACE) as the volume source so the build container, which runs
-					// on the host via the Docker socket, can write the ref where op can read it.
 					helmOutDir, err := os.MkdirTemp(cwd, ".op-helm-out-")
 					if err != nil {
 						return fmt.Errorf("creating helm output dir: %w", err)
 					}
 					defer os.RemoveAll(helmOutDir)
+					layersDir, err := os.MkdirTemp(cwd, ".op-helm-layers-")
+					if err != nil {
+						return fmt.Errorf("creating helm layers dir: %w", err)
+					}
+					defer os.RemoveAll(layersDir)
 
-					volumeSource := helmOutDir
-					if hostWS := os.Getenv("GITHUB_WORKSPACE"); hostWS != "" {
-						volumeSource = filepath.Join(hostWS, filepath.Base(helmOutDir))
+					hostWS := os.Getenv("GITHUB_WORKSPACE")
+					helmOutDirHost := helmOutDir
+					layersDirHost := layersDir
+					if hostWS != "" {
+						helmOutDirHost = filepath.Join(hostWS, filepath.Base(helmOutDir))
+						layersDirHost = filepath.Join(hostWS, filepath.Base(layersDir))
+					}
+					workspacePath := filepath.Join(cwd, art.Workspace)
+					if hostWS != "" {
+						workspacePath = filepath.Join(hostWS, art.Workspace)
 					}
 
-					// BP_HELM_OCI_REF is the OCI repo (no tag); helm push adds chart version as tag
 					refBase := fullTag
 					if idx := strings.LastIndex(fullTag, ":"); idx > 0 {
 						refBase = fullTag[:idx]
 					}
-					// Rewrite localhost/127.0.0.1 to hostRegistryForPack so the buildpack container can reach the host registry (no-op when OP_PACK_NETWORK=host).
 					rewrite := func(s string) string {
 						if hostRegistryForPack == "" {
 							return s
 						}
 						return strings.ReplaceAll(strings.ReplaceAll(s, "localhost:5001", hostRegistryForPack), "127.0.0.1:5001", hostRegistryForPack)
 					}
-					chartPackImageName := rewrite(fullTag)
 					chartPackRefBase := rewrite(refBase)
-					chartPackRunImage := art.BuildpackArtifact.RunImage
-					if resolved, ok := builtImages[chartPackRunImage]; ok {
-						chartPackRunImage = resolved
-					}
-					chartPackRunImage = rewrite(chartPackRunImage)
 					chartInsecureRegistries := opts.InsecureRegistries
 					if hostRegistryForPack != "" && (strings.Contains(fullTag, "localhost:5001") || strings.Contains(fullTag, "127.0.0.1:5001")) {
 						chartInsecureRegistries = append(chartInsecureRegistries, hostRegistryForPack)
 					}
-					packEnv := map[string]string{
-						"BP_GO_PRIVATE":      "github.com/octopilot/*",
-						"BP_HELM_OCI_REF":   chartPackRefBase,
+					chartEnv := map[string]string{
+						"BP_HELM_OCI_REF":    chartPackRefBase,
 						"BP_HELM_OCI_OUTPUT": "/out",
 					}
-					// So helm push uses HTTP for local/insecure registries (--plain-http).
 					if idx := strings.Index(chartPackRefBase, "/"); idx > 0 {
 						chartRegistryHost := chartPackRefBase[:idx]
 						for _, reg := range chartInsecureRegistries {
 							if reg == chartRegistryHost {
-								packEnv["BP_HELM_OCI_PLAIN_HTTP"] = "true"
+								chartEnv["BP_HELM_OCI_PLAIN_HTTP"] = "true"
 								break
 							}
 						}
@@ -269,28 +266,12 @@ var buildCmd = &cobra.Command{
 					for _, env := range art.BuildpackArtifact.Env {
 						parts := strings.SplitN(env, "=", 2)
 						if len(parts) == 2 {
-							packEnv[parts[0]] = parts[1]
+							chartEnv[parts[0]] = parts[1]
 						}
 					}
 
-					po := pack.BuildOptions{
-						ImageName:  chartPackImageName,
-						Builder:    art.BuildpackArtifact.Builder,
-						Path:       filepath.Join(cwd, art.Workspace),
-						Publish:    false,
-						ClearCache: true, // ensure build phase runs so helm buildpack can push and write ref
-						RunImage:   chartPackRunImage,
-						Target:     "",
-						Env:        packEnv,
-						SBOMDir: func() string {
-							s, _ := cmd.Flags().GetString("sbom-output")
-							return s
-						}(),
-						InsecureRegistries: chartInsecureRegistries,
-						Volumes:            []string{volumeSource + ":/out:rw"},
-					}
-					if err := packBuild(ctx, po, os.Stdout); err != nil {
-						return fmt.Errorf("direct pack build (chart) failed for %s: %w", imageName, err)
+					if err := runChartBuildInBuilder(ctx, art.BuildpackArtifact.Builder, workspacePath, layersDirHost, helmOutDirHost, chartEnv); err != nil {
+						return fmt.Errorf("chart build (helm buildpack in builder) failed for %s: %w", imageName, err)
 					}
 
 					chartRef, err := readChartRef(helmOutDir, fullTag, filepath.Join(cwd, art.Workspace), imageName)
@@ -303,9 +284,9 @@ var buildCmd = &cobra.Command{
 					continue
 				}
 
-				// Non-chart buildpack path (including multicontext: runImage may reference a
-				// previously built artifact like base-image). Resolve runImage so pack uses
-				// the actual built tag; do not use chartPack* variables here.
+				// Non-chart buildpack path: use pack with run image (unchanged for other Skaffold
+				// configurations). Run image is only skipped for "-chart" artifacts above.
+				// Multicontext: runImage may reference a previously built artifact (e.g. base-image).
 				runImage := art.BuildpackArtifact.RunImage
 				if resolved, ok := builtImages[runImage]; ok {
 					fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
@@ -793,6 +774,44 @@ var buildCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+// helmBuildpackPath is the path inside the builder image to the octopilot/helm buildpack (id slug + version).
+// Overridable via env OP_HELM_BUILDPACK_PATH for different builder layouts.
+const defaultHelmBuildpackPath = "/cnb/buildpacks/octopilot_helm/0.1.3"
+
+func getHelmBuildpackPath() string {
+	if p := os.Getenv("OP_HELM_BUILDPACK_PATH"); p != "" {
+		return p
+	}
+	return defaultHelmBuildpackPath
+}
+
+// runChartBuildInBuilder runs only the helm buildpack inside the builder container (detect + build).
+// No run image or pack lifecycle: the buildpack pushes the Helm OCI chart and writes the ref to helmOutDir.
+// workspacePath is the host path to the chart context; helmOutDirHost is the host path for the output volume (ref, etc.).
+func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, layersDirHost, helmOutDirHost string, env map[string]string) error {
+	buildpackPath := getHelmBuildpackPath()
+	args := []string{
+		"run", "--rm",
+		"-v", workspacePath + ":/workspace:ro",
+		"-v", layersDirHost + ":/layers",
+		"-v", helmOutDirHost + ":/out",
+		"-e", "CNB_BUILD_DIR=/workspace",
+		"-e", "CNB_LAYERS_DIR=/layers",
+	}
+	for k, v := range env {
+		args = append(args, "-e", k+"="+v)
+	}
+	args = append(args, builderImage)
+	args = append(args, "/bin/sh", "-c", buildpackPath+"/bin/detect && "+buildpackPath+"/bin/build")
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("helm buildpack in builder: %w", err)
+	}
+	return nil
 }
 
 // readChartRef reads the helm push ref from helmOutDir/ref. If the buildpack did not write it

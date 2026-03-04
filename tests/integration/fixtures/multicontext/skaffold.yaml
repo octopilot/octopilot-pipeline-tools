@@ -9,5 +9,5 @@ build:
   - image: app-image
     context: app
     buildpacks:
-      builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-d84dd54
+      builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-d5eb42a
       runImage: base-image
