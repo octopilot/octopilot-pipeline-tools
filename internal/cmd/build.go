@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/config"
@@ -801,6 +802,14 @@ func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, la
 		return fmt.Errorf("helm buildpack in builder: docker client: %w", err)
 	}
 	defer cli.Close()
+
+	// Pull builder image if not present (e.g. in CI the daemon may not have it).
+	rd, pullErr := cli.ImagePull(ctx, builderImage, image.PullOptions{})
+	if pullErr == nil {
+		_, _ = io.Copy(io.Discard, rd)
+		rd.Close()
+	}
+	// Ignore pull errors (e.g. image already present or no network); ContainerCreate will fail with a clear error if missing.
 
 	envSlice := []string{"CNB_BUILD_DIR=/workspace", "CNB_LAYERS_DIR=/layers"}
 	for k, v := range env {
