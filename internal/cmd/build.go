@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/config"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/graph"
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/parser"
@@ -789,27 +792,59 @@ func getHelmBuildpackPath() string {
 
 // runChartBuildInBuilder runs only the helm buildpack inside the builder container (detect + build).
 // No run image or pack lifecycle: the buildpack pushes the Helm OCI chart and writes the ref to helmOutDir.
+// Uses the Docker API so it works when op runs inside a container that has the socket mounted but no docker CLI.
 // workspacePath is the host path to the chart context; helmOutDirHost is the host path for the output volume (ref, etc.).
 func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, layersDirHost, helmOutDirHost string, env map[string]string) error {
 	buildpackPath := getHelmBuildpackPath()
-	args := []string{
-		"run", "--rm",
-		"-v", workspacePath + ":/workspace:ro",
-		"-v", layersDirHost + ":/layers",
-		"-v", helmOutDirHost + ":/out",
-		"-e", "CNB_BUILD_DIR=/workspace",
-		"-e", "CNB_LAYERS_DIR=/layers",
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("helm buildpack in builder: docker client: %w", err)
 	}
+	defer cli.Close()
+
+	envSlice := []string{"CNB_BUILD_DIR=/workspace", "CNB_LAYERS_DIR=/layers"}
 	for k, v := range env {
-		args = append(args, "-e", k+"="+v)
+		envSlice = append(envSlice, k+"="+v)
 	}
-	args = append(args, builderImage)
-	args = append(args, "/bin/sh", "-c", buildpackPath+"/bin/detect && "+buildpackPath+"/bin/build")
-	cmd := exec.CommandContext(ctx, "docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("helm buildpack in builder: %w", err)
+	cfg := &container.Config{
+		Image: builderImage,
+		Cmd:   []string{"/bin/sh", "-c", buildpackPath + "/bin/detect && " + buildpackPath + "/bin/build"},
+		Env:   envSlice,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+	hostCfg := &container.HostConfig{
+		Binds: []string{
+			workspacePath + ":/workspace:ro",
+			layersDirHost + ":/layers",
+			helmOutDirHost + ":/out",
+		},
+		AutoRemove: true,
+	}
+	createResp, err := cli.ContainerCreate(ctx, cfg, hostCfg, nil, nil, "")
+	if err != nil {
+		return fmt.Errorf("helm buildpack in builder: create container: %w", err)
+	}
+	if err := cli.ContainerStart(ctx, createResp.ID, container.StartOptions{}); err != nil {
+		return fmt.Errorf("helm buildpack in builder: start container: %w", err)
+	}
+	attachResp, err := cli.ContainerAttach(ctx, createResp.ID, container.AttachOptions{Stream: true, Stdout: true, Stderr: true})
+	if err != nil {
+		_ = cli.ContainerRemove(ctx, createResp.ID, container.RemoveOptions{Force: true})
+		return fmt.Errorf("helm buildpack in builder: attach: %w", err)
+	}
+	defer attachResp.Close()
+	go func() { _, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, attachResp.Reader) }()
+	statusCh, errCh := cli.ContainerWait(ctx, createResp.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return fmt.Errorf("helm buildpack in builder: wait: %w", err)
+		}
+	case body := <-statusCh:
+		if body.StatusCode != 0 {
+			return fmt.Errorf("helm buildpack in builder: exit code %d", body.StatusCode)
+		}
 	}
 	return nil
 }
