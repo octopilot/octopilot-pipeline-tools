@@ -861,17 +861,11 @@ func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, la
 	return nil
 }
 
-// readChartRef reads the helm push ref from helmOutDir/ref. If the buildpack did not write it
-// (e.g. published buildpack without that behavior, or env not passed), falls back to deriving
-// a chart ref from fullTag (refBase) and the chart version in workspace Chart.yaml.
+// readChartRef reads the helm push ref from helmOutDir/ref. It validates that the ref has
+// Helm OCI shape (registry/repo/chartname:version or ...@digest). If the buildpack wrote
+// an image-style ref (e.g. ttl.sh/uuid-chart:1h@sha256:...) without the chart name segment,
+// it normalizes using Chart.yaml name and version so Flux and helm pull get a pullable ref.
 func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, error) {
-	refPath := filepath.Join(helmOutDir, "ref")
-	refBytes, err := os.ReadFile(refPath)
-	if err == nil {
-		return strings.TrimSpace(string(refBytes)), nil
-	}
-	// Fallback: ref not written by buildpack; derive from image ref and Chart.yaml (name + version).
-	// Helm stores OCI charts at registry/repo/chartname:version, so ref must include chart name.
 	refBase := fullTag
 	if idx := strings.LastIndex(fullTag, ":"); idx > 0 {
 		refBase = fullTag[:idx]
@@ -879,7 +873,7 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	chartYaml := filepath.Join(workspaceDir, "Chart.yaml")
 	yb, yerr := os.ReadFile(chartYaml)
 	if yerr != nil {
-		return "", fmt.Errorf("reading helm push ref for %s: %w (fallback: could not read Chart.yaml: %v)", imageName, err, yerr)
+		return "", fmt.Errorf("reading helm push ref for %s: need Chart.yaml: %w", imageName, yerr)
 	}
 	content := string(yb)
 	version := parseChartVersionFromYAML(content)
@@ -890,9 +884,49 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	if chartName == "" {
 		chartName = "chart"
 	}
+
+	refPath := filepath.Join(helmOutDir, "ref")
+	refBytes, err := os.ReadFile(refPath)
+	if err == nil {
+		ref := strings.TrimSpace(string(refBytes))
+		if isValidHelmChartRef(ref) {
+			return ref, nil
+		}
+		// Buildpack wrote an invalid (image-style) ref; normalize to repo/chartname:version@digest.
+		digest := extractDigestFromRef(ref)
+		normalized := refBase + "/" + chartName + ":" + version
+		if digest != "" {
+			normalized += "@" + digest
+		}
+		fmt.Printf("Chart ref from buildpack missing chart name segment; normalized to %s\n", normalized)
+		return normalized, nil
+	}
+
+	// Ref file not present; derive full ref from refBase and Chart.yaml.
 	chartRef := refBase + "/" + chartName + ":" + version
 	fmt.Printf("Chart ref file not found; using derived ref %s (from Chart.yaml)\n", chartRef)
 	return chartRef, nil
+}
+
+// isValidHelmChartRef reports whether ref has Helm OCI shape: registry/repo/chartname:version[@digest].
+// Invalid examples: ttl.sh/uuid-chart:1h@sha256:... (image-style, no chart name path segment).
+func isValidHelmChartRef(ref string) bool {
+	beforeDigest := ref
+	if at := strings.Index(ref, "@"); at > 0 {
+		beforeDigest = ref[:at]
+	}
+	// Must contain at least one "/" and a ":" with ":" after the last "/" (repo/chartname:tag).
+	lastSlash := strings.LastIndex(beforeDigest, "/")
+	colon := strings.Index(beforeDigest, ":")
+	return lastSlash > 0 && colon > lastSlash
+}
+
+// extractDigestFromRef returns the digest part of ref (e.g. "sha256:...") or empty if none.
+func extractDigestFromRef(ref string) string {
+	if at := strings.Index(ref, "@"); at > 0 && at+1 < len(ref) {
+		return ref[at+1:]
+	}
+	return ""
 }
 
 // parseChartVersionFromYAML extracts the first "version:" value from Chart.yaml-style content.
