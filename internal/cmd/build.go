@@ -226,6 +226,9 @@ var buildCmd = &cobra.Command{
 						return fmt.Errorf("creating helm layers dir: %w", err)
 					}
 					defer os.RemoveAll(layersDir)
+					// Builder container runs as non-root; ensure it can write to bind-mounted dirs.
+					_ = os.Chmod(helmOutDir, 0o777)
+					_ = os.Chmod(layersDir, 0o777)
 
 					hostWS := os.Getenv("GITHUB_WORKSPACE")
 					helmOutDirHost := helmOutDir
