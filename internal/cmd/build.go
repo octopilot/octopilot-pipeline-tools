@@ -870,7 +870,8 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	if err == nil {
 		return strings.TrimSpace(string(refBytes)), nil
 	}
-	// Fallback: ref not written by buildpack; derive from image ref and Chart.yaml version
+	// Fallback: ref not written by buildpack; derive from image ref and Chart.yaml (name + version).
+	// Helm stores OCI charts at registry/repo/chartname:version, so ref must include chart name.
 	refBase := fullTag
 	if idx := strings.LastIndex(fullTag, ":"); idx > 0 {
 		refBase = fullTag[:idx]
@@ -880,12 +881,17 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	if yerr != nil {
 		return "", fmt.Errorf("reading helm push ref for %s: %w (fallback: could not read Chart.yaml: %v)", imageName, err, yerr)
 	}
-	version := parseChartVersionFromYAML(string(yb))
+	content := string(yb)
+	version := parseChartVersionFromYAML(content)
 	if version == "" {
 		version = "latest"
 	}
-	chartRef := refBase + ":" + version
-	fmt.Printf("Chart ref file not found; using derived ref %s (from Chart.yaml version)\n", chartRef)
+	chartName := parseChartNameFromYAML(content)
+	if chartName == "" {
+		chartName = "chart"
+	}
+	chartRef := refBase + "/" + chartName + ":" + version
+	fmt.Printf("Chart ref file not found; using derived ref %s (from Chart.yaml)\n", chartRef)
 	return chartRef, nil
 }
 
@@ -897,6 +903,19 @@ func parseChartVersionFromYAML(content string) string {
 			v := strings.TrimSpace(strings.TrimPrefix(line, "version:"))
 			v = strings.Trim(v, "\"'")
 			return v
+		}
+	}
+	return ""
+}
+
+// parseChartNameFromYAML extracts the first "name:" value from Chart.yaml-style content.
+func parseChartNameFromYAML(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "name:") {
+			n := strings.TrimSpace(strings.TrimPrefix(line, "name:"))
+			n = strings.Trim(n, "\"'")
+			return n
 		}
 	}
 	return ""
