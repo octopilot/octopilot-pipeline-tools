@@ -253,16 +253,27 @@ var buildCmd = &cobra.Command{
 						return strings.ReplaceAll(strings.ReplaceAll(s, "localhost:5001", hostRegistryForPack), "127.0.0.1:5001", hostRegistryForPack)
 					}
 					chartPackRefBase := rewrite(refBase)
+					// Chart build runs in a container (no host network). So when the registry is localhost/127.0.0.1,
+					// the container cannot reach it. On darwin/windows use host.docker.internal so the container can push.
+					chartRefForContainer := chartPackRefBase
+					if strings.Contains(chartPackRefBase, "localhost:5001") || strings.Contains(chartPackRefBase, "127.0.0.1:5001") {
+						if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+							chartRefForContainer = strings.ReplaceAll(strings.ReplaceAll(chartPackRefBase, "localhost:5001", "host.docker.internal:5001"), "127.0.0.1:5001", "host.docker.internal:5001")
+						}
+					}
 					chartInsecureRegistries := opts.InsecureRegistries
 					if hostRegistryForPack != "" && (strings.Contains(fullTag, "localhost:5001") || strings.Contains(fullTag, "127.0.0.1:5001")) {
 						chartInsecureRegistries = append(chartInsecureRegistries, hostRegistryForPack)
 					}
+					if chartRefForContainer != chartPackRefBase {
+						chartInsecureRegistries = append(chartInsecureRegistries, "host.docker.internal:5001")
+					}
 					chartEnv := map[string]string{
-						"BP_HELM_OCI_REF":    chartPackRefBase,
+						"BP_HELM_OCI_REF":    chartRefForContainer,
 						"BP_HELM_OCI_OUTPUT": "/out",
 					}
-					if idx := strings.Index(chartPackRefBase, "/"); idx > 0 {
-						chartRegistryHost := chartPackRefBase[:idx]
+					if idx := strings.Index(chartRefForContainer, "/"); idx > 0 {
+						chartRegistryHost := chartRefForContainer[:idx]
 						for _, reg := range chartInsecureRegistries {
 							if reg == chartRegistryHost {
 								chartEnv["BP_HELM_OCI_PLAIN_HTTP"] = "true"
@@ -832,6 +843,12 @@ func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, la
 			helmOutDirHost + ":/out",
 		},
 		AutoRemove: true,
+	}
+	// On Linux, when pushing to localhost registry the container needs host network to reach it (darwin/windows use host.docker.internal in env).
+	if runtime.GOOS == "linux" {
+		if ociRef := env["BP_HELM_OCI_REF"]; ociRef != "" && (strings.Contains(ociRef, "localhost:5001") || strings.Contains(ociRef, "127.0.0.1:5001")) {
+			hostCfg.NetworkMode = "host"
+		}
 	}
 	createResp, err := cli.ContainerCreate(ctx, cfg, hostCfg, nil, nil, "")
 	if err != nil {
