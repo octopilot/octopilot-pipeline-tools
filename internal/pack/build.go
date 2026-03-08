@@ -21,6 +21,8 @@ type BuildOptions struct {
 	ClearCache bool
 	Env        map[string]string
 	SBOMDir    string
+	// Buildpacks: when non-empty, only these buildpacks are used (DisableSystemBuildpacks true).
+	Buildpacks []string
 	// Registry handling if needed (insecure, etc.)
 	Target             string
 	InsecureRegistries []string
@@ -39,18 +41,19 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 	}
 
 	buildOpts := client.BuildOptions{
-		Image:              opts.ImageName,
-		Builder:            opts.Builder,
-		RunImage:           opts.RunImage,
-		AppPath:            opts.Path,
-		Publish:            opts.Publish,
-		ClearCache:         opts.ClearCache,
-		TrustBuilder:       func(s string) bool { return true }, // Always trust for now (internal tool)
-		Env:                opts.Env,
-		SBOMDestinationDir: opts.SBOMDir,
-		// Platform is a top-level field in client.BuildOptions
-		Platform:           opts.Target,
-		InsecureRegistries: opts.InsecureRegistries,
+		Image:                   opts.ImageName,
+		Builder:                 opts.Builder,
+		RunImage:                opts.RunImage,
+		AppPath:                 opts.Path,
+		Publish:                 opts.Publish,
+		ClearCache:              opts.ClearCache,
+		TrustBuilder:            func(s string) bool { return true }, // Always trust for now (internal tool)
+		Env:                     opts.Env,
+		SBOMDestinationDir:      opts.SBOMDir,
+		Buildpacks:              opts.Buildpacks,
+		DisableSystemBuildpacks: len(opts.Buildpacks) > 0, // When explicit list, use only those
+		Platform:                opts.Target,
+		InsecureRegistries:      opts.InsecureRegistries,
 		ContainerConfig: client.ContainerConfig{
 			Network: os.Getenv("OP_PACK_NETWORK"),
 			Volumes: opts.Volumes,

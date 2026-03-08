@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -163,17 +164,38 @@ var buildCmd = &cobra.Command{
 		}
 
 		// 4. Build
-		// If push is enabled and we are using buildpacks, we might want to use our direct pack integration
-		// to bypass Skaffold's daemon export issues on multi-arch.
+		// Use direct Pack when: (1) push is enabled (multi-arch/export), or (2) any buildpack artifact
+		// has an explicit buildpacks list. Skaffold's buildpack builder does not pass buildpacks/env to
+		// pack, so without (2) the controller would be built as Java on local builds (e.g. Tilt).
 
 		useDirectPack := false
-		// opts.PushImages check might be unreliable if not set in config, so check flag directly
 		if push, _ := cmd.Flags().GetBool("push"); push {
 			useDirectPack = true
 		}
+		if !useDirectPack {
+			for _, a := range artifactsToRun {
+				if a.BuildpackArtifact != nil && len(a.BuildpackArtifact.Buildpacks) > 0 {
+					useDirectPack = true
+					break
+				}
+			}
+		}
 
 		if useDirectPack {
-			fmt.Printf("Building with direct Pack integration (repo: %s, push: true)....\n", repo)
+			pushStr := "push: true"
+			if push, _ := cmd.Flags().GetBool("push"); !push {
+				pushStr = "push: false (using direct Pack for explicit buildpacks)"
+			}
+			fmt.Printf("Building with direct Pack integration (repo: %s, %s)....\n", repo, pushStr)
+
+			// Build primary app first so build_result.json gets the correct digest for the main image
+			// (avoids mix-up where chart or integration-cronjob digest is written for the controller).
+			sort.Slice(artifactsToRun, func(i, j int) bool {
+				pi := artifactBuildOrder(artifactsToRun[i].ImageName)
+				pj := artifactBuildOrder(artifactsToRun[j].ImageName)
+				return pi < pj
+			})
+			fmt.Printf("Build order (primary first): %s\n", strings.Join(artifactImageNames(artifactsToRun), " | "))
 
 			var built []util.Build
 			// Track built images for dependency resolution (imageName -> fullTag with digest)
@@ -299,6 +321,7 @@ var buildCmd = &cobra.Command{
 					built = append(built, util.Build{ImageName: imageName, Tag: chartRef})
 					builtImages[imageName] = chartRef
 					fmt.Printf("Chart artifact %s -> %s\n", imageName, chartRef)
+					fmt.Printf("  build_result entry: %s -> %s\n", imageName, chartRef)
 					continue
 				}
 
@@ -378,12 +401,14 @@ var buildCmd = &cobra.Command{
 						}
 
 						po := pack.BuildOptions{
-							ImageName: packImageName,
-							Builder:   art.BuildpackArtifact.Builder,
-							Path:      filepath.Join(cwd, art.Workspace),
-							Publish:   true,
-							RunImage:  packRunImage,
-							Target:    platform,
+							ImageName:           packImageName,
+							Builder:             art.BuildpackArtifact.Builder,
+							Path:                filepath.Join(cwd, art.Workspace),
+							Publish:             true,
+							RunImage:            packRunImage,
+							Env:                 packEnv,
+							Buildpacks:          art.BuildpackArtifact.Buildpacks,
+							Target:              platform,
 							SBOMDir: func() string {
 								s, _ := cmd.Flags().GetString("sbom-output")
 								return s
@@ -491,6 +516,7 @@ var buildCmd = &cobra.Command{
 						ImageName: imageName,
 						Tag:       fullTagWithDigest,
 					})
+					fmt.Printf("  build_result entry: %s -> %s\n", imageName, fullTagWithDigest)
 
 					// Record for dependency resolution
 					builtImages[imageName] = fullTagWithDigest
@@ -769,12 +795,25 @@ var buildCmd = &cobra.Command{
 			}
 			}
 
-			// Write build_result.json
+			// Deterministic order for build_result.json (primary first)
+			sortBuildResultByArtifactOrder(built)
+			fmt.Printf("Writing build_result.json (%d entries):\n", len(built))
+			for _, b := range built {
+				fmt.Printf("  %s -> %s\n", b.ImageName, b.Tag)
+			}
 			if err := writeBuildResult(built); err != nil {
 				return err
 			}
 			return nil
 		}
+
+		// Skaffold path: sort artifacts so build order is deterministic (primary first)
+		sort.Slice(artifactsToRun, func(i, j int) bool {
+			pi := artifactBuildOrder(artifactsToRun[i].ImageName)
+			pj := artifactBuildOrder(artifactsToRun[j].ImageName)
+			return pi < pj
+		})
+		fmt.Printf("Build order (primary first): %s\n", strings.Join(artifactImageNames(artifactsToRun), " | "))
 
 		fmt.Printf("Building with Skaffold library (repo: %s)....\n", repo)
 		buildArtifacts, err := r.Build(ctx, os.Stdout, artifactsToRun)
@@ -782,10 +821,15 @@ var buildCmd = &cobra.Command{
 			return fmt.Errorf("build failed: %w", err)
 		}
 
-		// 5. Write build_result.json
+		// 5. Write build_result.json (deterministic order: primary first)
 		var built []util.Build
 		for _, ba := range buildArtifacts {
 			built = append(built, util.Build{ImageName: ba.ImageName, Tag: ba.Tag})
+		}
+		sortBuildResultByArtifactOrder(built)
+		fmt.Printf("Writing build_result.json (%d entries):\n", len(built))
+		for _, b := range built {
+			fmt.Printf("  %s -> %s\n", b.ImageName, b.Tag)
 		}
 		if err := writeBuildResult(built); err != nil {
 			return err
@@ -1120,6 +1164,25 @@ func prepareSkaffoldOptionsWithRepo(cmd *cobra.Command, cwd string, repo string)
 		}
 	}
 	return opts
+}
+
+// artifactBuildOrder returns a sort key so primary app is built before chart, and chart before integration.
+// Prevents build_result.json from associating the wrong digest with the main image (e.g. controller).
+func artifactBuildOrder(imageName string) int {
+	if strings.HasSuffix(imageName, "-chart") {
+		return 1
+	}
+	if strings.Contains(imageName, "integration") {
+		return 2
+	}
+	return 0
+}
+
+// sortBuildResultByArtifactOrder sorts built so build_result.json has deterministic order (primary first).
+func sortBuildResultByArtifactOrder(built []util.Build) {
+	sort.Slice(built, func(i, j int) bool {
+		return artifactBuildOrder(built[i].ImageName) < artifactBuildOrder(built[j].ImageName)
+	})
 }
 
 // artifactImageNames returns image names from artifacts for error messages.
