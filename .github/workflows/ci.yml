@@ -85,7 +85,7 @@ jobs:
           go-version: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.go }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
       - uses: extractions/setup-just@v3
       - run: just test-integration
         env:
@@ -171,7 +171,7 @@ jobs:
       - run: chmod +x dist/op-linux-amd64
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Login to GHCR
         if: github.repository_owner == 'octopilot'
