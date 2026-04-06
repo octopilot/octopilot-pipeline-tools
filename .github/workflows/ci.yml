@@ -86,7 +86,7 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v4
       - run: just test-integration
         env:
           BP_GO_VERSION: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.op }}
