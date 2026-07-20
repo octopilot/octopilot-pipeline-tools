@@ -260,6 +260,7 @@ jobs:
 
       - name: Generate Release Notes
         id: release_notes
+        continue-on-error: true
         uses: octopilot/actions/release@main
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
