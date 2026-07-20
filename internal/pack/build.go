@@ -72,6 +72,14 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 		buildOpts.Cache = cache.CacheOpts{
 			Build: cache.CacheInfo{Format: cache.CacheImage, Source: cacheImage},
 		}
+		// ALSO set the legacy field: pack's lifecycle builds CNB_REGISTRY_AUTH
+		// from opts.CacheImage only (lifecycle_execution.go passes it to
+		// auth.BuildEnvVar; Cache.Build.Source is used for the cache object but
+		// NOT for auth). With only CacheOpts set, the analyzer hits the cache
+		// registry anonymously and fails its read/write validation with
+		// UNAUTHORIZED. The cache object itself prefers opts.CacheImage and
+		// falls back to Cache.Build.Source, so setting both is coherent.
+		buildOpts.CacheImage = cacheImage
 	}
 
 	// We might need to handle fetch logic if relying on daemon.
