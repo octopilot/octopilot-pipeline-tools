@@ -7,6 +7,7 @@ import (
 
 	"os"
 
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -60,11 +61,24 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 		},
 	}
 
+	// Build-cache-as-registry-image: ephemeral CI runners lose pack's local
+	// volume cache between runs, which forces cold builds (e.g. full Rust
+	// workspace recompiles). OP_CACHE_IMAGE names a registry image (typically
+	// <registry>/<image>-buildcache) that the lifecycle restores from and
+	// exports to, so warm caches survive runner recycling. Only meaningful for
+	// per-artifact invocations (CI passes --artifact); multi-arch or
+	// multi-artifact local builds should leave it unset (volume cache default).
+	if cacheImage := os.Getenv("OP_CACHE_IMAGE"); cacheImage != "" {
+		buildOpts.Cache = cache.CacheOpts{
+			Build: cache.CacheInfo{Format: cache.CacheImage, Source: cacheImage},
+		}
+	}
+
 	// We might need to handle fetch logic if relying on daemon.
 
 	// Log build options for debugging
-	fmt.Printf("[pack] BuildOptions: Image=%s Builder=%s RunImage=%s Target=%s Network=%s Publish=%v InsecureRegistries=%v\n",
-		opts.ImageName, opts.Builder, opts.RunImage, opts.Target, os.Getenv("OP_PACK_NETWORK"), opts.Publish, opts.InsecureRegistries)
+	fmt.Printf("[pack] BuildOptions: Image=%s Builder=%s RunImage=%s Target=%s Network=%s Publish=%v InsecureRegistries=%v CacheImage=%s\n",
+		opts.ImageName, opts.Builder, opts.RunImage, opts.Target, os.Getenv("OP_PACK_NETWORK"), opts.Publish, opts.InsecureRegistries, os.Getenv("OP_CACHE_IMAGE"))
 
 	_, _ = fmt.Fprintf(out, "Building %s using builder %s (publish=%v)...\n", opts.ImageName, opts.Builder, opts.Publish)
 	if err := packClient.Build(ctx, buildOpts); err != nil {
