@@ -521,8 +521,9 @@ var buildCmd = &cobra.Command{
 					// Record for dependency resolution
 					builtImages[imageName] = fullTagWithDigest
 
-					// Tag with version if available
-					if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" {
+					// Tag with version if available. Not for ttl.sh (--ttl-uuid): the UUID identifies an ephemeral build,
+					// the tag is a TTL (":1d") rather than "latest", and ttl.sh cannot re-tag manifest lists.
+					if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" && ttlUUID == "" {
 						// Construct version tag (replace :latest with :version)
 						// fullTag is ...:latest
 						versionTagStr := strings.TrimSuffix(fullTag, "latest") + version
@@ -715,8 +716,8 @@ var buildCmd = &cobra.Command{
 
 				fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, finalDigest)
 
-				// Version tag (same logic as buildpack path)
-				if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" {
+				// Version tag (same logic as buildpack path; skipped for ttl.sh, see above)
+				if version := os.Getenv("DOCKER_METADATA_OUTPUT_VERSION"); version != "" && ttlUUID == "" {
 					versionTagStr := strings.TrimSuffix(fullTag, "latest") + version
 					fmt.Printf("Tagging %s as %s...\n", fullTag, versionTagStr)
 					verRef, err := parseReferenceForRemote(versionTagStr, opts.InsecureRegistries)

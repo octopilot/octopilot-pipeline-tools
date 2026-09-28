@@ -1,0 +1,2316 @@
+2026-02-19T19:00:30.5794958Z Current runner version: '2.331.0'
+2026-02-19T19:00:30.5818537Z ##[group]Runner Image Provisioner
+2026-02-19T19:00:30.5819602Z Hosted Compute Agent
+2026-02-19T19:00:30.5820131Z Version: 20260213.493
+2026-02-19T19:00:30.5820911Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-02-19T19:00:30.5821587Z Build Date: 2026-02-13T00:28:41Z
+2026-02-19T19:00:30.5822250Z Worker ID: {cd10e854-faf4-4174-a919-628368f9aebf}
+2026-02-19T19:00:30.5823042Z Azure Region: westus
+2026-02-19T19:00:30.5823643Z ##[endgroup]
+2026-02-19T19:00:30.5825053Z ##[group]Operating System
+2026-02-19T19:00:30.5825828Z Ubuntu
+2026-02-19T19:00:30.5826335Z 24.04.3
+2026-02-19T19:00:30.5826785Z LTS
+2026-02-19T19:00:30.5827326Z ##[endgroup]
+2026-02-19T19:00:30.5827815Z ##[group]Runner Image
+2026-02-19T19:00:30.5828381Z Image: ubuntu-24.04
+2026-02-19T19:00:30.5829197Z Version: 20260217.30.1
+2026-02-19T19:00:30.5830404Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260217.30/images/ubuntu/Ubuntu2404-Readme.md
+2026-02-19T19:00:30.5831960Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260217.30
+2026-02-19T19:00:30.5833147Z ##[endgroup]
+2026-02-19T19:00:30.5834504Z ##[group]GITHUB_TOKEN Permissions
+2026-02-19T19:00:30.5836515Z Attestations: write
+2026-02-19T19:00:30.5837077Z Contents: read
+2026-02-19T19:00:30.5837721Z Metadata: read
+2026-02-19T19:00:30.5838237Z Packages: write
+2026-02-19T19:00:30.5839094Z ##[endgroup]
+2026-02-19T19:00:30.5841549Z Secret source: Actions
+2026-02-19T19:00:30.5842443Z Prepare workflow directory
+2026-02-19T19:00:30.6164831Z Prepare all required actions
+2026-02-19T19:00:30.6212364Z Getting action download info
+2026-02-19T19:00:31.2704290Z Download action repository 'actions/checkout@v6' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-02-19T19:00:31.4454981Z Download action repository 'actions/download-artifact@v4' (SHA:d3f86a106a0bac45b974a628896c90dbdf5c8093)
+2026-02-19T19:00:32.0133154Z Download action repository 'docker/setup-qemu-action@v3' (SHA:c7c53464625b32c7a7e944ae62b3e17d2b600130)
+2026-02-19T19:00:32.6709030Z Download action repository 'docker/login-action@v3' (SHA:c94ce9fb468520275223c153574b00df6fe4bcc9)
+2026-02-19T19:00:33.4192582Z Download action repository 'octopilot/actions@main' (SHA:0634128b3c55e9cfee803cce474a916a68d1dc7b)
+2026-02-19T19:00:33.9626086Z Download action repository 'actions/attest-build-provenance@v2' (SHA:e8998f949152b193b063cb0ec769d69d929409be)
+2026-02-19T19:00:34.5022359Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-02-19T19:00:34.7784847Z Getting action download info
+2026-02-19T19:00:34.9878968Z Download action repository 'actions/attest-build-provenance@1176ef556905f349f669722abf30bce1a6e16e01' (SHA:1176ef556905f349f669722abf30bce1a6e16e01)
+2026-02-19T19:00:35.5107264Z Download action repository 'actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc' (SHA:ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc)
+2026-02-19T19:00:36.4680191Z Complete job name: Build and Push Container
+2026-02-19T19:00:36.5418114Z ##[group]Run actions/checkout@v6
+2026-02-19T19:00:36.5418875Z with:
+2026-02-19T19:00:36.5419100Z   fetch-depth: 0
+2026-02-19T19:00:36.5419347Z   repository: octopilot/octopilot-pipeline-tools
+2026-02-19T19:00:36.5419788Z   token: ***
+2026-02-19T19:00:36.5419979Z   ssh-strict: true
+2026-02-19T19:00:36.5420178Z   ssh-user: git
+2026-02-19T19:00:36.5420369Z   persist-credentials: true
+2026-02-19T19:00:36.5420592Z   clean: true
+2026-02-19T19:00:36.5420788Z   sparse-checkout-cone-mode: true
+2026-02-19T19:00:36.5421029Z   fetch-tags: false
+2026-02-19T19:00:36.5421228Z   show-progress: true
+2026-02-19T19:00:36.5421417Z   lfs: false
+2026-02-19T19:00:36.5421596Z   submodules: false
+2026-02-19T19:00:36.5421782Z   set-safe-directory: true
+2026-02-19T19:00:36.5422219Z ##[endgroup]
+2026-02-19T19:00:36.6361822Z Syncing repository: octopilot/octopilot-pipeline-tools
+2026-02-19T19:00:36.6363548Z ##[group]Getting Git version info
+2026-02-19T19:00:36.6364333Z Working directory is '/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools'
+2026-02-19T19:00:36.6365354Z [command]/usr/bin/git version
+2026-02-19T19:00:36.6365619Z git version 2.53.0
+2026-02-19T19:00:36.6377942Z ##[endgroup]
+2026-02-19T19:00:36.6392315Z Temporarily overriding HOME='/home/runner/work/_temp/05bd1cf3-c7bf-41d0-8da7-6ebec6d7c67f' before making global git config changes
+2026-02-19T19:00:36.6393339Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-19T19:00:36.6397557Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools
+2026-02-19T19:00:36.6479954Z Deleting the contents of '/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools'
+2026-02-19T19:00:36.6483299Z ##[group]Initializing the repository
+2026-02-19T19:00:36.6488418Z [command]/usr/bin/git init /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools
+2026-02-19T19:00:36.7055897Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-02-19T19:00:36.7056776Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-02-19T19:00:36.7057391Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-02-19T19:00:36.7057824Z hint: call:
+2026-02-19T19:00:36.7058021Z hint:
+2026-02-19T19:00:36.7058334Z hint: 	git config --global init.defaultBranch <name>
+2026-02-19T19:00:36.7058895Z hint:
+2026-02-19T19:00:36.7059260Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-02-19T19:00:36.7059876Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-02-19T19:00:36.7060286Z hint:
+2026-02-19T19:00:36.7060525Z hint: 	git branch -m <name>
+2026-02-19T19:00:36.7060778Z hint:
+2026-02-19T19:00:36.7061158Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-02-19T19:00:36.7098521Z Initialized empty Git repository in /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git/
+2026-02-19T19:00:36.7112201Z [command]/usr/bin/git remote add origin https://github.com/octopilot/octopilot-pipeline-tools
+2026-02-19T19:00:36.7187986Z ##[endgroup]
+2026-02-19T19:00:36.7189060Z ##[group]Disabling automatic garbage collection
+2026-02-19T19:00:36.7193406Z [command]/usr/bin/git config --local gc.auto 0
+2026-02-19T19:00:36.7225631Z ##[endgroup]
+2026-02-19T19:00:36.7226245Z ##[group]Setting up auth
+2026-02-19T19:00:36.7227381Z Removing SSH command configuration
+2026-02-19T19:00:36.7234165Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-19T19:00:36.7267368Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-19T19:00:36.8941106Z Removing HTTP extra header
+2026-02-19T19:00:36.8946679Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-19T19:00:36.8978523Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-19T19:00:36.9218980Z Removing includeIf entries pointing to credentials config files
+2026-02-19T19:00:36.9225831Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-19T19:00:36.9258931Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-19T19:00:36.9496286Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-02-19T19:00:36.9535607Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git.path /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:00:36.9566477Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:00:36.9596056Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:00:36.9660317Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:00:36.9689473Z ##[endgroup]
+2026-02-19T19:00:36.9690069Z ##[group]Fetching the repository
+2026-02-19T19:00:36.9698203Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-02-19T19:00:37.6600334Z From https://github.com/octopilot/octopilot-pipeline-tools
+2026-02-19T19:00:37.6601242Z  * [new branch]      buildpacks-publish-fix -> origin/buildpacks-publish-fix
+2026-02-19T19:00:37.6601867Z  * [new branch]      main                   -> origin/main
+2026-02-19T19:00:37.6602222Z  * [new tag]         v0.0.1                 -> v0.0.1
+2026-02-19T19:00:37.6602604Z  * [new tag]         v0.0.10                -> v0.0.10
+2026-02-19T19:00:37.6602931Z  * [new tag]         v0.0.11                -> v0.0.11
+2026-02-19T19:00:37.6603251Z  * [new tag]         v0.0.12                -> v0.0.12
+2026-02-19T19:00:37.6603569Z  * [new tag]         v0.0.13                -> v0.0.13
+2026-02-19T19:00:37.6603879Z  * [new tag]         v0.0.14                -> v0.0.14
+2026-02-19T19:00:37.6637205Z  * [new tag]         v0.0.15                -> v0.0.15
+2026-02-19T19:00:37.6638174Z  * [new tag]         v0.0.16                -> v0.0.16
+2026-02-19T19:00:37.6640991Z  * [new tag]         v0.0.17                -> v0.0.17
+2026-02-19T19:00:37.6641674Z  * [new tag]         v0.0.18                -> v0.0.18
+2026-02-19T19:00:37.6642249Z  * [new tag]         v0.0.19                -> v0.0.19
+2026-02-19T19:00:37.6642810Z  * [new tag]         v0.0.2                 -> v0.0.2
+2026-02-19T19:00:37.6643406Z  * [new tag]         v0.0.20                -> v0.0.20
+2026-02-19T19:00:37.6643947Z  * [new tag]         v0.0.21                -> v0.0.21
+2026-02-19T19:00:37.6644517Z  * [new tag]         v0.0.22                -> v0.0.22
+2026-02-19T19:00:37.6645066Z  * [new tag]         v0.0.23                -> v0.0.23
+2026-02-19T19:00:37.6645629Z  * [new tag]         v0.0.24                -> v0.0.24
+2026-02-19T19:00:37.6646192Z  * [new tag]         v0.0.25                -> v0.0.25
+2026-02-19T19:00:37.6646739Z  * [new tag]         v0.0.26                -> v0.0.26
+2026-02-19T19:00:37.6647304Z  * [new tag]         v0.0.27                -> v0.0.27
+2026-02-19T19:00:37.6647863Z  * [new tag]         v0.0.28                -> v0.0.28
+2026-02-19T19:00:37.6648866Z  * [new tag]         v0.0.29                -> v0.0.29
+2026-02-19T19:00:37.6649461Z  * [new tag]         v0.0.3                 -> v0.0.3
+2026-02-19T19:00:37.6649987Z  * [new tag]         v0.0.30                -> v0.0.30
+2026-02-19T19:00:37.6650498Z  * [new tag]         v0.0.31                -> v0.0.31
+2026-02-19T19:00:37.6650999Z  * [new tag]         v0.0.32                -> v0.0.32
+2026-02-19T19:00:37.6651620Z  * [new tag]         v0.0.33                -> v0.0.33
+2026-02-19T19:00:37.6652188Z  * [new tag]         v0.0.34                -> v0.0.34
+2026-02-19T19:00:37.6652704Z  * [new tag]         v0.0.35                -> v0.0.35
+2026-02-19T19:00:37.6653219Z  * [new tag]         v0.0.36                -> v0.0.36
+2026-02-19T19:00:37.6653943Z  * [new tag]         v0.0.37                -> v0.0.37
+2026-02-19T19:00:37.6654507Z  * [new tag]         v0.0.38                -> v0.0.38
+2026-02-19T19:00:37.6655025Z  * [new tag]         v0.0.39                -> v0.0.39
+2026-02-19T19:00:37.6655542Z  * [new tag]         v0.0.4                 -> v0.0.4
+2026-02-19T19:00:37.6656313Z  * [new tag]         v0.0.40                -> v0.0.40
+2026-02-19T19:00:37.6656831Z  * [new tag]         v0.0.41                -> v0.0.41
+2026-02-19T19:00:37.6657340Z  * [new tag]         v0.0.5                 -> v0.0.5
+2026-02-19T19:00:37.6657836Z  * [new tag]         v0.0.6                 -> v0.0.6
+2026-02-19T19:00:37.6658347Z  * [new tag]         v0.0.7                 -> v0.0.7
+2026-02-19T19:00:37.6659060Z  * [new tag]         v0.0.8                 -> v0.0.8
+2026-02-19T19:00:37.6659579Z  * [new tag]         v0.0.9                 -> v0.0.9
+2026-02-19T19:00:37.6753704Z [command]/usr/bin/git tag --list v0.0.41
+2026-02-19T19:00:37.6837008Z v0.0.41
+2026-02-19T19:00:37.6846605Z [command]/usr/bin/git rev-parse refs/tags/v0.0.41^{commit}
+2026-02-19T19:00:37.6914673Z 17b870bff33b9f2b8975ba6405a02432f8ad2427
+2026-02-19T19:00:37.6919263Z ##[endgroup]
+2026-02-19T19:00:37.6919809Z ##[group]Determining the checkout info
+2026-02-19T19:00:37.6920799Z ##[endgroup]
+2026-02-19T19:00:37.6925307Z [command]/usr/bin/git sparse-checkout disable
+2026-02-19T19:00:37.6965563Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-02-19T19:00:37.6993610Z ##[group]Checking out the ref
+2026-02-19T19:00:37.6998250Z [command]/usr/bin/git checkout --progress --force refs/tags/v0.0.41
+2026-02-19T19:00:37.7095247Z Note: switching to 'refs/tags/v0.0.41'.
+2026-02-19T19:00:37.7095647Z 
+2026-02-19T19:00:37.7095938Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-02-19T19:00:37.7096613Z changes and commit them, and you can discard any commits you make in this
+2026-02-19T19:00:37.7097279Z state without impacting any branches by switching back to a branch.
+2026-02-19T19:00:37.7097669Z 
+2026-02-19T19:00:37.7097927Z If you want to create a new branch to retain commits you create, you may
+2026-02-19T19:00:37.7098526Z do so (now or later) by using -c with the switch command. Example:
+2026-02-19T19:00:37.7099145Z 
+2026-02-19T19:00:37.7099287Z   git switch -c <new-branch-name>
+2026-02-19T19:00:37.7099541Z 
+2026-02-19T19:00:37.7099669Z Or undo this operation with:
+2026-02-19T19:00:37.7099981Z 
+2026-02-19T19:00:37.7100152Z   git switch -
+2026-02-19T19:00:37.7100444Z 
+2026-02-19T19:00:37.7100959Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-02-19T19:00:37.7101811Z 
+2026-02-19T19:00:37.7102175Z HEAD is now at 17b870b chore(release): bump version to v0.0.41
+2026-02-19T19:00:37.7104960Z ##[endgroup]
+2026-02-19T19:00:37.7142671Z [command]/usr/bin/git log -1 --format=%H
+2026-02-19T19:00:37.7167298Z 17b870bff33b9f2b8975ba6405a02432f8ad2427
+2026-02-19T19:00:37.7343003Z ##[group]Run echo "=== Disk before cleanup ==="
+2026-02-19T19:00:37.7343438Z [36;1mecho "=== Disk before cleanup ==="[0m
+2026-02-19T19:00:37.7343725Z [36;1mdf -h /[0m
+2026-02-19T19:00:37.7343914Z [36;1msudo rm -rf \[0m
+2026-02-19T19:00:37.7344136Z [36;1m  /usr/local/lib/android \[0m
+2026-02-19T19:00:37.7344380Z [36;1m  /usr/share/dotnet \[0m
+2026-02-19T19:00:37.7344602Z [36;1m  /opt/ghc \[0m
+2026-02-19T19:00:37.7344817Z [36;1m  /usr/local/.ghcup \[0m
+2026-02-19T19:00:37.7345053Z [36;1m  /usr/lib/jvm \[0m
+2026-02-19T19:00:37.7345266Z [36;1m  /usr/share/swift \[0m
+2026-02-19T19:00:37.7345484Z [36;1m  /usr/local/share/boost \[0m
+2026-02-19T19:00:37.7345725Z [36;1m  /usr/share/gradle-8.8 \[0m
+2026-02-19T19:00:37.7345965Z [36;1m  /opt/hostedtoolcache/go \[0m
+2026-02-19T19:00:37.7346222Z [36;1m  /opt/hostedtoolcache/node \[0m
+2026-02-19T19:00:37.7346474Z [36;1m  /opt/hostedtoolcache/PyPy \[0m
+2026-02-19T19:00:37.7346771Z [36;1m  /opt/hostedtoolcache/Python \[0m
+2026-02-19T19:00:37.7347026Z [36;1m  /opt/hostedtoolcache/Ruby \[0m
+2026-02-19T19:00:37.7347265Z [36;1m  || true[0m
+2026-02-19T19:00:37.7347473Z [36;1mecho "=== Disk after cleanup ==="[0m
+2026-02-19T19:00:37.7347733Z [36;1mdf -h /[0m
+2026-02-19T19:00:37.7399436Z shell: /usr/bin/bash -e {0}
+2026-02-19T19:00:37.7399714Z ##[endgroup]
+2026-02-19T19:00:37.7484906Z === Disk before cleanup ===
+2026-02-19T19:00:37.7503555Z Filesystem      Size  Used Avail Use% Mounted on
+2026-02-19T19:00:37.7504096Z /dev/root       145G   53G   92G  37% /
+2026-02-19T19:02:26.9376086Z === Disk after cleanup ===
+2026-02-19T19:02:26.9389299Z Filesystem      Size  Used Avail Use% Mounted on
+2026-02-19T19:02:26.9390028Z /dev/root       145G   27G  118G  19% /
+2026-02-19T19:02:26.9461766Z ##[group]Run actions/download-artifact@v4
+2026-02-19T19:02:26.9462056Z with:
+2026-02-19T19:02:26.9462233Z   name: dist-binaries
+2026-02-19T19:02:26.9462427Z   path: dist/
+2026-02-19T19:02:26.9462620Z   merge-multiple: false
+2026-02-19T19:02:26.9462868Z   repository: octopilot/octopilot-pipeline-tools
+2026-02-19T19:02:26.9463150Z   run-id: 22194514077
+2026-02-19T19:02:26.9463330Z ##[endgroup]
+2026-02-19T19:02:27.1455472Z Downloading single artifact
+2026-02-19T19:02:27.4612149Z Preparing to download the following artifacts:
+2026-02-19T19:02:27.4613877Z - dist-binaries (ID: 5578131016, Size: 256584747, Expected Digest: sha256:3c50735830ccb2ae4a29c3968762ca36c0d31551258047cc624d6d6ebb8ffbf0)
+2026-02-19T19:02:27.6769254Z Redirecting to blob download url: https://productionresultssa8.blob.core.windows.net/actions-results/e920ba34-ea7f-416a-8bba-0500d7fac9fa/workflow-job-run-265e4a6a-be86-58f6-8123-013105437e21/artifacts/94b689c4185009d98cc507ad12bfa3ab5d64f0dd76669c01c8242c8b1db4feca.zip
+2026-02-19T19:02:27.6772412Z Starting download of artifact to: /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/dist
+2026-02-19T19:02:28.0188421Z (node:2274) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+2026-02-19T19:02:28.0192125Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-02-19T19:02:40.2678450Z SHA256 digest of downloaded artifact is 3c50735830ccb2ae4a29c3968762ca36c0d31551258047cc624d6d6ebb8ffbf0
+2026-02-19T19:02:40.2680021Z Artifact download completed successfully.
+2026-02-19T19:02:40.2680620Z Total of 1 artifact(s) downloaded
+2026-02-19T19:02:40.2688275Z Download artifact has finished successfully
+2026-02-19T19:02:40.2817049Z ##[group]Run chmod +x dist/op-linux-amd64
+2026-02-19T19:02:40.2817463Z [36;1mchmod +x dist/op-linux-amd64[0m
+2026-02-19T19:02:40.2864744Z shell: /usr/bin/bash -e {0}
+2026-02-19T19:02:40.2865060Z ##[endgroup]
+2026-02-19T19:02:40.2988944Z ##[group]Run docker/setup-qemu-action@v3
+2026-02-19T19:02:40.2989262Z with:
+2026-02-19T19:02:40.2989482Z   image: docker.io/tonistiigi/binfmt:latest
+2026-02-19T19:02:40.2989772Z   platforms: all
+2026-02-19T19:02:40.2989981Z   cache-image: true
+2026-02-19T19:02:40.2990188Z ##[endgroup]
+2026-02-19T19:02:40.5405505Z ##[group]Docker info
+2026-02-19T19:02:40.5456502Z [command]/usr/bin/docker version
+2026-02-19T19:02:41.6135362Z Client: Docker Engine - Community
+2026-02-19T19:02:41.6135984Z  Version:           29.1.5
+2026-02-19T19:02:41.6136467Z  API version:       1.52
+2026-02-19T19:02:41.6136939Z  Go version:        go1.25.6
+2026-02-19T19:02:41.6139383Z  Git commit:        0e6fee6
+2026-02-19T19:02:41.6140363Z  Built:             Fri Jan 16 12:48:47 2026
+2026-02-19T19:02:41.6142146Z  OS/Arch:           linux/amd64
+2026-02-19T19:02:41.6143293Z  Context:           default
+2026-02-19T19:02:41.6144061Z 
+2026-02-19T19:02:41.6144520Z Server: Docker Engine - Community
+2026-02-19T19:02:41.6145499Z  Engine:
+2026-02-19T19:02:41.6145960Z   Version:          29.1.5
+2026-02-19T19:02:41.6146534Z   API version:      1.52 (minimum version 1.44)
+2026-02-19T19:02:41.6147181Z   Go version:       go1.25.6
+2026-02-19T19:02:41.6147686Z   Git commit:       3b01d64
+2026-02-19T19:02:41.6148223Z   Built:            Fri Jan 16 12:48:47 2026
+2026-02-19T19:02:41.6149022Z   OS/Arch:          linux/amd64
+2026-02-19T19:02:41.6149494Z   Experimental:     false
+2026-02-19T19:02:41.6149874Z  containerd:
+2026-02-19T19:02:41.6150179Z   Version:          v2.2.1
+2026-02-19T19:02:41.6150652Z   GitCommit:        dea7da592f5d1d2b7755e3a161be07f43fad8f75
+2026-02-19T19:02:41.6151222Z  runc:
+2026-02-19T19:02:41.6151911Z   Version:          1.3.4
+2026-02-19T19:02:41.6152315Z   GitCommit:        v1.3.4-0-gd6d73eb8
+2026-02-19T19:02:41.6152775Z  docker-init:
+2026-02-19T19:02:41.6153125Z   Version:          0.19.0
+2026-02-19T19:02:41.6153503Z   GitCommit:        de40ad0
+2026-02-19T19:02:41.6194959Z [command]/usr/bin/docker info
+2026-02-19T19:02:44.1470476Z Client: Docker Engine - Community
+2026-02-19T19:02:44.1471101Z  Version:    29.1.5
+2026-02-19T19:02:44.1471537Z  Context:    default
+2026-02-19T19:02:44.1471839Z  Debug Mode: false
+2026-02-19T19:02:44.1472095Z  Plugins:
+2026-02-19T19:02:44.1472356Z   buildx: Docker Buildx (Docker Inc.)
+2026-02-19T19:02:44.1472706Z     Version:  v0.31.1
+2026-02-19T19:02:44.1473069Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+2026-02-19T19:02:44.1473513Z   compose: Docker Compose (Docker Inc.)
+2026-02-19T19:02:44.1473865Z     Version:  v2.40.3
+2026-02-19T19:02:44.1474218Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+2026-02-19T19:02:44.1474558Z 
+2026-02-19T19:02:44.1474649Z Server:
+2026-02-19T19:02:44.1474874Z  Containers: 0
+2026-02-19T19:02:44.1475113Z   Running: 0
+2026-02-19T19:02:44.1475342Z   Paused: 0
+2026-02-19T19:02:44.1475574Z   Stopped: 0
+2026-02-19T19:02:44.1475807Z  Images: 1
+2026-02-19T19:02:44.1476036Z  Server Version: 29.1.5
+2026-02-19T19:02:44.1498949Z  Storage Driver: overlayfs
+2026-02-19T19:02:44.1499370Z   driver-type: io.containerd.snapshotter.v1
+2026-02-19T19:02:44.1499822Z  Logging Driver: json-file
+2026-02-19T19:02:44.1500156Z  Cgroup Driver: systemd
+2026-02-19T19:02:44.1500468Z  Cgroup Version: 2
+2026-02-19T19:02:44.1500778Z  Plugins:
+2026-02-19T19:02:44.1501050Z   Volume: local
+2026-02-19T19:02:44.1501407Z   Network: bridge host ipvlan macvlan null overlay
+2026-02-19T19:02:44.1502024Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+2026-02-19T19:02:44.1502605Z  CDI spec directories:
+2026-02-19T19:02:44.1502898Z   /etc/cdi
+2026-02-19T19:02:44.1503156Z   /var/run/cdi
+2026-02-19T19:02:44.1503486Z  Swarm: inactive
+2026-02-19T19:02:44.1503826Z  Runtimes: io.containerd.runc.v2 runc
+2026-02-19T19:02:44.1504242Z  Default Runtime: runc
+2026-02-19T19:02:44.1504586Z  Init Binary: docker-init
+2026-02-19T19:02:44.1505103Z  containerd version: dea7da592f5d1d2b7755e3a161be07f43fad8f75
+2026-02-19T19:02:44.1506113Z  runc version: v1.3.4-0-gd6d73eb8
+2026-02-19T19:02:44.1506588Z  init version: de40ad0
+2026-02-19T19:02:44.1506980Z  Security Options:
+2026-02-19T19:02:44.1507353Z   apparmor
+2026-02-19T19:02:44.1507674Z   seccomp
+2026-02-19T19:02:44.1507999Z    Profile: builtin
+2026-02-19T19:02:44.1508319Z   cgroupns
+2026-02-19T19:02:44.1508908Z  Kernel Version: 6.14.0-1017-azure
+2026-02-19T19:02:44.1509347Z  Operating System: Ubuntu 24.04.3 LTS
+2026-02-19T19:02:44.1509811Z  OSType: linux
+2026-02-19T19:02:44.1510127Z  Architecture: x86_64
+2026-02-19T19:02:44.1510492Z  CPUs: 4
+2026-02-19T19:02:44.1510809Z  Total Memory: 15.62GiB
+2026-02-19T19:02:44.1511186Z  Name: runnervmieams
+2026-02-19T19:02:44.1511546Z  ID: c323df1c-0161-4d64-8004-69a959a8c815
+2026-02-19T19:02:44.1512017Z  Docker Root Dir: /var/lib/docker
+2026-02-19T19:02:44.1512432Z  Debug Mode: false
+2026-02-19T19:02:44.1512755Z  Username: githubactions
+2026-02-19T19:02:44.1513132Z  Experimental: false
+2026-02-19T19:02:44.1513458Z  Insecure Registries:
+2026-02-19T19:02:44.1517516Z   ::1/128
+2026-02-19T19:02:44.1517915Z   127.0.0.0/8
+2026-02-19T19:02:44.1518235Z  Live Restore Enabled: false
+2026-02-19T19:02:44.1518876Z  Firewall Backend: iptables
+2026-02-19T19:02:44.1519136Z 
+2026-02-19T19:02:44.1519720Z ##[endgroup]
+2026-02-19T19:02:44.1520284Z ##[group]Pulling binfmt Docker image
+2026-02-19T19:02:44.4736480Z Cache hit for: docker.io--tonistiigi--binfmt-latest-linux-x64
+2026-02-19T19:02:45.7759218Z Received 4194304 of 32588371 (12.9%), 4.0 MBs/sec
+2026-02-19T19:02:45.9523261Z Received 32588371 of 32588371 (100.0%), 26.4 MBs/sec
+2026-02-19T19:02:45.9526151Z Cache Size: ~31 MB (32588371 B)
+2026-02-19T19:02:45.9588117Z [command]/usr/bin/tar -xf /home/runner/work/_temp/5f714eb1-9977-4b69-bf77-5064a520065e/cache.tzst -P -C /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools --use-compress-program unzstd
+2026-02-19T19:02:46.0207484Z Cache restored successfully
+2026-02-19T19:02:46.0274180Z Restored docker.io--tonistiigi--binfmt-latest-linux-x64 from GitHub Actions cache
+2026-02-19T19:02:46.0639277Z Cached to hosted tool cache /opt/hostedtoolcache/docker.io--tonistiigi--binfmt/latest/linux-x64
+2026-02-19T19:02:46.0642086Z Copying /opt/hostedtoolcache/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar to /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+2026-02-19T19:02:46.1001424Z Image found from cache in /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+2026-02-19T19:02:46.1024409Z [command]/usr/bin/docker load -i /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+2026-02-19T19:02:46.7277863Z Loaded image: tonistiigi/binfmt:latest
+2026-02-19T19:02:46.7407280Z [command]/usr/bin/docker pull docker.io/tonistiigi/binfmt:latest
+2026-02-19T19:02:47.2379711Z latest: Pulling from tonistiigi/binfmt
+2026-02-19T19:02:47.5056963Z Digest: sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3
+2026-02-19T19:02:47.5057807Z Status: Image is up to date for tonistiigi/binfmt:latest
+2026-02-19T19:02:47.5061337Z docker.io/tonistiigi/binfmt:latest
+2026-02-19T19:02:47.5101969Z [command]/usr/bin/docker save -o /home/runner/work/_temp/docker-actions-toolkit-lfswk2/749e64100d3fa0c09bdbc8a02e4fb9cb3ee64266f7f661c98371040689abacb3.tar docker.io/tonistiigi/binfmt:latest
+2026-02-19T19:02:48.0640355Z Copying /home/runner/work/_temp/docker-actions-toolkit-lfswk2/749e64100d3fa0c09bdbc8a02e4fb9cb3ee64266f7f661c98371040689abacb3.tar to /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+2026-02-19T19:02:48.1273186Z Image cached to /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+2026-02-19T19:02:48.1274388Z ##[endgroup]
+2026-02-19T19:02:48.1274933Z ##[group]Image info
+2026-02-19T19:02:48.1291345Z [command]/usr/bin/docker image inspect docker.io/tonistiigi/binfmt:latest
+2026-02-19T19:02:48.1734768Z [
+2026-02-19T19:02:48.1735082Z     {
+2026-02-19T19:02:48.1735986Z         "Id": "sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3",
+2026-02-19T19:02:48.1736703Z         "RepoTags": [
+2026-02-19T19:02:48.1737067Z             "tonistiigi/binfmt:latest"
+2026-02-19T19:02:48.1737491Z         ],
+2026-02-19T19:02:48.1737782Z         "RepoDigests": [
+2026-02-19T19:02:48.1738476Z             "tonistiigi/binfmt@sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3"
+2026-02-19T19:02:48.1739448Z         ],
+2026-02-19T19:02:48.1739787Z         "Comment": "buildkit.dockerfile.v0",
+2026-02-19T19:02:48.1740252Z         "Created": "2026-02-18T18:09:43.658440389Z",
+2026-02-19T19:02:48.1740673Z         "Config": {
+2026-02-19T19:02:48.1740958Z             "Env": [
+2026-02-19T19:02:48.1741457Z                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+2026-02-19T19:02:48.1742095Z                 "QEMU_PRESERVE_ARGV0=1"
+2026-02-19T19:02:48.1742498Z             ],
+2026-02-19T19:02:48.1742786Z             "Entrypoint": [
+2026-02-19T19:02:48.1743163Z                 "/usr/bin/binfmt"
+2026-02-19T19:02:48.1743537Z             ],
+2026-02-19T19:02:48.1743835Z             "Volumes": {
+2026-02-19T19:02:48.1744183Z                 "/tmp": {}
+2026-02-19T19:02:48.1744518Z             },
+2026-02-19T19:02:48.1744841Z             "WorkingDir": "/"
+2026-02-19T19:02:48.1745234Z         },
+2026-02-19T19:02:48.1745570Z         "Architecture": "amd64",
+2026-02-19T19:02:48.1745989Z         "Os": "linux",
+2026-02-19T19:02:48.1746327Z         "Size": 32586198,
+2026-02-19T19:02:48.1746671Z         "RootFS": {
+2026-02-19T19:02:48.1746996Z             "Type": "layers",
+2026-02-19T19:02:48.1747380Z             "Layers": [
+2026-02-19T19:02:48.1747973Z                 "sha256:7c7a3ed8f59c9c48a6885e1b9d666072857891560d4557401a19bd803378d1d4",
+2026-02-19T19:02:48.1749254Z                 "sha256:b7dea0aa7b18514e216eebdbded52b5b2c070562d7c88a97f8c3fb0995e4febb"
+2026-02-19T19:02:48.1749811Z             ]
+2026-02-19T19:02:48.1749983Z         },
+2026-02-19T19:02:48.1750191Z         "Metadata": {
+2026-02-19T19:02:48.1750533Z             "LastTagTime": "2026-02-19T19:02:47.494223948Z"
+2026-02-19T19:02:48.1750837Z         },
+2026-02-19T19:02:48.1751015Z         "Descriptor": {
+2026-02-19T19:02:48.1751306Z             "mediaType": "application/vnd.oci.image.index.v1+json",
+2026-02-19T19:02:48.1751807Z             "digest": "sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3",
+2026-02-19T19:02:48.1752252Z             "size": 6175
+2026-02-19T19:02:48.1752458Z         }
+2026-02-19T19:02:48.1752619Z     }
+2026-02-19T19:02:48.1752783Z ]
+2026-02-19T19:02:48.1754640Z ##[endgroup]
+2026-02-19T19:02:48.1754984Z ##[group]Binfmt version
+2026-02-19T19:02:48.1771344Z [command]/usr/bin/docker run --rm --privileged docker.io/tonistiigi/binfmt:latest --version
+2026-02-19T19:02:50.0155088Z binfmt/3a63696 qemu/v10.2.1 go/1.25.7
+2026-02-19T19:02:50.0940114Z ##[endgroup]
+2026-02-19T19:02:50.0940908Z ##[group]Installing QEMU static binaries
+2026-02-19T19:02:50.0958473Z [command]/usr/bin/docker run --rm --privileged docker.io/tonistiigi/binfmt:latest --install all
+2026-02-19T19:02:50.2487950Z installing: arm OK
+2026-02-19T19:02:50.2488421Z installing: s390x OK
+2026-02-19T19:02:50.2489318Z installing: ppc64le OK
+2026-02-19T19:02:50.2489807Z installing: loong64 OK
+2026-02-19T19:02:50.2490111Z installing: riscv64 OK
+2026-02-19T19:02:50.2490402Z installing: mips64le OK
+2026-02-19T19:02:50.2490700Z installing: mips64 OK
+2026-02-19T19:02:50.2490981Z installing: arm64 OK
+2026-02-19T19:02:50.2715483Z {
+2026-02-19T19:02:50.2715876Z   "supported": [
+2026-02-19T19:02:50.2716276Z     "linux/amd64",
+2026-02-19T19:02:50.2716667Z     "linux/amd64/v2",
+2026-02-19T19:02:50.2717619Z     "linux/amd64/v3",
+2026-02-19T19:02:50.2718010Z     "linux/arm64",
+2026-02-19T19:02:50.2718382Z     "linux/riscv64",
+2026-02-19T19:02:50.2718922Z     "linux/ppc64le",
+2026-02-19T19:02:50.2719259Z     "linux/s390x",
+2026-02-19T19:02:50.2719537Z     "linux/386",
+2026-02-19T19:02:50.2719772Z     "linux/mips64le",
+2026-02-19T19:02:50.2720059Z     "linux/mips64",
+2026-02-19T19:02:50.2720675Z     "linux/loong64",
+2026-02-19T19:02:50.2721020Z     "linux/arm/v7",
+2026-02-19T19:02:50.2721356Z     "linux/arm/v6"
+2026-02-19T19:02:50.2721917Z   ],
+2026-02-19T19:02:50.2722198Z   "emulators": [
+2026-02-19T19:02:50.2722583Z     "llvm-16-runtime.binfmt",
+2026-02-19T19:02:50.2723983Z     "llvm-17-runtime.binfmt",
+2026-02-19T19:02:50.2724462Z     "llvm-18-runtime.binfmt",
+2026-02-19T19:02:50.2724887Z     "python3.12",
+2026-02-19T19:02:50.2725522Z     "qemu-aarch64",
+2026-02-19T19:02:50.2725887Z     "qemu-arm",
+2026-02-19T19:02:50.2726266Z     "qemu-loongarch64",
+2026-02-19T19:02:50.2726683Z     "qemu-mips64",
+2026-02-19T19:02:50.2727076Z     "qemu-mips64el",
+2026-02-19T19:02:50.2727455Z     "qemu-ppc64le",
+2026-02-19T19:02:50.2727808Z     "qemu-riscv64",
+2026-02-19T19:02:50.2728142Z     "qemu-s390x"
+2026-02-19T19:02:50.2728439Z   ]
+2026-02-19T19:02:50.2728925Z }
+2026-02-19T19:02:50.3454205Z ##[endgroup]
+2026-02-19T19:02:50.3454700Z ##[group]Extracting available platforms
+2026-02-19T19:02:50.5900935Z linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/loong64,linux/arm/v7,linux/arm/v6
+2026-02-19T19:02:50.5902904Z ##[endgroup]
+2026-02-19T19:02:50.6095244Z ##[group]Run docker/login-action@v3
+2026-02-19T19:02:50.6095522Z with:
+2026-02-19T19:02:50.6095703Z   registry: ghcr.io
+2026-02-19T19:02:50.6095905Z   username: casibbald
+2026-02-19T19:02:50.6096307Z   password: ***
+2026-02-19T19:02:50.6096508Z   logout: true
+2026-02-19T19:02:50.6096694Z ##[endgroup]
+2026-02-19T19:02:50.9139903Z Logging into ghcr.io...
+2026-02-19T19:02:51.5101204Z Login Succeeded!
+2026-02-19T19:02:51.5303241Z ##[group]Run octopilot/actions/octopilot@main
+2026-02-19T19:02:51.5303560Z with:
+2026-02-19T19:02:51.5303743Z   version: v0.0.41
+2026-02-19T19:02:51.5303947Z   registry: ghcr.io/octopilot
+2026-02-19T19:02:51.5304193Z   platforms: linux/amd64,linux/arm64
+2026-02-19T19:02:51.5304450Z   sbom_output: dist/sbom
+2026-02-19T19:02:51.5304668Z   build_bypass: true
+2026-02-19T19:02:51.5304881Z   op_binary: ./dist/op-linux-amd64
+2026-02-19T19:02:51.5305117Z   op_version: latest
+2026-02-19T19:02:51.5305310Z env:
+2026-02-19T19:02:51.5305482Z   BP_GO_VERSION: 1.25.6
+2026-02-19T19:02:51.5305691Z ##[endgroup]
+2026-02-19T19:02:51.5368861Z ##[group]Run # Determine version
+2026-02-19T19:02:51.5369210Z [36;1m# Determine version[0m
+2026-02-19T19:02:51.5369447Z [36;1mVERSION="${INPUT_VERSION}"[0m
+2026-02-19T19:02:51.5369707Z [36;1mif [ -z "$VERSION" ]; then[0m
+2026-02-19T19:02:51.5369967Z [36;1m  VERSION="${GITHUB_REF_NAME}"[0m
+2026-02-19T19:02:51.5370209Z [36;1mfi[0m
+2026-02-19T19:02:51.5370401Z [36;1m[0m
+2026-02-19T19:02:51.5370593Z [36;1m# Create SBOM output directory[0m
+2026-02-19T19:02:51.5370863Z [36;1mmkdir -p "${INPUT_SBOM_OUTPUT}"[0m
+2026-02-19T19:02:51.5371107Z [36;1m[0m
+2026-02-19T19:02:51.5371326Z [36;1mif [ "${INPUT_BUILD_BYPASS}" == "true" ]; then[0m
+2026-02-19T19:02:51.5371725Z [36;1m    echo "Bypassing container execution. Running op directly..."[0m
+2026-02-19T19:02:51.5372154Z [36;1m    export DOCKER_METADATA_OUTPUT_VERSION="${VERSION}"[0m
+2026-02-19T19:02:51.5372454Z [36;1m    [0m
+2026-02-19T19:02:51.5372642Z [36;1m    # Ensure safe directory[0m
+2026-02-19T19:02:51.5372984Z [36;1m    git config --global --add safe.directory "$GITHUB_WORKSPACE"[0m
+2026-02-19T19:02:51.5373318Z [36;1m    [0m
+2026-02-19T19:02:51.5373501Z [36;1m    # Run op directly[0m
+2026-02-19T19:02:51.5374046Z [36;1m    ${INPUT_OP_BINARY} build --repo "${INPUT_REGISTRY}" --platform "${INPUT_PLATFORMS}" --push --sbom-output "${INPUT_SBOM_OUTPUT}"[0m
+2026-02-19T19:02:51.5374603Z [36;1melse[0m
+2026-02-19T19:02:51.5374805Z [36;1m    # Determine builder image tag[0m
+2026-02-19T19:02:51.5375085Z [36;1m    IMAGE_TAG="${INPUT_OP_VERSION}"[0m
+2026-02-19T19:02:51.5375370Z [36;1m    if [ "${IMAGE_TAG}" == "latest" ]; then[0m
+2026-02-19T19:02:51.5375649Z [36;1m        IMAGE_TAG="latest"[0m
+2026-02-19T19:02:51.5375877Z [36;1m    fi[0m
+2026-02-19T19:02:51.5376049Z [36;1m    [0m
+2026-02-19T19:02:51.5376341Z [36;1m    IMAGE="ghcr.io/octopilot/octopilot-pipeline-tools:${IMAGE_TAG}"[0m
+2026-02-19T19:02:51.5376736Z [36;1m    echo "Using builder image: $IMAGE"[0m
+2026-02-19T19:02:51.5376991Z [36;1m[0m
+2026-02-19T19:02:51.5377174Z [36;1m    # Run op build in container[0m
+2026-02-19T19:02:51.5377451Z [36;1m    # Mounts: docker socket, workspace[0m
+2026-02-19T19:02:51.5377802Z [36;1m    # Envs: DOCKER_METADATA_OUTPUT_VERSION, GITHUB_ACTIONS, CI[0m
+2026-02-19T19:02:51.5378140Z [36;1m    docker run --rm \[0m
+2026-02-19T19:02:51.5378446Z [36;1m        -v /var/run/docker.sock:/var/run/docker.sock \[0m
+2026-02-19T19:02:51.5378925Z [36;1m        -v "$GITHUB_WORKSPACE:/workspace" \[0m
+2026-02-19T19:02:51.5379216Z [36;1m        -w "/workspace" \[0m
+2026-02-19T19:02:51.5379517Z [36;1m        -e DOCKER_METADATA_OUTPUT_VERSION="${VERSION}" \[0m
+2026-02-19T19:02:51.5379845Z [36;1m        -e GITHUB_ACTIONS="true" \[0m
+2026-02-19T19:02:51.5380105Z [36;1m        -e CI="true" \[0m
+2026-02-19T19:02:51.5380340Z [36;1m        --entrypoint /bin/sh \[0m
+2026-02-19T19:02:51.5380587Z [36;1m        "$IMAGE" \[0m
+2026-02-19T19:02:51.5381270Z [36;1m        -c "git config --global --add safe.directory /workspace && op build --repo '${INPUT_REGISTRY}' --platform '${INPUT_PLATFORMS}' --push --sbom-output '${INPUT_SBOM_OUTPUT}'"[0m
+2026-02-19T19:02:51.5381965Z [36;1mfi[0m
+2026-02-19T19:02:51.5382126Z [36;1m[0m
+2026-02-19T19:02:51.5382364Z [36;1m# Package SBOMs if directory exists and is not empty[0m
+2026-02-19T19:02:51.5382987Z [36;1mif [ -d "${INPUT_SBOM_OUTPUT}" ] && [ "$(ls -A ${INPUT_SBOM_OUTPUT})" ]; then[0m
+2026-02-19T19:02:51.5383613Z [36;1m    tar -czvf "${INPUT_SBOM_OUTPUT}.tar.gz" -C "${INPUT_SBOM_OUTPUT}" .[0m
+2026-02-19T19:02:51.5383957Z [36;1mfi[0m
+2026-02-19T19:02:51.5384121Z [36;1m[0m
+2026-02-19T19:02:51.5384359Z [36;1m# Package SBOMs if directory exists and is not empty[0m
+2026-02-19T19:02:51.5384779Z [36;1mif [ -d "${INPUT_SBOM_OUTPUT}" ] && [ "$(ls -A ${INPUT_SBOM_OUTPUT})" ]; then[0m
+2026-02-19T19:02:51.5385248Z [36;1m    tar -czvf "${INPUT_SBOM_OUTPUT}.tar.gz" -C "${INPUT_SBOM_OUTPUT}" .[0m
+2026-02-19T19:02:51.5385617Z [36;1mfi[0m
+2026-02-19T19:02:51.5385779Z [36;1m[0m
+2026-02-19T19:02:51.5385948Z [36;1m# Extract digest[0m
+2026-02-19T19:02:51.5386181Z [36;1mif [ -f "build_result.json" ]; then[0m
+2026-02-19T19:02:51.5386496Z [36;1m    TAG=$(jq -r '.builds[0].tag' build_result.json)[0m
+2026-02-19T19:02:51.5386836Z [36;1m    DIGEST=$(echo "$TAG" | awk -F'@' '{print $2}')[0m
+2026-02-19T19:02:51.5387162Z [36;1m    echo "digest=$DIGEST" >> $GITHUB_OUTPUT[0m
+2026-02-19T19:02:51.5387437Z [36;1mfi[0m
+2026-02-19T19:02:51.5434763Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-02-19T19:02:51.5435086Z env:
+2026-02-19T19:02:51.5435263Z   BP_GO_VERSION: 1.25.6
+2026-02-19T19:02:51.5435479Z   INPUT_VERSION: v0.0.41
+2026-02-19T19:02:51.5435702Z   INPUT_REGISTRY: ghcr.io/octopilot
+2026-02-19T19:02:51.5435977Z   INPUT_PLATFORMS: linux/amd64,linux/arm64
+2026-02-19T19:02:51.5436243Z   INPUT_OP_VERSION: latest
+2026-02-19T19:02:51.5436466Z   INPUT_SBOM_OUTPUT: dist/sbom
+2026-02-19T19:02:51.5436708Z   INPUT_OP_BINARY: ./dist/op-linux-amd64
+2026-02-19T19:02:51.5436969Z   INPUT_BUILD_BYPASS: true
+2026-02-19T19:02:51.5437182Z ##[endgroup]
+2026-02-19T19:02:51.5515162Z Bypassing container execution. Running op directly...
+2026-02-19T19:02:51.5792376Z --- DEBUG: Environment Variables Check ---
+2026-02-19T19:02:51.5792966Z Env DOCKER_METADATA_OUTPUT_VERSION='v0.0.41'
+2026-02-19T19:02:51.5793482Z ------------------------------------------
+2026-02-19T19:02:51.5793799Z Forcing Skaffold CustomTag to: v0.0.41
+2026-02-19T19:02:51.5887027Z time="2026-02-19T19:02:51Z" level=info msg="Using kubectl context: " subtask=-1 task=DevLoop
+2026-02-19T19:02:51.5888803Z time="2026-02-19T19:02:51Z" level=info msg="Loaded Skaffold defaults from \"/home/runner/.skaffold/config\"" subtask=-1 task=DevLoop
+2026-02-19T19:02:51.5890415Z time="2026-02-19T19:02:51Z" level=info msg="no kpt renderer or deployer found, skipping hydrated-dir creation" subtask=-1 task=DevLoop
+2026-02-19T19:03:11.6737404Z time="2026-02-19T19:03:11Z" level=info msg="DOCKER_HOST env is not set, using the host from docker context." subtask=-1 task=DevLoop
+2026-02-19T19:03:11.6862509Z time="2026-02-19T19:03:11Z" level=info msg="build concurrency set to cli concurrency 0" subtask=-1 task=DevLoop
+2026-02-19T19:03:11.6863451Z Building with direct Pack integration (repo: ghcr.io/octopilot, push: true)....
+2026-02-19T19:03:11.6864196Z Building Docker artifact op-base for platform linux/amd64 -> ghcr.io/octopilot/op-base:latest-linux-amd64
+2026-02-19T19:03:12.1226470Z #0 building with "default" instance using docker driver
+2026-02-19T19:03:12.1226954Z 
+2026-02-19T19:03:12.1227195Z #1 [internal] load build definition from Dockerfile
+2026-02-19T19:03:12.1227744Z #1 transferring dockerfile: 242B done
+2026-02-19T19:03:12.1228188Z #1 DONE 0.0s
+2026-02-19T19:03:12.1228386Z 
+2026-02-19T19:03:12.1228891Z #2 [internal] load metadata for docker.io/library/ubuntu:jammy
+2026-02-19T19:03:12.3406989Z #2 ...
+2026-02-19T19:03:12.3407211Z 
+2026-02-19T19:03:12.3407507Z #3 [auth] library/ubuntu:pull token for registry-1.docker.io
+2026-02-19T19:03:12.3408134Z #3 DONE 0.0s
+2026-02-19T19:03:12.4904424Z 
+2026-02-19T19:03:12.4904914Z #2 [internal] load metadata for docker.io/library/ubuntu:jammy
+2026-02-19T19:03:12.8360478Z #2 DONE 0.9s
+2026-02-19T19:03:13.0189222Z 
+2026-02-19T19:03:13.0189813Z #4 [internal] load .dockerignore
+2026-02-19T19:03:13.0190519Z #4 transferring context: 2B done
+2026-02-19T19:03:13.0191075Z #4 DONE 0.0s
+2026-02-19T19:03:13.0191396Z 
+2026-02-19T19:03:13.0195143Z #5 [1/2] FROM docker.io/library/ubuntu:jammy@sha256:3ba65aa20f86a0fad9df2b2c259c613df006b2e6d0bfcc8a146afb8c525a9751
+2026-02-19T19:03:13.0196377Z #5 resolve docker.io/library/ubuntu:jammy@sha256:3ba65aa20f86a0fad9df2b2c259c613df006b2e6d0bfcc8a146afb8c525a9751 0.0s done
+2026-02-19T19:03:13.0239016Z #5 sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed 8.39MB / 29.54MB 0.2s
+2026-02-19T19:03:13.1396881Z #5 sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed 29.54MB / 29.54MB 0.3s done
+2026-02-19T19:03:13.2933974Z #5 extracting sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed
+2026-02-19T19:03:14.1704057Z #5 extracting sha256:b1cba2e842ca52b95817f958faf99734080c78e92e43ce609cde9244867b49ed 1.0s done
+2026-02-19T19:03:14.1705810Z #5 DONE 1.3s
+2026-02-19T19:03:14.3214549Z 
+2026-02-19T19:03:14.3215761Z #6 [2/2] RUN apt-get update && apt-get install -y --no-install-recommends     git     curl     jq     bash     ca-certificates     && rm -rf /var/lib/apt/lists/*
+2026-02-19T19:03:14.7675227Z #6 0.596 Get:1 http://security.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+2026-02-19T19:03:14.9187020Z #6 0.597 Get:2 http://archive.ubuntu.com/ubuntu jammy InRelease [270 kB]
+2026-02-19T19:03:15.5316841Z #6 1.361 Get:3 http://security.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [1301 kB]
+2026-02-19T19:03:15.7765971Z #6 1.455 Get:4 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+2026-02-19T19:03:15.8318076Z #6 1.661 Get:5 http://archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+2026-02-19T19:03:16.0392897Z #6 1.868 Get:6 http://archive.ubuntu.com/ubuntu jammy/multiverse amd64 Packages [266 kB]
+2026-02-19T19:03:16.1523155Z #6 1.981 Get:7 http://archive.ubuntu.com/ubuntu jammy/main amd64 Packages [1792 kB]
+2026-02-19T19:03:16.2623680Z #6 2.091 Get:8 http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [62.6 kB]
+2026-02-19T19:03:16.4171437Z #6 2.096 Get:9 http://security.ubuntu.com/ubuntu jammy-security/main amd64 Packages [3737 kB]
+2026-02-19T19:03:16.5510090Z #6 2.380 Get:10 http://archive.ubuntu.com/ubuntu jammy/universe amd64 Packages [17.5 MB]
+2026-02-19T19:03:16.7326621Z #6 2.411 Get:11 http://security.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [6538 kB]
+2026-02-19T19:03:17.2787482Z #6 3.108 Get:12 http://archive.ubuntu.com/ubuntu jammy/restricted amd64 Packages [164 kB]
+2026-02-19T19:03:17.4300296Z #6 3.108 Get:13 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [4070 kB]
+2026-02-19T19:03:17.4377121Z #6 3.267 Get:14 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1613 kB]
+2026-02-19T19:03:17.6512420Z #6 3.330 Get:15 http://archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [6749 kB]
+2026-02-19T19:03:17.7715748Z #6 3.601 Get:16 http://archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [70.9 kB]
+2026-02-19T19:03:17.9262507Z #6 3.601 Get:17 http://archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [83.9 kB]
+2026-02-19T19:03:17.9264500Z #6 3.604 Get:18 http://archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [37.2 kB]
+2026-02-19T19:03:18.2923873Z #6 4.121 Fetched 44.6 MB in 4s (11.2 MB/s)
+2026-02-19T19:03:19.1033320Z #6 4.121 Reading package lists...
+2026-02-19T19:03:19.9616611Z #6 4.978 Reading package lists...
+2026-02-19T19:03:20.1508965Z #6 5.802 Building dependency tree...
+2026-02-19T19:03:20.1509447Z #6 5.980 Reading state information...
+2026-02-19T19:03:20.2793812Z #6 6.108 bash is already the newest version (5.1-6ubuntu1.1).
+2026-02-19T19:03:20.2795009Z #6 6.108 The following additional packages will be installed:
+2026-02-19T19:03:20.2796346Z #6 6.108   git-man libbrotli1 libcurl3-gnutls libcurl4 liberror-perl libexpat1
+2026-02-19T19:03:20.5008184Z #6 6.108   libgdbm-compat4 libgdbm6 libjq1 libldap-2.5-0 libnghttp2-14 libonig5
+2026-02-19T19:03:20.5009861Z #6 6.109   libperl5.34 libpsl5 librtmp1 libsasl2-2 libsasl2-modules-db libssh-4 openssl
+2026-02-19T19:03:20.5011353Z #6 6.109   perl perl-modules-5.34
+2026-02-19T19:03:20.5012200Z #6 6.109 Suggested packages:
+2026-02-19T19:03:20.5012991Z #6 6.109   gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+2026-02-19T19:03:20.5013810Z #6 6.109   gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n perl-doc
+2026-02-19T19:03:20.5014450Z #6 6.109   libterm-readline-gnu-perl | libterm-readline-perl-perl make
+2026-02-19T19:03:20.5014931Z #6 6.109   libtap-harness-archive-perl
+2026-02-19T19:03:20.5015263Z #6 6.109 Recommended packages:
+2026-02-19T19:03:20.5015743Z #6 6.109   patch less ssh-client libldap-common publicsuffix libsasl2-modules netbase
+2026-02-19T19:03:20.5016319Z #6 6.178 The following NEW packages will be installed:
+2026-02-19T19:03:20.5016863Z #6 6.178   ca-certificates curl git git-man jq libbrotli1 libcurl3-gnutls libcurl4
+2026-02-19T19:03:20.5017526Z #6 6.179   liberror-perl libexpat1 libgdbm-compat4 libgdbm6 libjq1 libldap-2.5-0
+2026-02-19T19:03:20.5018159Z #6 6.179   libnghttp2-14 libonig5 libperl5.34 libpsl5 librtmp1 libsasl2-2
+2026-02-19T19:03:20.5018963Z #6 6.179   libsasl2-modules-db libssh-4 openssl perl perl-modules-5.34
+2026-02-19T19:03:20.6711188Z #6 6.500 0 upgraded, 25 newly installed, 0 to remove and 1 not upgraded.
+2026-02-19T19:03:20.6712044Z #6 6.500 Need to get 15.7 MB of archives.
+2026-02-19T19:03:20.6712880Z #6 6.500 After this operation, 77.8 MB of additional disk space will be used.
+2026-02-19T19:03:20.6714370Z #6 6.500 Get:1 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 perl-modules-5.34 all 5.34.0-3ubuntu1.5 [2977 kB]
+2026-02-19T19:03:22.0787696Z #6 7.908 Get:2 http://archive.ubuntu.com/ubuntu jammy/main amd64 libgdbm6 amd64 1.23-1 [33.9 kB]
+2026-02-19T19:03:22.2304283Z #6 7.908 Get:3 http://archive.ubuntu.com/ubuntu jammy/main amd64 libgdbm-compat4 amd64 1.23-1 [6606 B]
+2026-02-19T19:03:22.2305697Z #6 7.909 Get:4 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libperl5.34 amd64 5.34.0-3ubuntu1.5 [4797 kB]
+2026-02-19T19:03:22.2981292Z #6 8.127 Get:5 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 perl amd64 5.34.0-3ubuntu1.5 [232 kB]
+2026-02-19T19:03:22.4422920Z #6 8.135 Get:6 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 openssl amd64 3.0.2-0ubuntu1.21 [1184 kB]
+2026-02-19T19:03:22.4424137Z #6 8.271 Get:7 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 ca-certificates all 20240203~22.04.1 [162 kB]
+2026-02-19T19:03:22.5664619Z #6 8.274 Get:8 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libexpat1 amd64 2.4.7-1ubuntu0.7 [92.1 kB]
+2026-02-19T19:03:22.5665974Z #6 8.275 Get:9 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libnghttp2-14 amd64 1.43.0-1ubuntu0.2 [76.9 kB]
+2026-02-19T19:03:22.5667658Z #6 8.277 Get:10 http://archive.ubuntu.com/ubuntu jammy/main amd64 libpsl5 amd64 0.21.0-1.2build2 [58.4 kB]
+2026-02-19T19:03:22.5670184Z #6 8.278 Get:11 http://archive.ubuntu.com/ubuntu jammy/main amd64 libbrotli1 amd64 1.0.9-2build6 [315 kB]
+2026-02-19T19:03:22.5672370Z #6 8.283 Get:12 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libsasl2-modules-db amd64 2.1.27+dfsg2-3ubuntu1.2 [20.5 kB]
+2026-02-19T19:03:22.5674868Z #6 8.284 Get:13 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libsasl2-2 amd64 2.1.27+dfsg2-3ubuntu1.2 [53.8 kB]
+2026-02-19T19:03:22.5676235Z #6 8.395 Get:14 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libldap-2.5-0 amd64 2.5.20+dfsg-0ubuntu0.22.04.1 [184 kB]
+2026-02-19T19:03:22.7193708Z #6 8.398 Get:15 http://archive.ubuntu.com/ubuntu jammy/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2build4 [58.2 kB]
+2026-02-19T19:03:22.7196012Z #6 8.548 Get:16 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libssh-4 amd64 0.9.6-2ubuntu0.22.04.6 [187 kB]
+2026-02-19T19:03:22.8852937Z #6 8.551 Get:17 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libcurl4 amd64 7.81.0-1ubuntu1.21 [290 kB]
+2026-02-19T19:03:22.8854389Z #6 8.556 Get:18 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 curl amd64 7.81.0-1ubuntu1.21 [194 kB]
+2026-02-19T19:03:22.8855870Z #6 8.559 Get:19 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libcurl3-gnutls amd64 7.81.0-1ubuntu1.21 [284 kB]
+2026-02-19T19:03:22.8857158Z #6 8.564 Get:20 http://archive.ubuntu.com/ubuntu jammy/main amd64 liberror-perl all 0.17029-1 [26.5 kB]
+2026-02-19T19:03:22.8858303Z #6 8.565 Get:21 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 git-man all 1:2.34.1-1ubuntu1.15 [955 kB]
+2026-02-19T19:03:22.8859729Z #6 8.582 Get:22 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 git amd64 1:2.34.1-1ubuntu1.15 [3166 kB]
+2026-02-19T19:03:22.8860648Z #6 8.714 Get:23 http://archive.ubuntu.com/ubuntu jammy/main amd64 libonig5 amd64 6.9.7.1-2build1 [172 kB]
+2026-02-19T19:03:23.0067038Z #6 8.717 Get:24 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libjq1 amd64 1.6-2.1ubuntu3.1 [133 kB]
+2026-02-19T19:03:23.0067950Z #6 8.719 Get:25 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 jq amd64 1.6-2.1ubuntu3.1 [52.5 kB]
+2026-02-19T19:03:23.0069069Z #6 8.812 debconf: delaying package configuration, since apt-utils is not installed
+2026-02-19T19:03:23.0069683Z #6 8.835 Fetched 15.7 MB in 3s (6197 kB/s)
+2026-02-19T19:03:23.1769504Z #6 8.848 Selecting previously unselected package perl-modules-5.34.
+2026-02-19T19:03:23.1770316Z #6 8.848 (Reading database ... 
+2026-02-19T19:03:23.1770803Z (Reading database ... 5%
+2026-02-19T19:03:23.1771273Z (Reading database ... 10%
+2026-02-19T19:03:23.1771719Z (Reading database ... 15%
+2026-02-19T19:03:23.1772162Z (Reading database ... 20%
+2026-02-19T19:03:23.1772616Z (Reading database ... 25%
+2026-02-19T19:03:23.1773066Z (Reading database ... 30%
+2026-02-19T19:03:23.1773510Z (Reading database ... 35%
+2026-02-19T19:03:23.1773946Z (Reading database ... 40%
+2026-02-19T19:03:23.1774387Z (Reading database ... 45%
+2026-02-19T19:03:23.1774816Z (Reading database ... 50%
+2026-02-19T19:03:23.1775220Z (Reading database ... 55%
+2026-02-19T19:03:23.1775629Z (Reading database ... 60%
+2026-02-19T19:03:23.1776027Z (Reading database ... 65%
+2026-02-19T19:03:23.1776477Z (Reading database ... 70%
+2026-02-19T19:03:23.1776899Z (Reading database ... 75%
+2026-02-19T19:03:23.1777301Z (Reading database ... 80%
+2026-02-19T19:03:23.1777698Z (Reading database ... 85%
+2026-02-19T19:03:23.1778104Z (Reading database ... 90%
+2026-02-19T19:03:23.1778523Z (Reading database ... 95%
+2026-02-19T19:03:23.1779583Z (Reading database ... 100%
+2026-02-19T19:03:23.1780372Z (Reading database ... 4393 files and directories currently installed.)
+2026-02-19T19:03:23.1781605Z #6 8.855 Preparing to unpack .../00-perl-modules-5.34_5.34.0-3ubuntu1.5_all.deb ...
+2026-02-19T19:03:23.1782674Z #6 8.856 Unpacking perl-modules-5.34 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:03:23.2899691Z #6 9.119 Selecting previously unselected package libgdbm6:amd64.
+2026-02-19T19:03:23.4782881Z #6 9.121 Preparing to unpack .../01-libgdbm6_1.23-1_amd64.deb ...
+2026-02-19T19:03:23.4784353Z #6 9.123 Unpacking libgdbm6:amd64 (1.23-1) ...
+2026-02-19T19:03:23.4785349Z #6 9.138 Selecting previously unselected package libgdbm-compat4:amd64.
+2026-02-19T19:03:23.4786103Z #6 9.139 Preparing to unpack .../02-libgdbm-compat4_1.23-1_amd64.deb ...
+2026-02-19T19:03:23.4786854Z #6 9.140 Unpacking libgdbm-compat4:amd64 (1.23-1) ...
+2026-02-19T19:03:23.4787449Z #6 9.154 Selecting previously unselected package libperl5.34:amd64.
+2026-02-19T19:03:23.4788128Z #6 9.155 Preparing to unpack .../03-libperl5.34_5.34.0-3ubuntu1.5_amd64.deb ...
+2026-02-19T19:03:23.4789138Z #6 9.157 Unpacking libperl5.34:amd64 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:03:23.4945830Z #6 9.324 Selecting previously unselected package perl.
+2026-02-19T19:03:23.6079286Z #6 9.326 Preparing to unpack .../04-perl_5.34.0-3ubuntu1.5_amd64.deb ...
+2026-02-19T19:03:23.6080277Z #6 9.331 Unpacking perl (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:03:23.6081031Z #6 9.354 Selecting previously unselected package openssl.
+2026-02-19T19:03:23.6081872Z #6 9.356 Preparing to unpack .../05-openssl_3.0.2-0ubuntu1.21_amd64.deb ...
+2026-02-19T19:03:23.6082861Z #6 9.357 Unpacking openssl (3.0.2-0ubuntu1.21) ...
+2026-02-19T19:03:23.6102328Z #6 9.393 Selecting previously unselected package ca-certificates.
+2026-02-19T19:03:23.6103181Z #6 9.395 Preparing to unpack .../06-ca-certificates_20240203~22.04.1_all.deb ...
+2026-02-19T19:03:23.6103881Z #6 9.396 Unpacking ca-certificates (20240203~22.04.1) ...
+2026-02-19T19:03:23.6104679Z #6 9.437 Selecting previously unselected package libexpat1:amd64.
+2026-02-19T19:03:23.7226139Z #6 9.439 Preparing to unpack .../07-libexpat1_2.4.7-1ubuntu0.7_amd64.deb ...
+2026-02-19T19:03:23.7227326Z #6 9.440 Unpacking libexpat1:amd64 (2.4.7-1ubuntu0.7) ...
+2026-02-19T19:03:23.7228397Z #6 9.456 Selecting previously unselected package libnghttp2-14:amd64.
+2026-02-19T19:03:23.7229895Z #6 9.457 Preparing to unpack .../08-libnghttp2-14_1.43.0-1ubuntu0.2_amd64.deb ...
+2026-02-19T19:03:23.7231077Z #6 9.459 Unpacking libnghttp2-14:amd64 (1.43.0-1ubuntu0.2) ...
+2026-02-19T19:03:23.7232115Z #6 9.474 Selecting previously unselected package libpsl5:amd64.
+2026-02-19T19:03:23.7233275Z #6 9.476 Preparing to unpack .../09-libpsl5_0.21.0-1.2build2_amd64.deb ...
+2026-02-19T19:03:23.7234344Z #6 9.477 Unpacking libpsl5:amd64 (0.21.0-1.2build2) ...
+2026-02-19T19:03:23.7235247Z #6 9.494 Selecting previously unselected package libbrotli1:amd64.
+2026-02-19T19:03:23.7236016Z #6 9.495 Preparing to unpack .../10-libbrotli1_1.0.9-2build6_amd64.deb ...
+2026-02-19T19:03:23.7236731Z #6 9.497 Unpacking libbrotli1:amd64 (1.0.9-2build6) ...
+2026-02-19T19:03:23.7237490Z #6 9.514 Selecting previously unselected package libsasl2-modules-db:amd64.
+2026-02-19T19:03:23.7238430Z #6 9.516 Preparing to unpack .../11-libsasl2-modules-db_2.1.27+dfsg2-3ubuntu1.2_amd64.deb ...
+2026-02-19T19:03:23.7239547Z #6 9.517 Unpacking libsasl2-modules-db:amd64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:03:23.7240331Z #6 9.531 Selecting previously unselected package libsasl2-2:amd64.
+2026-02-19T19:03:23.7241146Z #6 9.533 Preparing to unpack .../12-libsasl2-2_2.1.27+dfsg2-3ubuntu1.2_amd64.deb ...
+2026-02-19T19:03:23.7241999Z #6 9.534 Unpacking libsasl2-2:amd64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:03:23.7242833Z #6 9.552 Selecting previously unselected package libldap-2.5-0:amd64.
+2026-02-19T19:03:23.8377017Z #6 9.554 Preparing to unpack .../13-libldap-2.5-0_2.5.20+dfsg-0ubuntu0.22.04.1_amd64.deb ...
+2026-02-19T19:03:23.8378458Z #6 9.555 Unpacking libldap-2.5-0:amd64 (2.5.20+dfsg-0ubuntu0.22.04.1) ...
+2026-02-19T19:03:23.8379810Z #6 9.572 Selecting previously unselected package librtmp1:amd64.
+2026-02-19T19:03:23.8381108Z #6 9.573 Preparing to unpack .../14-librtmp1_2.4+20151223.gitfa8646d.1-2build4_amd64.deb ...
+2026-02-19T19:03:23.8382456Z #6 9.574 Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build4) ...
+2026-02-19T19:03:23.8383592Z #6 9.589 Selecting previously unselected package libssh-4:amd64.
+2026-02-19T19:03:23.8384712Z #6 9.591 Preparing to unpack .../15-libssh-4_0.9.6-2ubuntu0.22.04.6_amd64.deb ...
+2026-02-19T19:03:23.8385403Z #6 9.592 Unpacking libssh-4:amd64 (0.9.6-2ubuntu0.22.04.6) ...
+2026-02-19T19:03:23.8386030Z #6 9.609 Selecting previously unselected package libcurl4:amd64.
+2026-02-19T19:03:23.8386718Z #6 9.611 Preparing to unpack .../16-libcurl4_7.81.0-1ubuntu1.21_amd64.deb ...
+2026-02-19T19:03:23.8387302Z #6 9.612 Unpacking libcurl4:amd64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:03:23.8387701Z #6 9.628 Selecting previously unselected package curl.
+2026-02-19T19:03:23.8388160Z #6 9.629 Preparing to unpack .../17-curl_7.81.0-1ubuntu1.21_amd64.deb ...
+2026-02-19T19:03:23.8388746Z #6 9.630 Unpacking curl (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:03:23.8389200Z #6 9.648 Selecting previously unselected package libcurl3-gnutls:amd64.
+2026-02-19T19:03:23.8389739Z #6 9.650 Preparing to unpack .../18-libcurl3-gnutls_7.81.0-1ubuntu1.21_amd64.deb ...
+2026-02-19T19:03:23.8390356Z #6 9.651 Unpacking libcurl3-gnutls:amd64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:03:23.8391086Z #6 9.667 Selecting previously unselected package liberror-perl.
+2026-02-19T19:03:24.0072075Z #6 9.668 Preparing to unpack .../19-liberror-perl_0.17029-1_all.deb ...
+2026-02-19T19:03:24.0073421Z #6 9.669 Unpacking liberror-perl (0.17029-1) ...
+2026-02-19T19:03:24.0073926Z #6 9.683 Selecting previously unselected package git-man.
+2026-02-19T19:03:24.0074547Z #6 9.685 Preparing to unpack .../20-git-man_1%3a2.34.1-1ubuntu1.15_all.deb ...
+2026-02-19T19:03:24.0075141Z #6 9.686 Unpacking git-man (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:03:24.0075611Z #6 9.710 Selecting previously unselected package git.
+2026-02-19T19:03:24.0076169Z #6 9.712 Preparing to unpack .../21-git_1%3a2.34.1-1ubuntu1.15_amd64.deb ...
+2026-02-19T19:03:24.0076715Z #6 9.717 Unpacking git (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:03:24.0077219Z #6 9.836 Selecting previously unselected package libonig5:amd64.
+2026-02-19T19:03:24.1089966Z #6 9.839 Preparing to unpack .../22-libonig5_6.9.7.1-2build1_amd64.deb ...
+2026-02-19T19:03:24.1090880Z #6 9.840 Unpacking libonig5:amd64 (6.9.7.1-2build1) ...
+2026-02-19T19:03:24.1091564Z #6 9.857 Selecting previously unselected package libjq1:amd64.
+2026-02-19T19:03:24.1092370Z #6 9.859 Preparing to unpack .../23-libjq1_1.6-2.1ubuntu3.1_amd64.deb ...
+2026-02-19T19:03:24.1093376Z #6 9.860 Unpacking libjq1:amd64 (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:03:24.1094063Z #6 9.874 Selecting previously unselected package jq.
+2026-02-19T19:03:24.1094705Z #6 9.876 Preparing to unpack .../24-jq_1.6-2.1ubuntu3.1_amd64.deb ...
+2026-02-19T19:03:24.1095233Z #6 9.876 Unpacking jq (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:03:24.1095788Z #6 9.897 Setting up libexpat1:amd64 (2.4.7-1ubuntu0.7) ...
+2026-02-19T19:03:24.1096274Z #6 9.903 Setting up libpsl5:amd64 (0.21.0-1.2build2) ...
+2026-02-19T19:03:24.1096741Z #6 9.906 Setting up libbrotli1:amd64 (1.0.9-2build6) ...
+2026-02-19T19:03:24.1097241Z #6 9.908 Setting up libnghttp2-14:amd64 (1.43.0-1ubuntu0.2) ...
+2026-02-19T19:03:24.1097789Z #6 9.911 Setting up perl-modules-5.34 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:03:24.1098402Z #6 9.913 Setting up libsasl2-modules-db:amd64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:03:24.1099379Z #6 9.916 Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2build4) ...
+2026-02-19T19:03:24.1099996Z #6 9.919 Setting up libsasl2-2:amd64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:03:24.1100541Z #6 9.921 Setting up libssh-4:amd64 (0.9.6-2ubuntu0.22.04.6) ...
+2026-02-19T19:03:24.1101037Z #6 9.924 Setting up git-man (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:03:24.1101483Z #6 9.926 Setting up openssl (3.0.2-0ubuntu1.21) ...
+2026-02-19T19:03:24.1102161Z #6 9.931 Setting up libonig5:amd64 (6.9.7.1-2build1) ...
+2026-02-19T19:03:24.1102784Z #6 9.933 Setting up libgdbm6:amd64 (1.23-1) ...
+2026-02-19T19:03:24.1103154Z #6 9.936 Setting up libjq1:amd64 (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:03:24.1103603Z #6 9.938 Setting up libldap-2.5-0:amd64 (2.5.20+dfsg-0ubuntu0.22.04.1) ...
+2026-02-19T19:03:24.3262621Z #6 9.941 Setting up ca-certificates (20240203~22.04.1) ...
+2026-02-19T19:03:24.3263322Z #6 10.00 debconf: unable to initialize frontend: Dialog
+2026-02-19T19:03:24.3264643Z #6 10.00 debconf: (TERM is not set, so the dialog frontend is not usable.)
+2026-02-19T19:03:24.3265662Z #6 10.00 debconf: falling back to frontend: Readline
+2026-02-19T19:03:24.5829741Z #6 10.41 Updating certificates in /etc/ssl/certs...
+2026-02-19T19:03:25.1487529Z #6 10.98 146 added, 0 removed; done.
+2026-02-19T19:03:25.3669794Z #6 10.99 Setting up libgdbm-compat4:amd64 (1.23-1) ...
+2026-02-19T19:03:25.3670850Z #6 10.99 Setting up jq (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:03:25.3671805Z #6 11.00 Setting up libcurl4:amd64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:03:25.3672412Z #6 11.00 Setting up curl (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:03:25.3673016Z #6 11.00 Setting up libperl5.34:amd64 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:03:25.3673716Z #6 11.01 Setting up libcurl3-gnutls:amd64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:03:25.3674512Z #6 11.01 Setting up perl (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:03:25.3675060Z #6 11.02 Setting up liberror-perl (0.17029-1) ...
+2026-02-19T19:03:25.3675602Z #6 11.02 Setting up git (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:03:25.3676765Z #6 11.03 Processing triggers for libc-bin (2.35-0ubuntu3.13) ...
+2026-02-19T19:03:25.3678060Z #6 11.04 Processing triggers for ca-certificates (20240203~22.04.1) ...
+2026-02-19T19:03:25.3678821Z #6 11.05 Updating certificates in /etc/ssl/certs...
+2026-02-19T19:03:25.6625768Z #6 11.49 0 added, 0 removed; done.
+2026-02-19T19:03:25.8139769Z #6 11.49 Running hooks in /etc/ca-certificates/update.d...
+2026-02-19T19:03:25.8140449Z #6 11.49 done.
+2026-02-19T19:03:25.8785456Z #6 DONE 11.7s
+2026-02-19T19:03:26.0306733Z 
+2026-02-19T19:03:26.0307305Z #7 exporting to image
+2026-02-19T19:03:26.0307608Z #7 exporting layers
+2026-02-19T19:03:28.4293050Z #7 exporting layers 2.5s done
+2026-02-19T19:03:28.5863577Z #7 exporting manifest sha256:dd53b3e619875ce54581f61f77abe73877e97575eaa4375d2d726b0f5796c533 done
+2026-02-19T19:03:28.5865809Z #7 exporting config sha256:148b51f33676286dd20f79beb150f3642f71512fa867c8c64ba7105fb7b4eac5 done
+2026-02-19T19:03:28.5867544Z #7 naming to ghcr.io/octopilot/op-base:latest-linux-amd64 done
+2026-02-19T19:03:28.5868884Z #7 pushing layers
+2026-02-19T19:03:28.7372436Z #7 ...
+2026-02-19T19:03:28.7372748Z 
+2026-02-19T19:03:28.7373140Z #8 [auth] octopilot/op-base:pull,push token for ghcr.io
+2026-02-19T19:03:28.7374006Z #8 DONE 0.0s
+2026-02-19T19:03:28.8870707Z 
+2026-02-19T19:03:28.8871057Z #7 exporting to image
+2026-02-19T19:03:30.7218272Z #7 pushing layers 2.3s done
+2026-02-19T19:03:30.7219555Z #7 pushing manifest for ghcr.io/octopilot/op-base:latest-linux-amd64@sha256:dd53b3e619875ce54581f61f77abe73877e97575eaa4375d2d726b0f5796c533
+2026-02-19T19:03:31.2783902Z #7 pushing manifest for ghcr.io/octopilot/op-base:latest-linux-amd64@sha256:dd53b3e619875ce54581f61f77abe73877e97575eaa4375d2d726b0f5796c533 0.6s done
+2026-02-19T19:03:31.3150151Z #7 DONE 5.4s
+2026-02-19T19:03:31.3202007Z Building Docker artifact op-base for platform linux/arm64 -> ghcr.io/octopilot/op-base:latest-linux-arm64
+2026-02-19T19:03:31.4509070Z #0 building with "default" instance using docker driver
+2026-02-19T19:03:31.4509496Z 
+2026-02-19T19:03:31.4509686Z #1 [internal] load build definition from Dockerfile
+2026-02-19T19:03:31.4510049Z #1 DONE 0.0s
+2026-02-19T19:03:31.6076901Z 
+2026-02-19T19:03:31.6077262Z #1 [internal] load build definition from Dockerfile
+2026-02-19T19:03:31.6077893Z #1 transferring dockerfile: 242B done
+2026-02-19T19:03:31.6078274Z #1 DONE 0.0s
+2026-02-19T19:03:31.6078404Z 
+2026-02-19T19:03:31.6078806Z #2 [internal] load metadata for docker.io/library/ubuntu:jammy
+2026-02-19T19:03:31.8235385Z #2 DONE 0.4s
+2026-02-19T19:03:32.0007324Z 
+2026-02-19T19:03:32.0007842Z #3 [internal] load .dockerignore
+2026-02-19T19:03:32.0009028Z #3 transferring context: 2B done
+2026-02-19T19:03:32.0009347Z #3 DONE 0.0s
+2026-02-19T19:03:32.0009547Z 
+2026-02-19T19:03:32.0010143Z #4 [1/2] FROM docker.io/library/ubuntu:jammy@sha256:3ba65aa20f86a0fad9df2b2c259c613df006b2e6d0bfcc8a146afb8c525a9751
+2026-02-19T19:03:32.0012181Z #4 resolve docker.io/library/ubuntu:jammy@sha256:3ba65aa20f86a0fad9df2b2c259c613df006b2e6d0bfcc8a146afb8c525a9751 0.0s done
+2026-02-19T19:03:32.0047019Z #4 sha256:c36472b3458398be28ecbfebbaac44143c040eae73411baded48a22060d3055b 7.34MB / 27.38MB 0.2s
+2026-02-19T19:03:32.1235908Z #4 sha256:c36472b3458398be28ecbfebbaac44143c040eae73411baded48a22060d3055b 27.38MB / 27.38MB 0.3s done
+2026-02-19T19:03:32.2776366Z #4 extracting sha256:c36472b3458398be28ecbfebbaac44143c040eae73411baded48a22060d3055b
+2026-02-19T19:03:32.7914588Z #4 extracting sha256:c36472b3458398be28ecbfebbaac44143c040eae73411baded48a22060d3055b 0.7s done
+2026-02-19T19:03:32.7915562Z #4 DONE 1.0s
+2026-02-19T19:03:32.9427463Z 
+2026-02-19T19:03:32.9428964Z #5 [2/2] RUN apt-get update && apt-get install -y --no-install-recommends     git     curl     jq     bash     ca-certificates     && rm -rf /var/lib/apt/lists/*
+2026-02-19T19:03:33.5546192Z #5 0.763 Get:1 http://ports.ubuntu.com/ubuntu-ports jammy InRelease [270 kB]
+2026-02-19T19:03:33.9770263Z #5 1.185 Get:2 http://ports.ubuntu.com/ubuntu-ports jammy-updates InRelease [128 kB]
+2026-02-19T19:03:34.1653851Z #5 1.272 Get:3 http://ports.ubuntu.com/ubuntu-ports jammy-backports InRelease [127 kB]
+2026-02-19T19:03:34.1655721Z #5 1.373 Get:4 http://ports.ubuntu.com/ubuntu-ports jammy-security InRelease [129 kB]
+2026-02-19T19:03:35.8151929Z #5 3.023 Get:5 http://ports.ubuntu.com/ubuntu-ports jammy/multiverse arm64 Packages [224 kB]
+2026-02-19T19:03:36.0356679Z #5 3.243 Get:6 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 Packages [1758 kB]
+2026-02-19T19:03:36.2534313Z #5 3.460 Get:7 http://ports.ubuntu.com/ubuntu-ports jammy/restricted arm64 Packages [24.2 kB]
+2026-02-19T19:03:36.4044745Z #5 3.462 Get:8 http://ports.ubuntu.com/ubuntu-ports jammy/universe arm64 Packages [17.2 MB]
+2026-02-19T19:03:37.6606993Z #5 4.868 Get:9 http://ports.ubuntu.com/ubuntu-ports jammy-updates/multiverse arm64 Packages [47.7 kB]
+2026-02-19T19:03:37.8945430Z #5 4.952 Get:10 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 Packages [3841 kB]
+2026-02-19T19:03:37.8949882Z #5 5.102 Get:11 http://ports.ubuntu.com/ubuntu-ports jammy-updates/restricted arm64 Packages [6534 kB]
+2026-02-19T19:03:38.1576990Z #5 5.365 Get:12 http://ports.ubuntu.com/ubuntu-ports jammy-updates/universe arm64 Packages [1654 kB]
+2026-02-19T19:03:39.5543397Z #5 6.762 Get:13 http://ports.ubuntu.com/ubuntu-ports jammy-backports/main arm64 Packages [83.5 kB]
+2026-02-19T19:03:39.7858359Z #5 6.843 Get:14 http://ports.ubuntu.com/ubuntu-ports jammy-backports/universe arm64 Packages [35.3 kB]
+2026-02-19T19:03:41.2392917Z #5 8.447 Get:15 http://ports.ubuntu.com/ubuntu-ports jammy-security/main arm64 Packages [3522 kB]
+2026-02-19T19:03:41.4106280Z #5 8.619 Get:16 http://ports.ubuntu.com/ubuntu-ports jammy-security/restricted arm64 Packages [6342 kB]
+2026-02-19T19:03:41.6375128Z #5 8.845 Get:17 http://ports.ubuntu.com/ubuntu-ports jammy-security/universe arm64 Packages [1351 kB]
+2026-02-19T19:03:41.8214296Z #5 8.879 Get:18 http://ports.ubuntu.com/ubuntu-ports jammy-security/multiverse arm64 Packages [41.2 kB]
+2026-02-19T19:03:44.0109673Z #5 11.22 Fetched 43.3 MB in 11s (4016 kB/s)
+2026-02-19T19:03:52.2822588Z #5 11.22 Reading package lists...
+2026-02-19T19:04:01.0574922Z #5 20.12 Reading package lists...
+2026-02-19T19:04:02.1257064Z #5 28.39 Building dependency tree...
+2026-02-19T19:04:02.2762473Z #5 29.33 Reading state information...
+2026-02-19T19:04:02.8348220Z #5 30.04 bash is already the newest version (5.1-6ubuntu1.1).
+2026-02-19T19:04:02.8351560Z #5 30.04 The following additional packages will be installed:
+2026-02-19T19:04:02.9915018Z #5 30.04   git-man libbrotli1 libcurl3-gnutls libcurl4 liberror-perl libexpat1
+2026-02-19T19:04:02.9916175Z #5 30.04   libgdbm-compat4 libgdbm6 libjq1 libldap-2.5-0 libnghttp2-14 libonig5
+2026-02-19T19:04:02.9917220Z #5 30.04   libperl5.34 libpsl5 librtmp1 libsasl2-2 libsasl2-modules-db libssh-4 openssl
+2026-02-19T19:04:02.9917972Z #5 30.05   perl perl-modules-5.34
+2026-02-19T19:04:02.9918405Z #5 30.05 Suggested packages:
+2026-02-19T19:04:02.9919311Z #5 30.05   gettext-base git-daemon-run | git-daemon-sysvinit git-doc git-email git-gui
+2026-02-19T19:04:02.9920225Z #5 30.05   gitk gitweb git-cvs git-mediawiki git-svn gdbm-l10n perl-doc
+2026-02-19T19:04:02.9921006Z #5 30.05   libterm-readline-gnu-perl | libterm-readline-perl-perl make
+2026-02-19T19:04:02.9921638Z #5 30.05   libtap-harness-archive-perl
+2026-02-19T19:04:02.9922082Z #5 30.05 Recommended packages:
+2026-02-19T19:04:02.9922709Z #5 30.05   patch less ssh-client libldap-common publicsuffix libsasl2-modules netbase
+2026-02-19T19:04:03.2082620Z #5 30.42 The following NEW packages will be installed:
+2026-02-19T19:04:03.3612514Z #5 30.42   ca-certificates curl git git-man jq libbrotli1 libcurl3-gnutls libcurl4
+2026-02-19T19:04:03.3613517Z #5 30.42   liberror-perl libexpat1 libgdbm-compat4 libgdbm6 libjq1 libldap-2.5-0
+2026-02-19T19:04:03.3614400Z #5 30.42   libnghttp2-14 libonig5 libperl5.34 libpsl5 librtmp1 libsasl2-2
+2026-02-19T19:04:03.3615211Z #5 30.42   libsasl2-modules-db libssh-4 openssl perl perl-modules-5.34
+2026-02-19T19:04:03.6734031Z #5 30.88 0 upgraded, 25 newly installed, 0 to remove and 1 not upgraded.
+2026-02-19T19:04:03.6736907Z #5 30.88 Need to get 15.6 MB of archives.
+2026-02-19T19:04:03.6737650Z #5 30.88 After this operation, 76.5 MB of additional disk space will be used.
+2026-02-19T19:04:03.6739259Z #5 30.88 Get:1 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 perl-modules-5.34 all 5.34.0-3ubuntu1.5 [2977 kB]
+2026-02-19T19:04:04.4034869Z #5 31.61 Get:2 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libgdbm6 arm64 1.23-1 [34.1 kB]
+2026-02-19T19:04:04.5552276Z #5 31.61 Get:3 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libgdbm-compat4 arm64 1.23-1 [6294 B]
+2026-02-19T19:04:04.5553679Z #5 31.61 Get:4 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libperl5.34 arm64 5.34.0-3ubuntu1.5 [4721 kB]
+2026-02-19T19:04:04.5555030Z #5 31.76 Get:5 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 perl arm64 5.34.0-3ubuntu1.5 [232 kB]
+2026-02-19T19:04:04.7240777Z #5 31.77 Get:6 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 openssl arm64 3.0.2-0ubuntu1.21 [1161 kB]
+2026-02-19T19:04:04.7242923Z #5 31.81 Get:7 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 ca-certificates all 20240203~22.04.1 [162 kB]
+2026-02-19T19:04:04.7244212Z #5 31.81 Get:8 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libexpat1 arm64 2.4.7-1ubuntu0.7 [77.5 kB]
+2026-02-19T19:04:04.7245700Z #5 31.82 Get:9 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libnghttp2-14 arm64 1.43.0-1ubuntu0.2 [76.0 kB]
+2026-02-19T19:04:04.7247137Z #5 31.82 Get:10 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libpsl5 arm64 0.21.0-1.2build2 [58.3 kB]
+2026-02-19T19:04:04.7248436Z #5 31.82 Get:11 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libbrotli1 arm64 1.0.9-2build6 [314 kB]
+2026-02-19T19:04:04.7249775Z #5 31.84 Get:12 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libsasl2-modules-db arm64 2.1.27+dfsg2-3ubuntu1.2 [21.1 kB]
+2026-02-19T19:04:04.7250799Z #5 31.84 Get:13 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libsasl2-2 arm64 2.1.27+dfsg2-3ubuntu1.2 [55.6 kB]
+2026-02-19T19:04:04.7251874Z #5 31.85 Get:14 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libldap-2.5-0 arm64 2.5.20+dfsg-0ubuntu0.22.04.1 [182 kB]
+2026-02-19T19:04:04.7253022Z #5 31.93 Get:15 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 librtmp1 arm64 2.4+20151223.gitfa8646d.1-2build4 [59.2 kB]
+2026-02-19T19:04:04.8932545Z #5 31.94 Get:16 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libssh-4 arm64 0.9.6-2ubuntu0.22.04.6 [186 kB]
+2026-02-19T19:04:04.8934034Z #5 31.94 Get:17 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libcurl4 arm64 7.81.0-1ubuntu1.21 [284 kB]
+2026-02-19T19:04:04.8935387Z #5 31.95 Get:18 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 curl arm64 7.81.0-1ubuntu1.21 [190 kB]
+2026-02-19T19:04:04.8936829Z #5 31.96 Get:19 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libcurl3-gnutls arm64 7.81.0-1ubuntu1.21 [279 kB]
+2026-02-19T19:04:04.8938351Z #5 31.97 Get:20 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 liberror-perl all 0.17029-1 [26.5 kB]
+2026-02-19T19:04:04.8940019Z #5 31.97 Get:21 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 git-man all 1:2.34.1-1ubuntu1.15 [955 kB]
+2026-02-19T19:04:04.8941425Z #5 32.00 Get:22 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 git arm64 1:2.34.1-1ubuntu1.15 [3224 kB]
+2026-02-19T19:04:04.8942669Z #5 32.10 Get:23 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 libonig5 arm64 6.9.7.1-2build1 [169 kB]
+2026-02-19T19:04:05.0544323Z #5 32.11 Get:24 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libjq1 arm64 1.6-2.1ubuntu3.1 [126 kB]
+2026-02-19T19:04:05.0545946Z #5 32.11 Get:25 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 jq arm64 1.6-2.1ubuntu3.1 [52.1 kB]
+2026-02-19T19:04:05.7134211Z #5 32.92 debconf: delaying package configuration, since apt-utils is not installed
+2026-02-19T19:04:05.8605247Z #5 33.07 Fetched 15.6 MB in 2s (9379 kB/s)
+2026-02-19T19:04:06.0356397Z #5 33.24 Selecting previously unselected package perl-modules-5.34.
+2026-02-19T19:04:06.2130149Z #5 33.25 (Reading database ... 
+2026-02-19T19:04:06.2130720Z (Reading database ... 5%
+2026-02-19T19:04:06.2131216Z (Reading database ... 10%
+2026-02-19T19:04:06.2131677Z (Reading database ... 15%
+2026-02-19T19:04:06.2132123Z (Reading database ... 20%
+2026-02-19T19:04:06.2132571Z (Reading database ... 25%
+2026-02-19T19:04:06.2133013Z (Reading database ... 30%
+2026-02-19T19:04:06.2133455Z (Reading database ... 35%
+2026-02-19T19:04:06.2133899Z (Reading database ... 40%
+2026-02-19T19:04:06.2134339Z (Reading database ... 45%
+2026-02-19T19:04:06.2134776Z (Reading database ... 50%
+2026-02-19T19:04:06.2135217Z (Reading database ... 55%
+2026-02-19T19:04:06.2135658Z (Reading database ... 60%
+2026-02-19T19:04:06.2136106Z (Reading database ... 65%
+2026-02-19T19:04:06.2136551Z (Reading database ... 70%
+2026-02-19T19:04:06.2137001Z (Reading database ... 75%
+2026-02-19T19:04:06.2137496Z (Reading database ... 80%
+2026-02-19T19:04:06.2137993Z (Reading database ... 85%
+2026-02-19T19:04:06.2138419Z (Reading database ... 90%
+2026-02-19T19:04:06.2139008Z (Reading database ... 95%
+2026-02-19T19:04:06.2139424Z (Reading database ... 100%
+2026-02-19T19:04:06.2140045Z (Reading database ... 4387 files and directories currently installed.)
+2026-02-19T19:04:06.2141013Z #5 33.26 Preparing to unpack .../00-perl-modules-5.34_5.34.0-3ubuntu1.5_all.deb ...
+2026-02-19T19:04:06.2141887Z #5 33.27 Unpacking perl-modules-5.34 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:04:06.7340621Z #5 33.94 Selecting previously unselected package libgdbm6:arm64.
+2026-02-19T19:04:06.8936797Z #5 33.95 Preparing to unpack .../01-libgdbm6_1.23-1_arm64.deb ...
+2026-02-19T19:04:06.8937706Z #5 33.95 Unpacking libgdbm6:arm64 (1.23-1) ...
+2026-02-19T19:04:06.9610358Z #5 34.17 Selecting previously unselected package libgdbm-compat4:arm64.
+2026-02-19T19:04:07.1175836Z #5 34.17 Preparing to unpack .../02-libgdbm-compat4_1.23-1_arm64.deb ...
+2026-02-19T19:04:07.1177123Z #5 34.18 Unpacking libgdbm-compat4:arm64 (1.23-1) ...
+2026-02-19T19:04:07.1672988Z #5 34.38 Selecting previously unselected package libperl5.34:arm64.
+2026-02-19T19:04:07.3220596Z #5 34.38 Preparing to unpack .../03-libperl5.34_5.34.0-3ubuntu1.5_arm64.deb ...
+2026-02-19T19:04:07.3221427Z #5 34.38 Unpacking libperl5.34:arm64 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:04:07.7117837Z #5 34.92 Selecting previously unselected package perl.
+2026-02-19T19:04:07.8573584Z #5 34.92 Preparing to unpack .../04-perl_5.34.0-3ubuntu1.5_arm64.deb ...
+2026-02-19T19:04:07.8574314Z #5 35.07 Unpacking perl (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:04:08.0765575Z #5 35.28 Selecting previously unselected package openssl.
+2026-02-19T19:04:08.2311311Z #5 35.29 Preparing to unpack .../05-openssl_3.0.2-0ubuntu1.21_arm64.deb ...
+2026-02-19T19:04:08.2311938Z #5 35.29 Unpacking openssl (3.0.2-0ubuntu1.21) ...
+2026-02-19T19:04:08.3321461Z #5 35.54 Selecting previously unselected package ca-certificates.
+2026-02-19T19:04:08.4871423Z #5 35.54 Preparing to unpack .../06-ca-certificates_20240203~22.04.1_all.deb ...
+2026-02-19T19:04:08.4872395Z #5 35.54 Unpacking ca-certificates (20240203~22.04.1) ...
+2026-02-19T19:04:08.5791647Z #5 35.79 Selecting previously unselected package libexpat1:arm64.
+2026-02-19T19:04:08.7343363Z #5 35.79 Preparing to unpack .../07-libexpat1_2.4.7-1ubuntu0.7_arm64.deb ...
+2026-02-19T19:04:08.7349763Z #5 35.79 Unpacking libexpat1:arm64 (2.4.7-1ubuntu0.7) ...
+2026-02-19T19:04:08.7853736Z #5 35.99 Selecting previously unselected package libnghttp2-14:arm64.
+2026-02-19T19:04:08.9400621Z #5 36.00 Preparing to unpack .../08-libnghttp2-14_1.43.0-1ubuntu0.2_arm64.deb ...
+2026-02-19T19:04:08.9402121Z #5 36.00 Unpacking libnghttp2-14:arm64 (1.43.0-1ubuntu0.2) ...
+2026-02-19T19:04:08.9985894Z #5 36.21 Selecting previously unselected package libpsl5:arm64.
+2026-02-19T19:04:09.1551519Z #5 36.21 Preparing to unpack .../09-libpsl5_0.21.0-1.2build2_arm64.deb ...
+2026-02-19T19:04:09.1552293Z #5 36.21 Unpacking libpsl5:arm64 (0.21.0-1.2build2) ...
+2026-02-19T19:04:09.2045487Z #5 36.41 Selecting previously unselected package libbrotli1:arm64.
+2026-02-19T19:04:09.3595111Z #5 36.42 Preparing to unpack .../10-libbrotli1_1.0.9-2build6_arm64.deb ...
+2026-02-19T19:04:09.3596227Z #5 36.42 Unpacking libbrotli1:arm64 (1.0.9-2build6) ...
+2026-02-19T19:04:09.4233986Z #5 36.63 Selecting previously unselected package libsasl2-modules-db:arm64.
+2026-02-19T19:04:09.5784578Z #5 36.63 Preparing to unpack .../11-libsasl2-modules-db_2.1.27+dfsg2-3ubuntu1.2_arm64.deb ...
+2026-02-19T19:04:09.5785566Z #5 36.64 Unpacking libsasl2-modules-db:arm64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:04:09.6278157Z #5 36.84 Selecting previously unselected package libsasl2-2:arm64.
+2026-02-19T19:04:09.7830864Z #5 36.84 Preparing to unpack .../12-libsasl2-2_2.1.27+dfsg2-3ubuntu1.2_arm64.deb ...
+2026-02-19T19:04:09.7839991Z #5 36.84 Unpacking libsasl2-2:arm64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:04:09.8344510Z #5 37.04 Selecting previously unselected package libldap-2.5-0:arm64.
+2026-02-19T19:04:09.9892374Z #5 37.05 Preparing to unpack .../13-libldap-2.5-0_2.5.20+dfsg-0ubuntu0.22.04.1_arm64.deb ...
+2026-02-19T19:04:09.9892993Z #5 37.05 Unpacking libldap-2.5-0:arm64 (2.5.20+dfsg-0ubuntu0.22.04.1) ...
+2026-02-19T19:04:10.0466112Z #5 37.25 Selecting previously unselected package librtmp1:arm64.
+2026-02-19T19:04:10.2014868Z #5 37.26 Preparing to unpack .../14-librtmp1_2.4+20151223.gitfa8646d.1-2build4_arm64.deb ...
+2026-02-19T19:04:10.2016329Z #5 37.26 Unpacking librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2build4) ...
+2026-02-19T19:04:10.2509036Z #5 37.46 Selecting previously unselected package libssh-4:arm64.
+2026-02-19T19:04:10.4058797Z #5 37.46 Preparing to unpack .../15-libssh-4_0.9.6-2ubuntu0.22.04.6_arm64.deb ...
+2026-02-19T19:04:10.4059568Z #5 37.46 Unpacking libssh-4:arm64 (0.9.6-2ubuntu0.22.04.6) ...
+2026-02-19T19:04:10.4620438Z #5 37.67 Selecting previously unselected package libcurl4:arm64.
+2026-02-19T19:04:10.6168894Z #5 37.67 Preparing to unpack .../16-libcurl4_7.81.0-1ubuntu1.21_arm64.deb ...
+2026-02-19T19:04:10.6169765Z #5 37.67 Unpacking libcurl4:arm64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:04:10.6783821Z #5 37.89 Selecting previously unselected package curl.
+2026-02-19T19:04:10.8333150Z #5 37.89 Preparing to unpack .../17-curl_7.81.0-1ubuntu1.21_arm64.deb ...
+2026-02-19T19:04:10.8338525Z #5 37.89 Unpacking curl (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:04:10.8939302Z #5 38.10 Selecting previously unselected package libcurl3-gnutls:arm64.
+2026-02-19T19:04:11.0492322Z #5 38.10 Preparing to unpack .../18-libcurl3-gnutls_7.81.0-1ubuntu1.21_arm64.deb ...
+2026-02-19T19:04:11.0492900Z #5 38.11 Unpacking libcurl3-gnutls:arm64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:04:11.1088910Z #5 38.32 Selecting previously unselected package liberror-perl.
+2026-02-19T19:04:11.2634183Z #5 38.32 Preparing to unpack .../19-liberror-perl_0.17029-1_all.deb ...
+2026-02-19T19:04:11.2634804Z #5 38.32 Unpacking liberror-perl (0.17029-1) ...
+2026-02-19T19:04:11.3214144Z #5 38.53 Selecting previously unselected package git-man.
+2026-02-19T19:04:11.4759465Z #5 38.53 Preparing to unpack .../20-git-man_1%3a2.34.1-1ubuntu1.15_all.deb ...
+2026-02-19T19:04:11.4760371Z #5 38.53 Unpacking git-man (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:04:11.5426900Z #5 38.75 Selecting previously unselected package git.
+2026-02-19T19:04:11.6856614Z #5 38.75 Preparing to unpack .../21-git_1%3a2.34.1-1ubuntu1.15_arm64.deb ...
+2026-02-19T19:04:11.6857501Z #5 38.89 Unpacking git (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:04:12.1162558Z #5 39.32 Selecting previously unselected package libonig5:arm64.
+2026-02-19T19:04:12.2717060Z #5 39.33 Preparing to unpack .../22-libonig5_6.9.7.1-2build1_arm64.deb ...
+2026-02-19T19:04:12.2718014Z #5 39.33 Unpacking libonig5:arm64 (6.9.7.1-2build1) ...
+2026-02-19T19:04:12.3283306Z #5 39.54 Selecting previously unselected package libjq1:arm64.
+2026-02-19T19:04:12.4830947Z #5 39.54 Preparing to unpack .../23-libjq1_1.6-2.1ubuntu3.1_arm64.deb ...
+2026-02-19T19:04:12.4831730Z #5 39.54 Unpacking libjq1:arm64 (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:04:12.5375811Z #5 39.75 Selecting previously unselected package jq.
+2026-02-19T19:04:12.6924483Z #5 39.75 Preparing to unpack .../24-jq_1.6-2.1ubuntu3.1_arm64.deb ...
+2026-02-19T19:04:12.6925171Z #5 39.75 Unpacking jq (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:04:12.7037861Z #5 39.91 Setting up libexpat1:arm64 (2.4.7-1ubuntu0.7) ...
+2026-02-19T19:04:12.9456280Z #5 39.92 Setting up libpsl5:arm64 (0.21.0-1.2build2) ...
+2026-02-19T19:04:12.9457236Z #5 39.92 Setting up libbrotli1:arm64 (1.0.9-2build6) ...
+2026-02-19T19:04:12.9458140Z #5 39.93 Setting up libnghttp2-14:arm64 (1.43.0-1ubuntu0.2) ...
+2026-02-19T19:04:12.9458923Z #5 39.93 Setting up perl-modules-5.34 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:04:12.9459583Z #5 39.94 Setting up libsasl2-modules-db:arm64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:04:12.9460320Z #5 39.94 Setting up librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2build4) ...
+2026-02-19T19:04:12.9460987Z #5 39.94 Setting up libsasl2-2:arm64 (2.1.27+dfsg2-3ubuntu1.2) ...
+2026-02-19T19:04:12.9461616Z #5 39.95 Setting up libssh-4:arm64 (0.9.6-2ubuntu0.22.04.6) ...
+2026-02-19T19:04:12.9462367Z #5 39.95 Setting up git-man (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:04:12.9462929Z #5 39.95 Setting up openssl (3.0.2-0ubuntu1.21) ...
+2026-02-19T19:04:12.9463439Z #5 39.99 Setting up libonig5:arm64 (6.9.7.1-2build1) ...
+2026-02-19T19:04:12.9463927Z #5 39.99 Setting up libgdbm6:arm64 (1.23-1) ...
+2026-02-19T19:04:12.9464417Z #5 40.00 Setting up libjq1:arm64 (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:04:12.9465011Z #5 40.00 Setting up libldap-2.5-0:arm64 (2.5.20+dfsg-0ubuntu0.22.04.1) ...
+2026-02-19T19:04:12.9465631Z #5 40.00 Setting up ca-certificates (20240203~22.04.1) ...
+2026-02-19T19:04:13.7360573Z #5 40.94 debconf: unable to initialize frontend: Dialog
+2026-02-19T19:04:13.8869055Z #5 40.94 debconf: (TERM is not set, so the dialog frontend is not usable.)
+2026-02-19T19:04:13.8869744Z #5 40.94 debconf: falling back to frontend: Readline
+2026-02-19T19:04:25.0801711Z #5 52.29 Updating certificates in /etc/ssl/certs...
+2026-02-19T19:04:43.5881380Z #5 70.80 146 added, 0 removed; done.
+2026-02-19T19:04:43.7418904Z #5 70.95 Setting up libgdbm-compat4:arm64 (1.23-1) ...
+2026-02-19T19:04:43.9178131Z #5 70.95 Setting up jq (1.6-2.1ubuntu3.1) ...
+2026-02-19T19:04:43.9178983Z #5 70.96 Setting up libcurl4:arm64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:04:43.9179615Z #5 70.96 Setting up curl (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:04:43.9180235Z #5 70.96 Setting up libperl5.34:arm64 (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:04:43.9180942Z #5 70.97 Setting up libcurl3-gnutls:arm64 (7.81.0-1ubuntu1.21) ...
+2026-02-19T19:04:43.9181602Z #5 70.98 Setting up perl (5.34.0-3ubuntu1.5) ...
+2026-02-19T19:04:43.9765399Z #5 71.18 Setting up liberror-perl (0.17029-1) ...
+2026-02-19T19:04:44.1281771Z #5 71.19 Setting up git (1:2.34.1-1ubuntu1.15) ...
+2026-02-19T19:04:44.1282611Z #5 71.34 Processing triggers for libc-bin (2.35-0ubuntu3.13) ...
+2026-02-19T19:04:44.2424561Z #5 71.45 Processing triggers for ca-certificates (20240203~22.04.1) ...
+2026-02-19T19:04:44.3686908Z #5 71.58 Updating certificates in /etc/ssl/certs...
+2026-02-19T19:04:59.0946123Z #5 86.30 0 added, 0 removed; done.
+2026-02-19T19:04:59.2793004Z #5 86.30 Running hooks in /etc/ca-certificates/update.d...
+2026-02-19T19:04:59.2793852Z #5 86.34 done.
+2026-02-19T19:04:59.3812574Z #5 DONE 86.6s
+2026-02-19T19:04:59.5339037Z 
+2026-02-19T19:04:59.5339488Z #6 exporting to image
+2026-02-19T19:04:59.5339900Z #6 exporting layers
+2026-02-19T19:05:01.7531295Z #6 exporting layers 2.4s done
+2026-02-19T19:05:01.9122004Z #6 exporting manifest sha256:673293bfa75213ca08cee48d039e042edf51a20aa48db1dfb28491d3969ef37a done
+2026-02-19T19:05:01.9123606Z #6 exporting config sha256:0c5407dd8de997c11c660b989e9ae7b9441623f61d21514591f08e7dcc9f624a done
+2026-02-19T19:05:01.9124681Z #6 naming to ghcr.io/octopilot/op-base:latest-linux-arm64 done
+2026-02-19T19:05:01.9125385Z #6 pushing layers
+2026-02-19T19:05:02.0627566Z #6 ...
+2026-02-19T19:05:02.0627848Z 
+2026-02-19T19:05:02.0628775Z #7 [auth] octopilot/op-base:pull,push token for ghcr.io
+2026-02-19T19:05:02.0629400Z #7 DONE 0.0s
+2026-02-19T19:05:02.2130173Z 
+2026-02-19T19:05:02.2130720Z #6 exporting to image
+2026-02-19T19:05:04.3086649Z #6 pushing layers 2.5s done
+2026-02-19T19:05:04.3087764Z #6 pushing manifest for ghcr.io/octopilot/op-base:latest-linux-arm64@sha256:673293bfa75213ca08cee48d039e042edf51a20aa48db1dfb28491d3969ef37a
+2026-02-19T19:05:04.8765038Z #6 pushing manifest for ghcr.io/octopilot/op-base:latest-linux-arm64@sha256:673293bfa75213ca08cee48d039e042edf51a20aa48db1dfb28491d3969ef37a 0.6s done
+2026-02-19T19:05:04.9047167Z #6 DONE 5.5s
+2026-02-19T19:05:04.9097435Z Creating manifest list ghcr.io/octopilot/op-base:latest from [ghcr.io/octopilot/op-base:latest-linux-amd64 ghcr.io/octopilot/op-base:latest-linux-arm64]
+2026-02-19T19:05:06.6223212Z Successfully pushed manifest list ghcr.io/octopilot/op-base:latest (digest: sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325)
+2026-02-19T19:05:06.6224451Z Tagging ghcr.io/octopilot/op-base:latest as ghcr.io/octopilot/op-base:v0.0.41...
+2026-02-19T19:05:08.0325654Z Successfully tagged version ghcr.io/octopilot/op-base:v0.0.41
+2026-02-19T19:05:08.0326668Z Waiting for image propagation: ghcr.io/octopilot/op-base:latest (timeout: 3m0s)
+2026-02-19T19:05:08.3672682Z 
+2026-02-19T19:05:08.3673130Z Image found: ghcr.io/octopilot/op-base:latest
+2026-02-19T19:05:08.3674018Z Building artifact op -> ghcr.io/octopilot/op:latest
+2026-02-19T19:05:08.3675884Z Resolving runImage op-base to built artifact ghcr.io/octopilot/op-base:latest@sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325
+2026-02-19T19:05:08.3677716Z   -> Platform: linux/amd64, Tag: ghcr.io/octopilot/op:latest-linux-amd64
+2026-02-19T19:05:08.3681849Z [pack] BuildOptions: Image=ghcr.io/octopilot/op:latest-linux-amd64 Builder=ghcr.io/octopilot/builder-jammy-base:0.1.198 RunImage=ghcr.io/octopilot/op-base:latest@sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325 Target=linux/amd64 Network= Publish=true InsecureRegistries=[]
+2026-02-19T19:05:08.3685713Z Building ghcr.io/octopilot/op:latest-linux-amd64 using builder ghcr.io/octopilot/builder-jammy-base:0.1.198 (publish=true)...
+2026-02-19T19:05:08.9665596Z 0.1.198: Pulling from octopilot/builder-jammy-base
+2026-02-19T19:05:09.4359367Z 0dc012e84509: Pulling fs layer
+2026-02-19T19:05:09.4359864Z 75ecc2e330b2: Pulling fs layer
+2026-02-19T19:05:09.4360281Z c85c54d50257: Pulling fs layer
+2026-02-19T19:05:09.4360689Z b981ffeba613: Pulling fs layer
+2026-02-19T19:05:09.4361082Z 89732bc75041: Pulling fs layer
+2026-02-19T19:05:09.4361487Z 9e7dafb8cbe4: Pulling fs layer
+2026-02-19T19:05:09.4361872Z 56ac94bbd31b: Pulling fs layer
+2026-02-19T19:05:09.4362274Z 6bc6aa5859c3: Pulling fs layer
+2026-02-19T19:05:09.4362667Z cd8d8818fb8e: Pulling fs layer
+2026-02-19T19:05:09.4363077Z 78df2ecac401: Pulling fs layer
+2026-02-19T19:05:09.4363464Z c38259115b59: Pulling fs layer
+2026-02-19T19:05:09.4363868Z 6ac178117955: Pulling fs layer
+2026-02-19T19:05:09.4364279Z 6621af41e9c1: Pulling fs layer
+2026-02-19T19:05:09.4364704Z e50185f0320e: Pulling fs layer
+2026-02-19T19:05:09.4365096Z 413f9e30cc1f: Pulling fs layer
+2026-02-19T19:05:09.4365497Z c9aed60fccf8: Pulling fs layer
+2026-02-19T19:05:09.4365890Z 7250a74eeb66: Pulling fs layer
+2026-02-19T19:05:09.4366282Z 924811bbe2a6: Pulling fs layer
+2026-02-19T19:05:09.4366674Z aa0c41688210: Pulling fs layer
+2026-02-19T19:05:09.4367067Z e2ae7daa554b: Pulling fs layer
+2026-02-19T19:05:09.4367469Z c50333cf8834: Pulling fs layer
+2026-02-19T19:05:09.4367856Z 75e6ef543e9f: Pulling fs layer
+2026-02-19T19:05:09.4368255Z 435afbe584ac: Pulling fs layer
+2026-02-19T19:05:09.4368802Z dd2ec1303777: Pulling fs layer
+2026-02-19T19:05:09.4369229Z 92f553fb3778: Pulling fs layer
+2026-02-19T19:05:09.4369623Z 3097278e5dc9: Pulling fs layer
+2026-02-19T19:05:09.4370014Z b1a59f383bc0: Pulling fs layer
+2026-02-19T19:05:09.4370326Z 181ba257b248: Pulling fs layer
+2026-02-19T19:05:09.4370666Z a0692abf113e: Pulling fs layer
+2026-02-19T19:05:09.4371015Z 2ab944348f77: Pulling fs layer
+2026-02-19T19:05:09.4371835Z 9cfe4e969c0f: Pulling fs layer
+2026-02-19T19:05:09.4372094Z 658b514388a8: Pulling fs layer
+2026-02-19T19:05:09.4372310Z 0914ec1dc50d: Pulling fs layer
+2026-02-19T19:05:09.4372698Z e971d1d0c3cb: Pulling fs layer
+2026-02-19T19:05:09.4373037Z 576dcb4d312d: Pulling fs layer
+2026-02-19T19:05:09.4373408Z 5927ceddd290: Pulling fs layer
+2026-02-19T19:05:09.4373732Z 86a2b2afa7e6: Pulling fs layer
+2026-02-19T19:05:09.4373950Z 6667aebfba65: Pulling fs layer
+2026-02-19T19:05:09.4374244Z 9bbbb465437d: Pulling fs layer
+2026-02-19T19:05:09.4374575Z 026c6dba3379: Pulling fs layer
+2026-02-19T19:05:09.4374790Z 35b9088bd873: Pulling fs layer
+2026-02-19T19:05:09.4375024Z 75765fff5624: Pulling fs layer
+2026-02-19T19:05:09.4375400Z de3ed6ee648d: Pulling fs layer
+2026-02-19T19:05:09.4375622Z c6649d37080d: Pulling fs layer
+2026-02-19T19:05:09.4375834Z 1aca4827bf49: Pulling fs layer
+2026-02-19T19:05:09.4376213Z 6446b33fec15: Pulling fs layer
+2026-02-19T19:05:09.4376449Z 4809a555cc4f: Pulling fs layer
+2026-02-19T19:05:09.4376674Z 7f71caab214e: Pulling fs layer
+2026-02-19T19:05:09.4377028Z 1066e6cccaef: Pulling fs layer
+2026-02-19T19:05:09.4377410Z b38c4aa84352: Pulling fs layer
+2026-02-19T19:05:09.4377803Z 2981593bc77e: Pulling fs layer
+2026-02-19T19:05:09.4378181Z a918c4c568df: Pulling fs layer
+2026-02-19T19:05:09.4378729Z c7016cfbb7f7: Pulling fs layer
+2026-02-19T19:05:09.4379120Z 26444e004104: Pulling fs layer
+2026-02-19T19:05:09.4379516Z 88b085b97228: Pulling fs layer
+2026-02-19T19:05:09.4379916Z f461e905ef62: Pulling fs layer
+2026-02-19T19:05:09.4380311Z e79fc3e36c1c: Pulling fs layer
+2026-02-19T19:05:09.4380699Z f012cd77067e: Pulling fs layer
+2026-02-19T19:05:09.4381128Z 971ec3faa476: Pulling fs layer
+2026-02-19T19:05:09.4381541Z e75a3ca9f7bf: Pulling fs layer
+2026-02-19T19:05:09.4381937Z 4c1d371bddf2: Pulling fs layer
+2026-02-19T19:05:09.4382375Z 4b492e09cf18: Pulling fs layer
+2026-02-19T19:05:09.4382761Z 236958ee276c: Pulling fs layer
+2026-02-19T19:05:09.4383163Z 7cfdac23c7be: Pulling fs layer
+2026-02-19T19:05:09.4383582Z a4e6fec93dd2: Pulling fs layer
+2026-02-19T19:05:09.4383974Z 408f61662500: Pulling fs layer
+2026-02-19T19:05:09.4384362Z c9cc8d71eb21: Pulling fs layer
+2026-02-19T19:05:09.4384746Z 2b71e57db20e: Pulling fs layer
+2026-02-19T19:05:09.4385126Z e446e5572539: Pulling fs layer
+2026-02-19T19:05:09.4385524Z 321cd18a1d3b: Pulling fs layer
+2026-02-19T19:05:09.4385908Z 8731578f9165: Pulling fs layer
+2026-02-19T19:05:09.4386261Z 5d088948d3b2: Pulling fs layer
+2026-02-19T19:05:09.4386706Z c29e279839d0: Pulling fs layer
+2026-02-19T19:05:09.4387089Z 7040cc907262: Pulling fs layer
+2026-02-19T19:05:09.4387473Z de32848c35b8: Pulling fs layer
+2026-02-19T19:05:09.4387858Z 1ab67870d695: Pulling fs layer
+2026-02-19T19:05:09.4388243Z 1d5a17ce7cc4: Pulling fs layer
+2026-02-19T19:05:09.4388811Z b07980424e89: Pulling fs layer
+2026-02-19T19:05:09.4389206Z 1efdbe1113d8: Pulling fs layer
+2026-02-19T19:05:09.4389590Z 813079ab6487: Pulling fs layer
+2026-02-19T19:05:09.4389976Z 0d9f22794037: Pulling fs layer
+2026-02-19T19:05:09.4390383Z f11e6851c463: Pulling fs layer
+2026-02-19T19:05:09.4390770Z 999a49d24137: Pulling fs layer
+2026-02-19T19:05:09.4391132Z c366f7dd5e44: Pulling fs layer
+2026-02-19T19:05:09.4391556Z 88e9ca39f3d4: Pulling fs layer
+2026-02-19T19:05:09.4391944Z e97d975c3275: Pulling fs layer
+2026-02-19T19:05:09.4392329Z 586515f11189: Pulling fs layer
+2026-02-19T19:05:09.4392714Z 3d9925269d7a: Pulling fs layer
+2026-02-19T19:05:09.4393104Z 4ae9d5afd673: Pulling fs layer
+2026-02-19T19:05:09.4393493Z e4ffd159f902: Pulling fs layer
+2026-02-19T19:05:09.4393881Z 40619e3accca: Pulling fs layer
+2026-02-19T19:05:09.4394277Z 76ab6f6da415: Pulling fs layer
+2026-02-19T19:05:09.4394666Z aee0a78f6d34: Pulling fs layer
+2026-02-19T19:05:09.4395053Z 2820f503173c: Pulling fs layer
+2026-02-19T19:05:09.4395438Z a8d0f6bbb044: Pulling fs layer
+2026-02-19T19:05:09.4395831Z e4e94cc7f2ff: Pulling fs layer
+2026-02-19T19:05:09.4396232Z 31a29dbac99b: Pulling fs layer
+2026-02-19T19:05:09.4396625Z ba2d5b33cf9b: Pulling fs layer
+2026-02-19T19:05:09.4397239Z efb3a8156a1d: Pulling fs layer
+2026-02-19T19:05:09.7949049Z b981ffeba613: Download complete
+2026-02-19T19:05:09.8043526Z c38259115b59: Download complete
+2026-02-19T19:05:09.8089047Z f012cd77067e: Download complete
+2026-02-19T19:05:09.8145086Z 75ecc2e330b2: Download complete
+2026-02-19T19:05:09.8173334Z 1066e6cccaef: Download complete
+2026-02-19T19:05:09.8214928Z c85c54d50257: Download complete
+2026-02-19T19:05:09.8954843Z c6649d37080d: Download complete
+2026-02-19T19:05:09.9915827Z 1d5a17ce7cc4: Download complete
+2026-02-19T19:05:09.9944531Z 89732bc75041: Download complete
+2026-02-19T19:05:09.9979858Z 2820f503173c: Download complete
+2026-02-19T19:05:10.0003125Z 35b9088bd873: Download complete
+2026-02-19T19:05:10.0033753Z c9cc8d71eb21: Download complete
+2026-02-19T19:05:10.0048930Z 236958ee276c: Download complete
+2026-02-19T19:05:10.0071123Z 8731578f9165: Download complete
+2026-02-19T19:05:10.0099655Z 7040cc907262: Download complete
+2026-02-19T19:05:10.0951575Z 6ac178117955: Download complete
+2026-02-19T19:05:10.0995597Z 7250a74eeb66: Download complete
+2026-02-19T19:05:10.1043576Z 181ba257b248: Download complete
+2026-02-19T19:05:10.1886244Z 92f553fb3778: Download complete
+2026-02-19T19:05:10.1968439Z e971d1d0c3cb: Download complete
+2026-02-19T19:05:10.2042762Z 576dcb4d312d: Download complete
+2026-02-19T19:05:10.2065098Z e75a3ca9f7bf: Download complete
+2026-02-19T19:05:10.2091761Z 026c6dba3379: Download complete
+2026-02-19T19:05:10.2132312Z 2ab944348f77: Download complete
+2026-02-19T19:05:10.2191749Z e79fc3e36c1c: Download complete
+2026-02-19T19:05:10.2237919Z 6667aebfba65: Download complete
+2026-02-19T19:05:10.2312919Z 6446b33fec15: Download complete
+2026-02-19T19:05:10.3377951Z a4e6fec93dd2: Download complete
+2026-02-19T19:05:10.3431322Z 78df2ecac401: Download complete
+2026-02-19T19:05:10.3447614Z 658b514388a8: Download complete
+2026-02-19T19:05:10.3500959Z 75765fff5624: Download complete
+2026-02-19T19:05:10.3553700Z de32848c35b8: Download complete
+2026-02-19T19:05:10.3651316Z 7cfdac23c7be: Download complete
+2026-02-19T19:05:10.3708045Z 1ab67870d695: Download complete
+2026-02-19T19:05:10.3751668Z e2ae7daa554b: Download complete
+2026-02-19T19:05:10.3767546Z c50333cf8834: Download complete
+2026-02-19T19:05:10.3780328Z 88b085b97228: Download complete
+2026-02-19T19:05:10.3800824Z 321cd18a1d3b: Download complete
+2026-02-19T19:05:10.3823881Z 3097278e5dc9: Download complete
+2026-02-19T19:05:10.3840000Z 7f71caab214e: Download complete
+2026-02-19T19:05:10.3870066Z 88e9ca39f3d4: Download complete
+2026-02-19T19:05:10.3900884Z 4c1d371bddf2: Download complete
+2026-02-19T19:05:10.5201098Z a8d0f6bbb044: Download complete
+2026-02-19T19:05:10.5215639Z c366f7dd5e44: Download complete
+2026-02-19T19:05:10.5229142Z c9aed60fccf8: Download complete
+2026-02-19T19:05:10.5254009Z b1a59f383bc0: Download complete
+2026-02-19T19:05:10.5271617Z 40619e3accca: Download complete
+2026-02-19T19:05:10.5320176Z 2b71e57db20e: Download complete
+2026-02-19T19:05:10.5398720Z a0692abf113e: Download complete
+2026-02-19T19:05:10.5439812Z 9cfe4e969c0f: Download complete
+2026-02-19T19:05:10.5467217Z 1efdbe1113d8: Download complete
+2026-02-19T19:05:10.5480033Z 0d9f22794037: Download complete
+2026-02-19T19:05:10.5496986Z ba2d5b33cf9b: Download complete
+2026-02-19T19:05:10.5520279Z 408f61662500: Download complete
+2026-02-19T19:05:10.5549744Z b07980424e89: Download complete
+2026-02-19T19:05:10.5592708Z 26444e004104: Download complete
+2026-02-19T19:05:10.7137718Z aa0c41688210: Download complete
+2026-02-19T19:05:10.7164995Z e4ffd159f902: Download complete
+2026-02-19T19:05:10.7253478Z e50185f0320e: Download complete
+2026-02-19T19:05:10.7264191Z 5d088948d3b2: Download complete
+2026-02-19T19:05:10.7291061Z 813079ab6487: Download complete
+2026-02-19T19:05:10.7312091Z 31a29dbac99b: Download complete
+2026-02-19T19:05:10.7338165Z e97d975c3275: Download complete
+2026-02-19T19:05:10.7397708Z 76ab6f6da415: Download complete
+2026-02-19T19:05:10.9214515Z aee0a78f6d34: Download complete
+2026-02-19T19:05:10.9271532Z 9e7dafb8cbe4: Download complete
+2026-02-19T19:05:10.9308194Z dd2ec1303777: Download complete
+2026-02-19T19:05:11.1045043Z 75e6ef543e9f: Download complete
+2026-02-19T19:05:11.4351586Z 0914ec1dc50d: Download complete
+2026-02-19T19:05:11.6192764Z 413f9e30cc1f: Download complete
+2026-02-19T19:05:11.6204219Z a918c4c568df: Download complete
+2026-02-19T19:05:11.6213726Z b38c4aa84352: Download complete
+2026-02-19T19:05:11.9735798Z c7016cfbb7f7: Download complete
+2026-02-19T19:05:13.0750560Z 435afbe584ac: Download complete
+2026-02-19T19:05:13.5731267Z 56ac94bbd31b: Download complete
+2026-02-19T19:05:13.5735137Z f461e905ef62: Download complete
+2026-02-19T19:05:13.5738200Z 4ae9d5afd673: Download complete
+2026-02-19T19:05:13.5742068Z 924811bbe2a6: Download complete
+2026-02-19T19:05:13.5745858Z 999a49d24137: Download complete
+2026-02-19T19:05:13.5748197Z 5927ceddd290: Download complete
+2026-02-19T19:05:13.5755099Z 9bbbb465437d: Download complete
+2026-02-19T19:05:13.5760171Z 6bc6aa5859c3: Download complete
+2026-02-19T19:05:13.5760896Z 971ec3faa476: Download complete
+2026-02-19T19:05:13.5768285Z efb3a8156a1d: Download complete
+2026-02-19T19:05:13.6718242Z 4b492e09cf18: Download complete
+2026-02-19T19:05:13.6722053Z c29e279839d0: Download complete
+2026-02-19T19:05:13.6725768Z 86a2b2afa7e6: Download complete
+2026-02-19T19:05:13.6731679Z e4e94cc7f2ff: Download complete
+2026-02-19T19:05:13.6735973Z 1aca4827bf49: Download complete
+2026-02-19T19:05:13.6741382Z 2981593bc77e: Download complete
+2026-02-19T19:05:13.6743237Z e446e5572539: Download complete
+2026-02-19T19:05:13.6750299Z 4809a555cc4f: Download complete
+2026-02-19T19:05:13.6751678Z cd8d8818fb8e: Download complete
+2026-02-19T19:05:13.6756457Z f11e6851c463: Download complete
+2026-02-19T19:05:13.6757301Z 586515f11189: Download complete
+2026-02-19T19:05:13.6763940Z 3d9925269d7a: Download complete
+2026-02-19T19:05:13.6766634Z 6621af41e9c1: Download complete
+2026-02-19T19:05:13.6771554Z de3ed6ee648d: Download complete
+2026-02-19T19:05:13.6774719Z 0dc012e84509: Download complete
+2026-02-19T19:05:14.4181607Z cd8d8818fb8e: Pull complete
+2026-02-19T19:05:17.2725122Z b981ffeba613: Pull complete
+2026-02-19T19:05:17.2751505Z c85c54d50257: Pull complete
+2026-02-19T19:05:17.3327897Z 0dc012e84509: Pull complete
+2026-02-19T19:05:17.4723280Z c38259115b59: Pull complete
+2026-02-19T19:05:17.5098465Z 31a29dbac99b: Pull complete
+2026-02-19T19:05:17.5128072Z 9e7dafb8cbe4: Pull complete
+2026-02-19T19:05:17.6117808Z e50185f0320e: Pull complete
+2026-02-19T19:05:17.7009731Z c9aed60fccf8: Pull complete
+2026-02-19T19:05:17.8115961Z aa0c41688210: Pull complete
+2026-02-19T19:05:17.9169593Z 75e6ef543e9f: Pull complete
+2026-02-19T19:05:18.0172095Z dd2ec1303777: Pull complete
+2026-02-19T19:05:18.1024949Z b1a59f383bc0: Pull complete
+2026-02-19T19:05:18.2067087Z a0692abf113e: Pull complete
+2026-02-19T19:05:18.2156178Z e97d975c3275: Pull complete
+2026-02-19T19:05:18.2940412Z 658b514388a8: Pull complete
+2026-02-19T19:05:18.7260190Z 5927ceddd290: Pull complete
+2026-02-19T19:05:19.0321248Z c29e279839d0: Pull complete
+2026-02-19T19:05:19.1067424Z 9cfe4e969c0f: Pull complete
+2026-02-19T19:05:19.1905648Z 576dcb4d312d: Pull complete
+2026-02-19T19:05:19.5381378Z 3d9925269d7a: Pull complete
+2026-02-19T19:05:19.8275322Z 9bbbb465437d: Pull complete
+2026-02-19T19:05:19.8743248Z 75ecc2e330b2: Pull complete
+2026-02-19T19:05:20.3307331Z 6bc6aa5859c3: Pull complete
+2026-02-19T19:05:20.7260484Z 56ac94bbd31b: Pull complete
+2026-02-19T19:05:20.7825426Z 6ac178117955: Pull complete
+2026-02-19T19:05:20.7949023Z 78df2ecac401: Pull complete
+2026-02-19T19:05:20.8832360Z 7250a74eeb66: Pull complete
+2026-02-19T19:05:20.8870499Z 92f553fb3778: Pull complete
+2026-02-19T19:05:20.9005527Z c50333cf8834: Pull complete
+2026-02-19T19:05:20.9858924Z 181ba257b248: Pull complete
+2026-02-19T19:05:21.3452600Z de3ed6ee648d: Pull complete
+2026-02-19T19:05:21.7235342Z 0914ec1dc50d: Pull complete
+2026-02-19T19:05:22.1342346Z 86a2b2afa7e6: Pull complete
+2026-02-19T19:05:22.1795277Z 35b9088bd873: Pull complete
+2026-02-19T19:05:22.2177787Z e4ffd159f902: Pull complete
+2026-02-19T19:05:22.3139711Z 40619e3accca: Pull complete
+2026-02-19T19:05:22.6226483Z b38c4aa84352: Pull complete
+2026-02-19T19:05:22.9242128Z c7016cfbb7f7: Pull complete
+2026-02-19T19:05:22.9896265Z e79fc3e36c1c: Pull complete
+2026-02-19T19:05:23.0073662Z 4c1d371bddf2: Pull complete
+2026-02-19T19:05:23.0965486Z a4e6fec93dd2: Pull complete
+2026-02-19T19:05:23.1146577Z 2b71e57db20e: Pull complete
+2026-02-19T19:05:23.1844151Z 7040cc907262: Pull complete
+2026-02-19T19:05:23.2159771Z 5d088948d3b2: Pull complete
+2026-02-19T19:05:23.2759745Z 1d5a17ce7cc4: Pull complete
+2026-02-19T19:05:23.3176064Z b07980424e89: Pull complete
+2026-02-19T19:05:23.4130115Z ba2d5b33cf9b: Pull complete
+2026-02-19T19:05:23.4160011Z 813079ab6487: Pull complete
+2026-02-19T19:05:23.7375834Z 586515f11189: Pull complete
+2026-02-19T19:05:24.1235279Z 4ae9d5afd673: Pull complete
+2026-02-19T19:05:24.1895751Z 6446b33fec15: Pull complete
+2026-02-19T19:05:24.5338530Z 4809a555cc4f: Pull complete
+2026-02-19T19:05:24.9259991Z efb3a8156a1d: Pull complete
+2026-02-19T19:05:25.3054786Z a8d0f6bbb044: Pull complete
+2026-02-19T19:05:25.3334365Z 2981593bc77e: Pull complete
+2026-02-19T19:05:25.3733572Z f012cd77067e: Pull complete
+2026-02-19T19:05:25.3980919Z 88b085b97228: Pull complete
+2026-02-19T19:05:26.7116501Z 4b492e09cf18: Pull complete
+2026-02-19T19:05:27.1966459Z 7cfdac23c7be: Pull complete
+2026-02-19T19:05:27.3139812Z aee0a78f6d34: Pull complete
+2026-02-19T19:05:27.7244228Z e446e5572539: Pull complete
+2026-02-19T19:05:28.0243206Z e4e94cc7f2ff: Pull complete
+2026-02-19T19:05:28.4265761Z 6621af41e9c1: Pull complete
+2026-02-19T19:05:28.8192304Z 413f9e30cc1f: Pull complete
+2026-02-19T19:05:29.1977081Z e2ae7daa554b: Pull complete
+2026-02-19T19:05:29.2211716Z 924811bbe2a6: Pull complete
+2026-02-19T19:05:29.5152327Z 435afbe584ac: Pull complete
+2026-02-19T19:05:29.5874990Z 026c6dba3379: Pull complete
+2026-02-19T19:05:29.5966966Z 1ab67870d695: Pull complete
+2026-02-19T19:05:29.6028814Z 3097278e5dc9: Pull complete
+2026-02-19T19:05:29.6791699Z 2820f503173c: Pull complete
+2026-02-19T19:05:29.6853012Z e971d1d0c3cb: Pull complete
+2026-02-19T19:05:29.6881844Z 2ab944348f77: Pull complete
+2026-02-19T19:05:29.6910418Z 6667aebfba65: Pull complete
+2026-02-19T19:05:29.7732080Z 1066e6cccaef: Pull complete
+2026-02-19T19:05:29.7879830Z 75765fff5624: Pull complete
+2026-02-19T19:05:29.7947844Z 88e9ca39f3d4: Pull complete
+2026-02-19T19:05:29.8849186Z e75a3ca9f7bf: Pull complete
+2026-02-19T19:05:29.8979335Z 26444e004104: Pull complete
+2026-02-19T19:05:29.9859041Z 321cd18a1d3b: Pull complete
+2026-02-19T19:05:29.9948119Z 408f61662500: Pull complete
+2026-02-19T19:05:29.9965203Z 76ab6f6da415: Pull complete
+2026-02-19T19:05:30.0819100Z de32848c35b8: Pull complete
+2026-02-19T19:05:30.0865054Z 1efdbe1113d8: Pull complete
+2026-02-19T19:05:30.4857025Z c366f7dd5e44: Pull complete
+2026-02-19T19:05:30.4934395Z 999a49d24137: Pull complete
+2026-02-19T19:05:30.5735645Z c6649d37080d: Pull complete
+2026-02-19T19:05:30.5884652Z 0d9f22794037: Pull complete
+2026-02-19T19:05:31.1923106Z f11e6851c463: Pull complete
+2026-02-19T19:05:31.4897520Z 1aca4827bf49: Pull complete
+2026-02-19T19:05:31.5840615Z 7f71caab214e: Pull complete
+2026-02-19T19:05:31.8812616Z a918c4c568df: Pull complete
+2026-02-19T19:05:32.1821762Z f461e905ef62: Pull complete
+2026-02-19T19:05:32.7514138Z 89732bc75041: Pull complete
+2026-02-19T19:05:32.7537239Z c9cc8d71eb21: Pull complete
+2026-02-19T19:05:32.7548333Z 236958ee276c: Pull complete
+2026-02-19T19:05:32.7562316Z 8731578f9165: Pull complete
+2026-02-19T19:05:32.7575841Z 971ec3faa476: Pull complete
+2026-02-19T19:05:32.7576641Z Digest: sha256:58527a5a38dad61169f62b51f242a5b83757de8d5397b533d9805c2eb437f05a
+2026-02-19T19:05:32.7577251Z Status: Downloaded newer image for ghcr.io/octopilot/builder-jammy-base:0.1.198
+2026-02-19T19:05:34.1018446Z Warning: deprecated usage of stack
+2026-02-19T19:07:03.2209365Z ===> ANALYZING
+2026-02-19T19:07:09.1159476Z Restoring data for SBOM from previous image
+2026-02-19T19:07:09.6447475Z ===> DETECTING
+2026-02-19T19:07:09.6509487Z target distro name/version labels not found, reading /etc/os-release file
+2026-02-19T19:07:09.8312623Z 5 of 9 buildpacks participating
+2026-02-19T19:07:09.8313444Z paketo-buildpacks/ca-certificates 3.11.0
+2026-02-19T19:07:09.8313964Z paketo-buildpacks/go-dist         2.9.17
+2026-02-19T19:07:09.8314403Z paketo-buildpacks/git             1.1.18
+2026-02-19T19:07:09.8314884Z paketo-buildpacks/go-mod-vendor   1.1.14
+2026-02-19T19:07:09.8315353Z paketo-buildpacks/go-build        2.4.11
+2026-02-19T19:07:09.8317097Z ===> RESTORING
+2026-02-19T19:07:09.8318005Z Restoring metadata for "paketo-buildpacks/ca-certificates:helper" from app image
+2026-02-19T19:07:09.8319117Z Restoring metadata for "paketo-buildpacks/go-build:targets" from app image
+2026-02-19T19:07:09.8343474Z ===> BUILDING
+2026-02-19T19:07:09.8344096Z target distro name/version labels not found, reading /etc/os-release file
+2026-02-19T19:07:09.8372387Z 
+2026-02-19T19:07:09.8372835Z Paketo Buildpack for CA Certificates 3.11.0
+2026-02-19T19:07:09.8373385Z   https://github.com/paketo-buildpacks/ca-certificates
+2026-02-19T19:07:09.8374018Z   Build Configuration:
+2026-02-19T19:07:09.8374572Z     $BP_EMBED_CERTS                    false  Embed certificates into the image
+2026-02-19T19:07:09.8375693Z     $BP_ENABLE_RUNTIME_CERT_BINDING    true   Deprecated: Enable/disable certificate helper layer to add certs at runtime
+2026-02-19T19:07:09.8377015Z     $BP_RUNTIME_CERT_BINDING_DISABLED  false  Disable certificate helper layer to add certs at runtime
+2026-02-19T19:07:09.8380526Z   Launch Helper: Reusing cached layer
+2026-02-19T19:07:09.8535482Z Paketo Buildpack for Go Distribution 2.9.17
+2026-02-19T19:07:09.8536004Z   Resolving Go version
+2026-02-19T19:07:09.8536441Z     Candidate version sources (in priority order):
+2026-02-19T19:07:09.8536870Z       go.mod    -> ">= 1.25"
+2026-02-19T19:07:09.8537141Z       <unknown> -> ""
+2026-02-19T19:07:09.8537283Z 
+2026-02-19T19:07:09.8542623Z     Selected Go version (using go.mod): 1.25.6
+2026-02-19T19:07:09.8543014Z 
+2026-02-19T19:07:09.8543474Z   Executing build process
+2026-02-19T19:07:09.8543897Z     Installing Go 1.25.6
+2026-02-19T19:07:12.5474034Z       Completed in 2.693s
+2026-02-19T19:07:12.5474370Z 
+2026-02-19T19:07:12.5474644Z   Generating SBOM for /layers/paketo-buildpacks_go-dist/go
+2026-02-19T19:07:12.5475245Z       Completed in 0s
+2026-02-19T19:07:12.5475490Z 
+2026-02-19T19:07:12.5588409Z Paketo Buildpack for Git 1.1.18
+2026-02-19T19:07:12.5615041Z   Configuring build environment
+2026-02-19T19:07:12.5615593Z     REVISION -> "17b870bff33b9f2b8975ba6405a02432f8ad2427"
+2026-02-19T19:07:12.5616003Z 
+2026-02-19T19:07:12.5616157Z   Configuring launch environment
+2026-02-19T19:07:12.5616878Z     REVISION -> "17b870bff33b9f2b8975ba6405a02432f8ad2427"
+2026-02-19T19:07:12.5617267Z 
+2026-02-19T19:07:12.5773842Z Paketo Buildpack for Go Mod Vendor 1.1.14
+2026-02-19T19:07:12.5774378Z   Executing build process
+2026-02-19T19:07:12.5774753Z     Running 'go mod vendor'
+2026-02-19T19:07:12.6112319Z       go: downloading github.com/octopilot/pack v0.0.0-20260217113002-be07f29a9a33
+2026-02-19T19:07:12.6169112Z       go: downloading github.com/spf13/viper v1.21.0
+2026-02-19T19:07:12.6179179Z       go: downloading gopkg.in/yaml.v3 v3.0.1
+2026-02-19T19:07:12.7061272Z       go: downloading github.com/octopilot/skaffold/v2 v2.0.0-20260217103234-de79f7ea27c1
+2026-02-19T19:07:14.5187164Z       go: downloading github.com/stretchr/testify v1.11.1
+2026-02-19T19:07:15.3037873Z       go: downloading github.com/google/go-containerregistry v0.20.7
+2026-02-19T19:07:15.4414915Z       go: downloading github.com/spf13/cobra v1.10.2
+2026-02-19T19:07:15.4819001Z       go: downloading github.com/fsnotify/fsnotify v1.9.0
+2026-02-19T19:07:15.4819735Z       go: downloading github.com/go-viper/mapstructure/v2 v2.4.0
+2026-02-19T19:07:15.4820462Z       go: downloading github.com/sagikazarmark/locafero v0.12.0
+2026-02-19T19:07:15.4823310Z       go: downloading github.com/spf13/afero v1.15.0
+2026-02-19T19:07:15.4992104Z       go: downloading github.com/spf13/cast v1.10.0
+2026-02-19T19:07:15.5033022Z       go: downloading github.com/spf13/pflag v1.0.10
+2026-02-19T19:07:15.5206700Z       go: downloading github.com/BurntSushi/toml v1.6.0
+2026-02-19T19:07:15.5207408Z       go: downloading github.com/Masterminds/semver v1.5.0
+2026-02-19T19:07:15.5208217Z       go: downloading github.com/buildpacks/imgutil v0.0.0-20260211155027-33b8b33f2d7a
+2026-02-19T19:07:15.5680930Z       go: downloading github.com/buildpacks/lifecycle v0.21.0
+2026-02-19T19:07:15.7536151Z       go: downloading github.com/apex/log v1.9.0
+2026-02-19T19:07:15.7537214Z       go: downloading github.com/chainguard-dev/kaniko v1.25.6
+2026-02-19T19:07:15.7537881Z       go: downloading github.com/heroku/color v0.0.6
+2026-02-19T19:07:15.7538399Z       go: downloading github.com/docker/cli v28.5.2+incompatible
+2026-02-19T19:07:15.7797573Z       go: downloading github.com/docker/docker v28.5.2+incompatible
+2026-02-19T19:07:16.0576396Z       go: downloading github.com/moby/moby/client v0.2.2
+2026-02-19T19:07:16.0819754Z       go: downloading github.com/opencontainers/go-digest v1.0.0
+2026-02-19T19:07:16.0820558Z       go: downloading github.com/opencontainers/image-spec v1.1.1
+2026-02-19T19:07:16.1101034Z       go: downloading github.com/pkg/errors v0.9.1
+2026-02-19T19:07:16.1225592Z       go: downloading github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
+2026-02-19T19:07:16.1256339Z       go: downloading golang.org/x/text v0.33.0
+2026-02-19T19:07:16.1515144Z       go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+2026-02-19T19:07:16.1759805Z       go: downloading github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
+2026-02-19T19:07:16.1855450Z       go: downloading dario.cat/mergo v1.0.2
+2026-02-19T19:07:16.2261695Z       go: downloading github.com/mitchellh/go-homedir v1.1.0
+2026-02-19T19:07:16.2710933Z       go: downloading k8s.io/apimachinery v0.33.4
+2026-02-19T19:07:16.4854186Z       go: downloading github.com/google/uuid v1.6.0
+2026-02-19T19:07:16.4960208Z       go: downloading k8s.io/api v0.33.4
+2026-02-19T19:07:16.5775089Z       go: downloading github.com/cenkalti/backoff/v4 v4.3.0
+2026-02-19T19:07:16.6018827Z       go: downloading go.opentelemetry.io/otel/trace v1.39.0
+2026-02-19T19:07:16.6232236Z       go: downloading go.opentelemetry.io/otel v1.39.0
+2026-02-19T19:07:16.9621359Z       go: downloading golang.org/x/sync v0.19.0
+2026-02-19T19:07:16.9804874Z       go: downloading github.com/krishicks/yaml-patch v0.0.10
+2026-02-19T19:07:16.9810604Z       go: downloading github.com/stretchr/objx v0.5.2
+2026-02-19T19:07:17.0085223Z       go: downloading github.com/inconshreveable/mousetrap v1.1.0
+2026-02-19T19:07:17.0085944Z       go: downloading github.com/subosito/gotenv v1.6.0
+2026-02-19T19:07:17.0086585Z       go: downloading github.com/pelletier/go-toml/v2 v2.2.4
+2026-02-19T19:07:17.0094983Z       go: downloading go.yaml.in/yaml/v3 v3.0.4
+2026-02-19T19:07:17.0207060Z       go: downloading golang.org/x/sys v0.41.0
+2026-02-19T19:07:17.0348347Z       go: downloading github.com/containerd/errdefs v1.0.0
+2026-02-19T19:07:17.0488906Z       go: downloading github.com/moby/docker-image-spec v1.3.1
+2026-02-19T19:07:17.0539854Z       go: downloading github.com/pelletier/go-toml v1.9.5
+2026-02-19T19:07:17.0605058Z       go: downloading github.com/moby/moby/api v1.53.0
+2026-02-19T19:07:17.2212975Z       go: downloading github.com/moby/buildkit v0.27.1
+2026-02-19T19:07:17.2468842Z       go: downloading github.com/google/go-cmp v0.7.0
+2026-02-19T19:07:17.2946593Z       go: downloading github.com/moby/go-archive v0.2.0
+2026-02-19T19:07:17.3167056Z       go: downloading github.com/go-git/go-git/v5 v5.16.4
+2026-02-19T19:07:17.4379454Z       go: downloading golang.org/x/mod v0.32.0
+2026-02-19T19:07:17.4718094Z       go: downloading github.com/dustin/go-humanize v1.0.1
+2026-02-19T19:07:17.4838028Z       go: downloading github.com/gdamore/tcell/v2 v2.13.8
+2026-02-19T19:07:17.5364550Z       go: downloading github.com/rivo/tview v0.42.0
+2026-02-19T19:07:17.5369045Z       go: downloading github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
+2026-02-19T19:07:17.5376608Z       go: downloading github.com/mattn/go-colorable v0.1.14
+2026-02-19T19:07:17.5803024Z       go: downloading github.com/docker/go-connections v0.6.0
+2026-02-19T19:07:17.5804137Z       go: downloading github.com/docker/go-units v0.5.0
+2026-02-19T19:07:17.6292384Z       go: downloading github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
+2026-02-19T19:07:17.6296092Z       go: downloading github.com/sirupsen/logrus v1.9.4
+2026-02-19T19:07:17.6715081Z       go: downloading github.com/Microsoft/go-winio v0.6.2
+2026-02-19T19:07:17.6778527Z       go: downloading github.com/containerd/errdefs/pkg v0.3.0
+2026-02-19T19:07:17.6779451Z       go: downloading github.com/distribution/reference v0.6.0
+2026-02-19T19:07:17.7259342Z       go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0
+2026-02-19T19:07:17.7473145Z       go: downloading github.com/blang/semver v3.5.1+incompatible
+2026-02-19T19:07:17.7485689Z       go: downloading k8s.io/client-go v0.33.4
+2026-02-19T19:07:18.2642613Z       go: downloading github.com/Masterminds/sprig v2.22.0+incompatible
+2026-02-19T19:07:18.2643323Z       go: downloading github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
+2026-02-19T19:07:18.2643787Z       go: downloading github.com/joho/godotenv v1.5.1
+2026-02-19T19:07:18.2644139Z       go: downloading github.com/gogo/protobuf v1.3.2
+2026-02-19T19:07:18.2843898Z       go: downloading k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
+2026-02-19T19:07:18.2886122Z       go: downloading sigs.k8s.io/randfill v1.0.0
+2026-02-19T19:07:18.3218748Z       go: downloading github.com/google/ko v0.18.1
+2026-02-19T19:07:18.3949921Z       go: downloading golang.org/x/tools v0.40.0
+2026-02-19T19:07:18.3964690Z       go: downloading github.com/moby/patternmatcher v0.6.0
+2026-02-19T19:07:18.4066386Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0
+2026-02-19T19:07:18.4222710Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
+2026-02-19T19:07:18.4369205Z       go: downloading go.opentelemetry.io/otel/exporters/jaeger v1.17.0
+2026-02-19T19:07:18.4794897Z       go: downloading go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.38.0
+2026-02-19T19:07:18.4952483Z       go: downloading go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.38.0
+2026-02-19T19:07:18.5060369Z       go: downloading go.opentelemetry.io/otel/metric v1.39.0
+2026-02-19T19:07:18.5204577Z       go: downloading go.opentelemetry.io/otel/sdk/metric v1.39.0
+2026-02-19T19:07:18.5508144Z       go: downloading go.opentelemetry.io/otel/sdk v1.39.0
+2026-02-19T19:07:18.5892455Z       go: downloading google.golang.org/api v0.260.0
+2026-02-19T19:07:18.6437144Z       go: downloading github.com/containerd/log v0.1.0
+2026-02-19T19:07:18.6445163Z       go: downloading github.com/moby/sys/user v0.4.0
+2026-02-19T19:07:18.6616266Z       go: downloading github.com/opencontainers/selinux v1.13.1
+2026-02-19T19:07:18.6628139Z       go: downloading cloud.google.com/go/cloudbuild v1.23.1
+2026-02-19T19:07:18.6891320Z       go: downloading cloud.google.com/go v0.123.0
+2026-02-19T19:07:18.7526003Z       go: downloading github.com/googleapis/gax-go/v2 v2.16.0
+2026-02-19T19:07:18.7527051Z       go: downloading sigs.k8s.io/kustomize/kyaml v0.21.0
+2026-02-19T19:07:18.8534469Z       go: downloading github.com/fatih/semgroup v1.3.0
+2026-02-19T19:07:18.9285041Z       go: downloading cloud.google.com/go/storage v1.59.1
+2026-02-19T19:07:21.6639695Z       go: downloading sigs.k8s.io/yaml v1.6.0
+2026-02-19T19:07:21.6646971Z       go: downloading github.com/segmentio/textio v1.2.0
+2026-02-19T19:07:21.6654120Z       go: downloading github.com/golang/protobuf v1.5.4
+2026-02-19T19:07:21.6822818Z       go: downloading google.golang.org/protobuf v1.36.11
+2026-02-19T19:07:21.7002351Z       go: downloading github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+2026-02-19T19:07:21.7003494Z       go: downloading github.com/containerd/containerd v1.7.30
+2026-02-19T19:07:21.7008520Z       go: downloading github.com/segmentio/encoding v0.5.3
+2026-02-19T19:07:21.7082238Z       go: downloading github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
+2026-02-19T19:07:21.8803178Z       go: downloading google.golang.org/grpc v1.78.0
+2026-02-19T19:07:22.2083716Z       go: downloading github.com/bmatcuk/doublestar v1.3.4
+2026-02-19T19:07:22.2084881Z       go: downloading golang.org/x/term v0.39.0
+2026-02-19T19:07:22.2090057Z       go: downloading google.golang.org/genproto/googleapis/api v0.0.0-20251213004720-97cd9d5aeac2
+2026-02-19T19:07:22.2103883Z       go: downloading github.com/containerd/stargz-snapshotter/estargz v0.18.1
+2026-02-19T19:07:22.2186374Z       go: downloading github.com/docker/distribution v2.8.3+incompatible
+2026-02-19T19:07:22.2200610Z       go: downloading gopkg.in/yaml.v2 v2.4.0
+2026-02-19T19:07:22.2295685Z       go: downloading github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.11.0
+2026-02-19T19:07:22.2386550Z       go: downloading google.golang.org/genproto v0.0.0-20251213004720-97cd9d5aeac2
+2026-02-19T19:07:22.2398071Z       go: downloading github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
+2026-02-19T19:07:22.2427125Z       go: downloading github.com/moby/sys/sequential v0.6.0
+2026-02-19T19:07:22.2548069Z       go: downloading github.com/moby/sys/userns v0.1.0
+2026-02-19T19:07:22.2593782Z       go: downloading github.com/ProtonMail/go-crypto v1.3.0
+2026-02-19T19:07:22.3149697Z       go: downloading github.com/go-git/go-billy/v5 v5.7.0
+2026-02-19T19:07:22.3352402Z       go: downloading github.com/sergi/go-diff v1.4.0
+2026-02-19T19:07:22.3495454Z       go: downloading github.com/emirpasic/gods v1.18.1
+2026-02-19T19:07:22.3498482Z       go: downloading github.com/tonistiigi/go-csvvalue v0.0.0-20240814133006-030d3b2625d0
+2026-02-19T19:07:22.3785932Z       go: downloading github.com/moby/sys/atomicwriter v0.1.0
+2026-02-19T19:07:22.4070434Z       go: downloading github.com/moby/term v0.5.2
+2026-02-19T19:07:22.4260390Z       go: downloading github.com/morikuni/aec v1.0.0
+2026-02-19T19:07:22.4404516Z       go: downloading github.com/mattn/go-isatty v0.0.20
+2026-02-19T19:07:22.4526715Z       go: downloading github.com/xeipuuv/gojsonschema v1.2.0
+2026-02-19T19:07:22.4552579Z       go: downloading github.com/gdamore/encoding v1.0.1
+2026-02-19T19:07:22.4779130Z       go: downloading github.com/lucasb-eyer/go-colorful v1.3.0
+2026-02-19T19:07:22.4803167Z       go: downloading github.com/rivo/uniseg v0.4.7
+2026-02-19T19:07:22.4980746Z       go: downloading github.com/felixge/httpsnoop v1.0.4
+2026-02-19T19:07:22.5086737Z       go: downloading github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
+2026-02-19T19:07:22.5158197Z       go: downloading golang.org/x/net v0.49.0
+2026-02-19T19:07:22.5421691Z       go: downloading k8s.io/klog/v2 v2.130.1
+2026-02-19T19:07:22.5585522Z       go: downloading github.com/karrick/godirwalk v1.17.0
+2026-02-19T19:07:22.5809848Z       go: downloading sigs.k8s.io/structured-merge-diff/v4 v4.7.0
+2026-02-19T19:07:22.5813532Z       go: downloading gopkg.in/inf.v0 v0.9.1
+2026-02-19T19:07:22.5945951Z       go: downloading sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730
+2026-02-19T19:07:22.6187465Z       go: downloading github.com/Masterminds/goutils v1.1.1
+2026-02-19T19:07:22.6290209Z       go: downloading github.com/huandu/xstrings v1.5.0
+2026-02-19T19:07:22.6316145Z       go: downloading github.com/imdario/mergo v0.3.16
+2026-02-19T19:07:22.6397042Z       go: downloading github.com/mitchellh/copystructure v1.2.0
+2026-02-19T19:07:22.6496586Z       go: downloading golang.org/x/crypto v0.47.0
+2026-02-19T19:07:22.6521880Z       go: downloading github.com/sigstore/cosign/v2 v2.6.2
+2026-02-19T19:07:22.8524399Z       go: downloading go.uber.org/automaxprocs v1.6.0
+2026-02-19T19:07:22.8525676Z       go: downloading golang.org/x/oauth2 v0.34.0
+2026-02-19T19:07:22.8717323Z       go: downloading golang.org/x/time v0.14.0
+2026-02-19T19:07:22.8804219Z       go: downloading cloud.google.com/go/monitoring v1.24.3
+2026-02-19T19:07:22.8890864Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.54.0
+2026-02-19T19:07:22.9848549Z       go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b
+2026-02-19T19:07:22.9849575Z       go: downloading cloud.google.com/go/trace v1.11.7
+2026-02-19T19:07:22.9949409Z       go: downloading github.com/go-logr/logr v1.4.3
+2026-02-19T19:07:22.9950699Z       go: downloading github.com/go-logr/stdr v1.2.2
+2026-02-19T19:07:23.0003031Z       go: downloading cloud.google.com/go/iam v1.5.3
+2026-02-19T19:07:23.0010708Z       go: downloading cloud.google.com/go/longrunning v0.7.0
+2026-02-19T19:07:23.0248181Z       go: downloading github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
+2026-02-19T19:07:23.0249180Z       go: downloading github.com/evanphx/json-patch v5.9.11+incompatible
+2026-02-19T19:07:23.0249587Z       go: downloading k8s.io/kubectl v0.33.4
+2026-02-19T19:07:23.0355992Z       go: downloading github.com/golang/glog v1.2.5
+2026-02-19T19:07:23.0448807Z       go: downloading go.yaml.in/yaml/v2 v2.4.3
+2026-02-19T19:07:23.0469062Z       go: downloading k8s.io/kube-openapi v0.0.0-20250628140032-d90c4fd18f59
+2026-02-19T19:07:23.0560387Z       go: downloading cloud.google.com/go/auth v0.18.0
+2026-02-19T19:07:23.0687827Z       go: downloading cloud.google.com/go/compute/metadata v0.9.0
+2026-02-19T19:07:23.0890793Z       go: downloading go.opentelemetry.io/contrib/detectors/gcp v1.38.0
+2026-02-19T19:07:23.1009027Z       go: downloading github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+2026-02-19T19:07:23.2393642Z       go: downloading github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00
+2026-02-19T19:07:23.2394537Z       go: downloading github.com/xlab/treeprint v1.2.0
+2026-02-19T19:07:23.2401729Z       go: downloading github.com/google/gnostic-models v0.7.0
+2026-02-19T19:07:23.2485430Z       go: downloading github.com/AlecAivazis/survey/v2 v2.3.7
+2026-02-19T19:07:23.2691151Z       go: downloading sigs.k8s.io/cli-utils v0.37.2
+2026-02-19T19:07:23.2751624Z       go: downloading sigs.k8s.io/kustomize/api v0.21.0
+2026-02-19T19:07:23.3517482Z       go: downloading github.com/Microsoft/hcsshim v0.14.0-rc.1
+2026-02-19T19:07:23.3771690Z       go: downloading github.com/containerd/platforms v1.0.0-rc.2
+2026-02-19T19:07:23.3930898Z       go: downloading github.com/rjeczalik/notify v0.9.3
+2026-02-19T19:07:23.4223159Z       go: downloading github.com/segmentio/asm v1.2.1
+2026-02-19T19:07:23.4556462Z       go: downloading github.com/docker/docker-credential-helpers v0.9.5
+2026-02-19T19:07:23.4712542Z       go: downloading github.com/klauspost/compress v1.18.3
+2026-02-19T19:07:23.5561152Z       go: downloading github.com/vbatts/tar-split v0.12.2
+2026-02-19T19:07:23.5640106Z       go: downloading github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
+2026-02-19T19:07:23.5644429Z       go: downloading github.com/cyphar/filepath-securejoin v0.6.0
+2026-02-19T19:07:23.5839496Z       go: downloading github.com/Azure/go-autorest/autorest v0.11.30
+2026-02-19T19:07:23.5872901Z       go: downloading github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376
+2026-02-19T19:07:23.6098131Z       go: downloading github.com/pjbgf/sha1cd v0.5.0
+2026-02-19T19:07:23.6099831Z       go: downloading github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
+2026-02-19T19:07:23.6102107Z       go: downloading github.com/Azure/go-autorest v14.2.0+incompatible
+2026-02-19T19:07:23.6334130Z       go: downloading github.com/agext/levenshtein v1.2.3
+2026-02-19T19:07:23.6336502Z       go: downloading github.com/containerd/typeurl/v2 v2.2.3
+2026-02-19T19:07:23.6615504Z       go: downloading github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
+2026-02-19T19:07:23.6624818Z       go: downloading github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415
+2026-02-19T19:07:23.7042840Z       go: downloading github.com/fxamacker/cbor/v2 v2.9.0
+2026-02-19T19:07:23.7363343Z       go: downloading github.com/json-iterator/go v1.1.12
+2026-02-19T19:07:23.7399114Z       go: downloading github.com/mitchellh/reflectwalk v1.0.2
+2026-02-19T19:07:23.7500015Z       go: downloading github.com/sigstore/sigstore v1.10.4
+2026-02-19T19:07:23.7798947Z       go: downloading sigs.k8s.io/kind v0.30.0
+2026-02-19T19:07:23.8719692Z       go: downloading github.com/sigstore/sigstore-go v1.1.4
+2026-02-19T19:07:23.8722326Z       go: downloading github.com/dprotaso/go-yit v0.0.0-20240618133044-5a0af90af097
+2026-02-19T19:07:23.8834821Z       go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+2026-02-19T19:07:23.8999979Z       go: downloading github.com/cespare/xxhash/v2 v2.3.0
+2026-02-19T19:07:23.9072232Z       go: downloading cloud.google.com/go/auth/oauth2adapt v0.2.8
+2026-02-19T19:07:23.9116229Z       go: downloading go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.64.0
+2026-02-19T19:07:23.9167469Z       go: downloading github.com/go-errors/errors v1.5.1
+2026-02-19T19:07:23.9170501Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0
+2026-02-19T19:07:23.9251719Z       go: downloading github.com/google/s2a-go v0.1.9
+2026-02-19T19:07:23.9289835Z       go: downloading github.com/go-openapi/jsonreference v0.21.4
+2026-02-19T19:07:23.9307037Z       go: downloading github.com/go-openapi/swag v0.25.4
+2026-02-19T19:07:23.9506960Z       go: downloading gopkg.in/evanphx/json-patch.v4 v4.13.0
+2026-02-19T19:07:23.9526716Z       go: downloading k8s.io/cli-runtime v0.34.1
+2026-02-19T19:07:23.9629045Z       go: downloading github.com/aws/aws-sdk-go-v2 v1.41.1
+2026-02-19T19:07:23.9929995Z       go: downloading github.com/aws/aws-sdk-go-v2/config v1.32.7
+2026-02-19T19:07:24.0332418Z       go: downloading github.com/aws/aws-sdk-go-v2/service/ecr v1.54.4
+2026-02-19T19:07:24.0381778Z       go: downloading github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.38.8
+2026-02-19T19:07:24.0384118Z       go: downloading github.com/aws/smithy-go v1.24.0
+2026-02-19T19:07:24.0752729Z       go: downloading github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
+2026-02-19T19:07:24.0950787Z       go: downloading github.com/Azure/go-autorest/autorest/adal v0.9.24
+2026-02-19T19:07:24.1069119Z       go: downloading gopkg.in/warnings.v0 v0.1.2
+2026-02-19T19:07:24.1226321Z       go: downloading github.com/kevinburke/ssh_config v1.4.0
+2026-02-19T19:07:24.1258449Z       go: downloading github.com/skeema/knownhosts v1.3.2
+2026-02-19T19:07:24.1365196Z       go: downloading github.com/xanzy/ssh-agent v0.3.3
+2026-02-19T19:07:24.1407135Z       go: downloading github.com/cloudflare/circl v1.6.1
+2026-02-19T19:07:24.5361600Z       go: downloading github.com/Azure/go-autorest/autorest/azure/cli v0.4.7
+2026-02-19T19:07:24.5402014Z       go: downloading github.com/Azure/go-autorest/logger v0.2.2
+2026-02-19T19:07:24.5465786Z       go: downloading github.com/dimchansky/utfbom v1.1.1
+2026-02-19T19:07:24.5485489Z       go: downloading github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c
+2026-02-19T19:07:24.5649873Z       go: downloading github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb
+2026-02-19T19:07:24.5663900Z       go: downloading github.com/x448/float16 v0.8.4
+2026-02-19T19:07:24.5748897Z       go: downloading github.com/secure-systems-lab/go-securesystemslib v0.10.0
+2026-02-19T19:07:24.5763934Z       go: downloading github.com/sigstore/protobuf-specs v0.5.0
+2026-02-19T19:07:24.6701055Z       go: downloading github.com/sigstore/rekor v1.5.0
+2026-02-19T19:07:24.7349109Z       go: downloading github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+2026-02-19T19:07:24.7421411Z       go: downloading github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee
+2026-02-19T19:07:24.7593409Z       go: downloading github.com/klauspost/cpuid/v2 v2.3.0
+2026-02-19T19:07:24.7907838Z       go: downloading cyphar.com/go-pathrs v0.2.1
+2026-02-19T19:07:24.8106409Z       go: downloading github.com/googleapis/enterprise-certificate-proxy v0.3.9
+2026-02-19T19:07:24.8268752Z       go: downloading github.com/in-toto/attestation v1.1.2
+2026-02-19T19:07:24.8282687Z       go: downloading github.com/envoyproxy/go-control-plane/envoy v1.35.0
+2026-02-19T19:07:24.9004823Z       go: downloading github.com/go-openapi/jsonpointer v0.22.4
+2026-02-19T19:07:24.9182908Z       go: downloading github.com/go-openapi/swag/cmdutils v0.25.4
+2026-02-19T19:07:24.9295476Z       go: downloading github.com/go-openapi/swag/conv v0.25.4
+2026-02-19T19:07:24.9439061Z       go: downloading github.com/go-openapi/swag/fileutils v0.25.4
+2026-02-19T19:07:24.9550760Z       go: downloading github.com/go-openapi/swag/jsonname v0.25.4
+2026-02-19T19:07:24.9772040Z       go: downloading github.com/go-openapi/swag/jsonutils v0.25.4
+2026-02-19T19:07:24.9945497Z       go: downloading github.com/go-openapi/swag/loading v0.25.4
+2026-02-19T19:07:25.0046379Z       go: downloading github.com/go-openapi/swag/mangling v0.25.4
+2026-02-19T19:07:25.0179453Z       go: downloading github.com/go-openapi/swag/netutils v0.25.4
+2026-02-19T19:07:25.0366411Z       go: downloading github.com/go-openapi/swag/stringutils v0.25.4
+2026-02-19T19:07:25.0567692Z       go: downloading github.com/go-openapi/swag/typeutils v0.25.4
+2026-02-19T19:07:25.0745198Z       go: downloading github.com/go-openapi/swag/yamlutils v0.25.4
+2026-02-19T19:07:25.0911289Z       go: downloading github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
+2026-02-19T19:07:25.1051874Z       go: downloading github.com/aws/aws-sdk-go-v2/credentials v1.19.7
+2026-02-19T19:07:25.1293882Z       go: downloading github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17
+2026-02-19T19:07:25.1575447Z       go: downloading github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4
+2026-02-19T19:07:25.1695517Z       go: downloading github.com/aws/aws-sdk-go-v2/service/signin v1.0.5
+2026-02-19T19:07:25.1846861Z       go: downloading github.com/aws/aws-sdk-go-v2/service/sso v1.30.9
+2026-02-19T19:07:25.2171768Z       go: downloading github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13
+2026-02-19T19:07:25.2317983Z       go: downloading github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
+2026-02-19T19:07:25.2574829Z       go: downloading github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17
+2026-02-19T19:07:25.2647132Z       go: downloading github.com/Azure/go-autorest/tracing v0.6.1
+2026-02-19T19:07:25.2733531Z       go: downloading github.com/Azure/go-autorest/autorest/date v0.3.1
+2026-02-19T19:07:25.2980401Z       go: downloading github.com/golang-jwt/jwt/v4 v4.5.2
+2026-02-19T19:07:25.3227176Z       go: downloading github.com/sigstore/timestamp-authority/v2 v2.0.3
+2026-02-19T19:07:25.3662199Z       go: downloading github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
+2026-02-19T19:07:25.3900878Z       go: downloading github.com/sigstore/rekor-tiles/v2 v2.0.1
+2026-02-19T19:07:25.4323517Z       go: downloading al.essio.dev/pkg/shellescape v1.6.0
+2026-02-19T19:07:25.4560415Z       go: downloading github.com/gorilla/mux v1.8.1
+2026-02-19T19:07:25.4895764Z       go: downloading github.com/go-openapi/errors v0.22.6
+2026-02-19T19:07:25.4899115Z       go: downloading github.com/go-openapi/runtime v0.29.2
+2026-02-19T19:07:25.4899810Z       go: downloading github.com/go-openapi/strfmt v0.25.0
+2026-02-19T19:07:25.5138965Z       go: downloading github.com/go-openapi/validate v0.25.1
+2026-02-19T19:07:25.5170287Z       go: downloading github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467
+2026-02-19T19:07:25.5522986Z       go: downloading github.com/google/certificate-transparency-go v1.3.2
+2026-02-19T19:07:25.7447110Z       go: downloading github.com/spiffe/go-spiffe/v2 v2.6.0
+2026-02-19T19:07:25.7448218Z       go: downloading github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f
+2026-02-19T19:07:25.7890253Z       go: downloading github.com/emicklei/go-restful/v3 v3.13.0
+2026-02-19T19:07:25.7897235Z       go: downloading github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4
+2026-02-19T19:07:25.8072456Z       go: downloading github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17
+2026-02-19T19:07:25.8101760Z       go: downloading github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17
+2026-02-19T19:07:25.8164239Z       go: downloading github.com/theupdateframework/go-tuf/v2 v2.4.1
+2026-02-19T19:07:25.9012236Z       go: downloading github.com/theupdateframework/go-tuf v0.7.0
+2026-02-19T19:07:26.1643420Z       go: downloading github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
+2026-02-19T19:07:26.1646438Z       go: downloading github.com/hashicorp/go-cleanhttp v0.5.2
+2026-02-19T19:07:26.1647366Z       go: downloading github.com/hashicorp/go-retryablehttp v0.7.8
+2026-02-19T19:07:26.1815806Z       go: downloading github.com/in-toto/in-toto-golang v0.9.0
+2026-02-19T19:07:26.1872038Z       go: downloading github.com/coreos/go-oidc/v3 v3.17.0
+2026-02-19T19:07:26.1884878Z       go: downloading github.com/go-jose/go-jose/v4 v4.1.3
+2026-02-19T19:07:26.2113551Z       go: downloading github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+2026-02-19T19:07:26.2311938Z       go: downloading github.com/envoyproxy/protoc-gen-validate v1.2.1
+2026-02-19T19:07:26.2613199Z       go: downloading github.com/docker/go-metrics v0.0.1
+2026-02-19T19:07:26.2715925Z       go: downloading github.com/oklog/ulid v1.3.1
+2026-02-19T19:07:26.2739948Z       go: downloading go.mongodb.org/mongo-driver v1.17.6
+2026-02-19T19:07:26.8669564Z       go: downloading github.com/transparency-dev/formats v0.0.0-20251208091212-1378f9e1b1b7
+2026-02-19T19:07:26.8671357Z       go: downloading github.com/transparency-dev/merkle v0.0.2
+2026-02-19T19:07:26.9259012Z       go: downloading github.com/go-openapi/analysis v0.24.1
+2026-02-19T19:07:26.9272155Z       go: downloading github.com/go-openapi/loads v0.23.2
+2026-02-19T19:07:26.9273125Z       go: downloading github.com/go-openapi/spec v0.22.3
+2026-02-19T19:07:27.1655202Z       go: downloading cel.dev/expr v0.24.0
+2026-02-19T19:07:27.1673090Z       go: downloading github.com/blang/semver/v4 v4.0.0
+2026-02-19T19:07:27.1673737Z       go: downloading github.com/cenkalti/backoff/v5 v5.0.3
+2026-02-19T19:07:27.1799914Z       go: downloading github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7
+2026-02-19T19:07:27.2125969Z       go: downloading github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+2026-02-19T19:07:27.2210800Z       go: downloading github.com/sassoftware/relic v7.2.1+incompatible
+2026-02-19T19:07:27.3263198Z       go: downloading github.com/evanphx/json-patch/v5 v5.9.11
+2026-02-19T19:07:27.3265469Z       go: downloading github.com/prometheus/client_golang v1.23.2
+2026-02-19T19:07:27.4204734Z       go: downloading github.com/shibumi/go-pathspec v1.3.0
+2026-02-19T19:07:27.4228926Z       go: downloading github.com/beorn7/perks v1.0.1
+2026-02-19T19:07:27.4229981Z       go: downloading github.com/prometheus/client_model v0.6.2
+2026-02-19T19:07:27.4722826Z       go: downloading github.com/prometheus/common v0.67.4
+2026-02-19T19:07:27.4729439Z       go: downloading github.com/prometheus/procfs v0.17.0
+2026-02-19T19:07:34.5301403Z       Completed in 21.953s
+2026-02-19T19:07:34.5301799Z 
+2026-02-19T19:07:34.5302009Z   Generating SBOM for /workspace/go.mod
+2026-02-19T19:07:38.6552738Z       Completed in 4.125s
+2026-02-19T19:07:38.6553075Z 
+2026-02-19T19:07:38.7666677Z Paketo Buildpack for Go Build 2.4.11
+2026-02-19T19:07:38.7667304Z   Executing build process
+2026-02-19T19:07:38.7670428Z     Running 'go build -o /layers/paketo-buildpacks_go-build/targets/bin -buildmode pie -trimpath ./cmd/op'
+2026-02-19T19:09:48.1610062Z       Completed in 2m9.394s
+2026-02-19T19:09:48.1610419Z 
+2026-02-19T19:09:49.9976440Z   Generating SBOM for /layers/paketo-buildpacks_go-build/targets/bin
+2026-02-19T19:09:51.4014444Z       Completed in 1.404s
+2026-02-19T19:09:51.4014758Z 
+2026-02-19T19:09:51.4017072Z   Assigning launch processes:
+2026-02-19T19:09:51.4017655Z     op (default): /layers/paketo-buildpacks_go-build/targets/bin/op
+2026-02-19T19:09:51.4018111Z 
+2026-02-19T19:09:51.4863005Z ===> EXPORTING
+2026-02-19T19:09:51.4864258Z Reusing layers from image 'ghcr.io/octopilot/op@sha256:f22f7407ad54acaf1638ec2af3ef4bc49115423ce110435dea35ec2b6aac4eca'
+2026-02-19T19:09:53.0922084Z Reusing layer 'paketo-buildpacks/ca-certificates:helper'
+2026-02-19T19:09:53.2658291Z Adding layer 'paketo-buildpacks/git:git'
+2026-02-19T19:09:53.5364483Z Adding layer 'paketo-buildpacks/go-build:targets'
+2026-02-19T19:09:55.4002784Z Adding layer 'buildpacksio/lifecycle:launch.sbom'
+2026-02-19T19:09:55.4062276Z Reused 1/1 app layer(s)
+2026-02-19T19:09:55.4096101Z Reusing layer 'buildpacksio/lifecycle:launcher'
+2026-02-19T19:09:55.4107302Z Adding layer 'buildpacksio/lifecycle:config'
+2026-02-19T19:09:55.4118760Z Reusing layer 'buildpacksio/lifecycle:process-types'
+2026-02-19T19:09:55.4121327Z Adding label 'io.buildpacks.lifecycle.metadata'
+2026-02-19T19:09:55.4125570Z Adding label 'io.buildpacks.build.metadata'
+2026-02-19T19:09:55.4126187Z Adding label 'io.buildpacks.project.metadata'
+2026-02-19T19:09:55.4126764Z Adding label 'org.opencontainers.image.revision'
+2026-02-19T19:09:55.4127336Z Adding label 'io.buildpacks.exec-env'
+2026-02-19T19:09:55.4131705Z Setting default process type 'op'
+2026-02-19T19:09:55.4132590Z Saving ghcr.io/octopilot/op:latest-linux-amd64...
+2026-02-19T19:09:59.9951174Z *** Images (sha256:bcbc5a0c88ec2b6fbc715352bf19a2a395802c950aff53812b91ac7622df0540):
+2026-02-19T19:09:59.9951987Z       ghcr.io/octopilot/op:latest-linux-amd64
+2026-02-19T19:10:03.9761921Z Adding cache layer 'paketo-buildpacks/go-dist:go'
+2026-02-19T19:10:23.0122804Z Adding cache layer 'paketo-buildpacks/go-mod-vendor:mod-cache'
+2026-02-19T19:10:37.6258222Z Adding cache layer 'paketo-buildpacks/go-build:gocache'
+2026-02-19T19:10:39.6262894Z Adding cache layer 'buildpacksio/lifecycle:cache.sbom'
+2026-02-19T19:10:47.1105791Z   -> Platform: linux/arm64, Tag: ghcr.io/octopilot/op:latest-linux-arm64
+2026-02-19T19:10:47.1108021Z [pack] BuildOptions: Image=ghcr.io/octopilot/op:latest-linux-arm64 Builder=ghcr.io/octopilot/builder-jammy-base:0.1.198 RunImage=ghcr.io/octopilot/op-base:latest@sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325 Target=linux/arm64 Network= Publish=true InsecureRegistries=[]
+2026-02-19T19:10:47.1110756Z Building ghcr.io/octopilot/op:latest-linux-arm64 using builder ghcr.io/octopilot/builder-jammy-base:0.1.198 (publish=true)...
+2026-02-19T19:10:47.8179021Z 0.1.198: Pulling from octopilot/builder-jammy-base
+2026-02-19T19:10:47.9753917Z Digest: sha256:58527a5a38dad61169f62b51f242a5b83757de8d5397b533d9805c2eb437f05a
+2026-02-19T19:10:47.9754745Z Status: Image is up to date for ghcr.io/octopilot/builder-jammy-base:0.1.198
+2026-02-19T19:10:48.8944846Z Warning: deprecated usage of stack
+2026-02-19T19:12:19.9589529Z ===> ANALYZING
+2026-02-19T19:12:25.6635502Z Restoring data for SBOM from previous image
+2026-02-19T19:12:26.1606171Z ===> DETECTING
+2026-02-19T19:12:26.1675528Z target distro name/version labels not found, reading /etc/os-release file
+2026-02-19T19:12:26.3452052Z 5 of 9 buildpacks participating
+2026-02-19T19:12:26.3452501Z paketo-buildpacks/ca-certificates 3.11.0
+2026-02-19T19:12:26.3452862Z paketo-buildpacks/go-dist         2.9.17
+2026-02-19T19:12:26.3453403Z paketo-buildpacks/git             1.1.18
+2026-02-19T19:12:26.3454108Z paketo-buildpacks/go-mod-vendor   1.1.14
+2026-02-19T19:12:26.3455387Z paketo-buildpacks/go-build        2.4.11
+2026-02-19T19:12:26.3455992Z ===> RESTORING
+2026-02-19T19:12:26.3456605Z Restoring metadata for "paketo-buildpacks/ca-certificates:helper" from app image
+2026-02-19T19:12:26.3457433Z Restoring metadata for "paketo-buildpacks/go-build:targets" from app image
+2026-02-19T19:12:26.3480392Z ===> BUILDING
+2026-02-19T19:12:26.3481139Z target distro name/version labels not found, reading /etc/os-release file
+2026-02-19T19:12:26.3510395Z 
+2026-02-19T19:12:26.3510650Z Paketo Buildpack for CA Certificates 3.11.0
+2026-02-19T19:12:26.3511438Z   https://github.com/paketo-buildpacks/ca-certificates
+2026-02-19T19:12:26.3512068Z   Build Configuration:
+2026-02-19T19:12:26.3512730Z     $BP_EMBED_CERTS                    false  Embed certificates into the image
+2026-02-19T19:12:26.3514553Z     $BP_ENABLE_RUNTIME_CERT_BINDING    true   Deprecated: Enable/disable certificate helper layer to add certs at runtime
+2026-02-19T19:12:26.3515993Z     $BP_RUNTIME_CERT_BINDING_DISABLED  false  Disable certificate helper layer to add certs at runtime
+2026-02-19T19:12:26.3516930Z   Launch Helper: Reusing cached layer
+2026-02-19T19:12:26.3674736Z Paketo Buildpack for Go Distribution 2.9.17
+2026-02-19T19:12:26.3675257Z   Resolving Go version
+2026-02-19T19:12:26.3675695Z     Candidate version sources (in priority order):
+2026-02-19T19:12:26.3676035Z       go.mod    -> ">= 1.25"
+2026-02-19T19:12:26.3676261Z       <unknown> -> ""
+2026-02-19T19:12:26.3676386Z 
+2026-02-19T19:12:26.3680112Z     Selected Go version (using go.mod): 1.25.6
+2026-02-19T19:12:26.3680478Z 
+2026-02-19T19:12:26.3680624Z   Executing build process
+2026-02-19T19:12:26.3681600Z     Installing Go 1.25.6
+2026-02-19T19:12:29.0025530Z       Completed in 2.633s
+2026-02-19T19:12:29.0025762Z 
+2026-02-19T19:12:29.0026030Z   Generating SBOM for /layers/paketo-buildpacks_go-dist/go
+2026-02-19T19:12:29.0026561Z       Completed in 0s
+2026-02-19T19:12:29.0027537Z 
+2026-02-19T19:12:29.0135766Z Paketo Buildpack for Git 1.1.18
+2026-02-19T19:12:29.0161738Z   Configuring build environment
+2026-02-19T19:12:29.0162288Z     REVISION -> "17b870bff33b9f2b8975ba6405a02432f8ad2427"
+2026-02-19T19:12:29.0162690Z 
+2026-02-19T19:12:29.0162801Z   Configuring launch environment
+2026-02-19T19:12:29.0163187Z     REVISION -> "17b870bff33b9f2b8975ba6405a02432f8ad2427"
+2026-02-19T19:12:29.0163603Z 
+2026-02-19T19:12:29.0326332Z Paketo Buildpack for Go Mod Vendor 1.1.14
+2026-02-19T19:12:29.0326945Z   Executing build process
+2026-02-19T19:12:29.0327417Z     Running 'go mod vendor'
+2026-02-19T19:12:29.0670220Z       go: downloading github.com/octopilot/pack v0.0.0-20260217113002-be07f29a9a33
+2026-02-19T19:12:29.0762894Z       go: downloading github.com/octopilot/skaffold/v2 v2.0.0-20260217103234-de79f7ea27c1
+2026-02-19T19:12:31.1852155Z       go: downloading github.com/spf13/viper v1.21.0
+2026-02-19T19:12:31.2096965Z       go: downloading gopkg.in/yaml.v3 v3.0.1
+2026-02-19T19:12:31.9837659Z       go: downloading github.com/google/go-containerregistry v0.20.7
+2026-02-19T19:12:31.9838412Z       go: downloading github.com/stretchr/testify v1.11.1
+2026-02-19T19:12:32.1231482Z       go: downloading github.com/spf13/cobra v1.10.2
+2026-02-19T19:12:32.1678525Z       go: downloading github.com/apex/log v1.9.0
+2026-02-19T19:12:32.1679408Z       go: downloading github.com/heroku/color v0.0.6
+2026-02-19T19:12:32.1680040Z       go: downloading github.com/BurntSushi/toml v1.6.0
+2026-02-19T19:12:32.1684471Z       go: downloading github.com/Masterminds/semver v1.5.0
+2026-02-19T19:12:32.1835265Z       go: downloading github.com/buildpacks/imgutil v0.0.0-20260211155027-33b8b33f2d7a
+2026-02-19T19:12:32.2532187Z       go: downloading github.com/buildpacks/lifecycle v0.21.0
+2026-02-19T19:12:32.4135077Z       go: downloading github.com/chainguard-dev/kaniko v1.25.6
+2026-02-19T19:12:32.4135596Z       go: downloading github.com/docker/cli v28.5.2+incompatible
+2026-02-19T19:12:32.4136040Z       go: downloading github.com/docker/docker v28.5.2+incompatible
+2026-02-19T19:12:32.7198853Z       go: downloading github.com/moby/moby/client v0.2.2
+2026-02-19T19:12:32.7569758Z       go: downloading github.com/opencontainers/go-digest v1.0.0
+2026-02-19T19:12:32.7570893Z       go: downloading github.com/opencontainers/image-spec v1.1.1
+2026-02-19T19:12:32.7699693Z       go: downloading github.com/pkg/errors v0.9.1
+2026-02-19T19:12:32.7797578Z       go: downloading github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
+2026-02-19T19:12:32.7817208Z       go: downloading golang.org/x/text v0.33.0
+2026-02-19T19:12:32.7963425Z       go: downloading github.com/fsnotify/fsnotify v1.9.0
+2026-02-19T19:12:32.8250220Z       go: downloading github.com/go-viper/mapstructure/v2 v2.4.0
+2026-02-19T19:12:32.8432815Z       go: downloading github.com/sagikazarmark/locafero v0.12.0
+2026-02-19T19:12:32.8624410Z       go: downloading github.com/spf13/afero v1.15.0
+2026-02-19T19:12:32.8957344Z       go: downloading github.com/spf13/cast v1.10.0
+2026-02-19T19:12:32.9078903Z       go: downloading github.com/spf13/pflag v1.0.10
+2026-02-19T19:12:32.9297892Z       go: downloading dario.cat/mergo v1.0.2
+2026-02-19T19:12:32.9462336Z       go: downloading github.com/mitchellh/go-homedir v1.1.0
+2026-02-19T19:12:32.9529529Z       go: downloading k8s.io/apimachinery v0.33.4
+2026-02-19T19:12:33.1165559Z       go: downloading github.com/google/uuid v1.6.0
+2026-02-19T19:12:33.1312660Z       go: downloading github.com/cenkalti/backoff/v4 v4.3.0
+2026-02-19T19:12:33.1472191Z       go: downloading go.opentelemetry.io/otel/trace v1.39.0
+2026-02-19T19:12:33.1599201Z       go: downloading go.opentelemetry.io/otel v1.39.0
+2026-02-19T19:12:33.2878751Z       go: downloading k8s.io/api v0.33.4
+2026-02-19T19:12:33.4497598Z       go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+2026-02-19T19:12:33.4636516Z       go: downloading github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
+2026-02-19T19:12:33.4735435Z       go: downloading golang.org/x/sync v0.19.0
+2026-02-19T19:12:33.4862705Z       go: downloading github.com/stretchr/objx v0.5.2
+2026-02-19T19:12:33.5013624Z       go: downloading github.com/krishicks/yaml-patch v0.0.10
+2026-02-19T19:12:33.5335264Z       go: downloading github.com/inconshreveable/mousetrap v1.1.0
+2026-02-19T19:12:33.5454948Z       go: downloading github.com/mattn/go-colorable v0.1.14
+2026-02-19T19:12:33.5543350Z       go: downloading github.com/containerd/errdefs v1.0.0
+2026-02-19T19:12:33.5544099Z       go: downloading github.com/moby/docker-image-spec v1.3.1
+2026-02-19T19:12:33.5551498Z       go: downloading github.com/moby/moby/api v1.53.0
+2026-02-19T19:12:33.5889608Z       go: downloading github.com/moby/buildkit v0.27.1
+2026-02-19T19:12:33.7828880Z       go: downloading github.com/google/go-cmp v0.7.0
+2026-02-19T19:12:33.8053911Z       go: downloading github.com/moby/go-archive v0.2.0
+2026-02-19T19:12:33.8397869Z       go: downloading github.com/go-git/go-git/v5 v5.16.4
+2026-02-19T19:12:33.8705392Z       go: downloading golang.org/x/mod v0.32.0
+2026-02-19T19:12:33.8724263Z       go: downloading golang.org/x/sys v0.41.0
+2026-02-19T19:12:33.9080356Z       go: downloading github.com/dustin/go-humanize v1.0.1
+2026-02-19T19:12:33.9216294Z       go: downloading github.com/gdamore/tcell/v2 v2.13.8
+2026-02-19T19:12:33.9700899Z       go: downloading github.com/rivo/tview v0.42.0
+2026-02-19T19:12:33.9702151Z       go: downloading github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
+2026-02-19T19:12:33.9810483Z       go: downloading github.com/docker/go-connections v0.6.0
+2026-02-19T19:12:34.0039775Z       go: downloading github.com/docker/go-units v0.5.0
+2026-02-19T19:12:34.0242927Z       go: downloading github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
+2026-02-19T19:12:34.0314236Z       go: downloading github.com/sirupsen/logrus v1.9.4
+2026-02-19T19:12:34.0521098Z       go: downloading github.com/Microsoft/go-winio v0.6.2
+2026-02-19T19:12:34.0709218Z       go: downloading github.com/containerd/errdefs/pkg v0.3.0
+2026-02-19T19:12:34.0808176Z       go: downloading github.com/distribution/reference v0.6.0
+2026-02-19T19:12:34.0863094Z       go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0
+2026-02-19T19:12:34.0934617Z       go: downloading github.com/subosito/gotenv v1.6.0
+2026-02-19T19:12:34.0944906Z       go: downloading github.com/pelletier/go-toml/v2 v2.2.4
+2026-02-19T19:12:34.1063688Z       go: downloading go.yaml.in/yaml/v3 v3.0.4
+2026-02-19T19:12:34.1084586Z       go: downloading github.com/blang/semver v3.5.1+incompatible
+2026-02-19T19:12:34.1285282Z       go: downloading k8s.io/client-go v0.33.4
+2026-02-19T19:12:34.1380264Z       go: downloading github.com/pelletier/go-toml v1.9.5
+2026-02-19T19:12:34.5903800Z       go: downloading github.com/Masterminds/sprig v2.22.0+incompatible
+2026-02-19T19:12:34.5905479Z       go: downloading github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
+2026-02-19T19:12:34.5906451Z       go: downloading github.com/joho/godotenv v1.5.1
+2026-02-19T19:12:34.5907071Z       go: downloading github.com/gogo/protobuf v1.3.2
+2026-02-19T19:12:34.6212487Z       go: downloading k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
+2026-02-19T19:12:34.6213359Z       go: downloading sigs.k8s.io/randfill v1.0.0
+2026-02-19T19:12:34.6482878Z       go: downloading github.com/google/ko v0.18.1
+2026-02-19T19:12:34.7152362Z       go: downloading golang.org/x/tools v0.40.0
+2026-02-19T19:12:34.7158358Z       go: downloading github.com/moby/patternmatcher v0.6.0
+2026-02-19T19:12:34.7289316Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0
+2026-02-19T19:12:34.7428205Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
+2026-02-19T19:12:34.7663653Z       go: downloading go.opentelemetry.io/otel/exporters/jaeger v1.17.0
+2026-02-19T19:12:34.8018500Z       go: downloading go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.38.0
+2026-02-19T19:12:34.8103495Z       go: downloading go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.38.0
+2026-02-19T19:12:34.8292397Z       go: downloading go.opentelemetry.io/otel/metric v1.39.0
+2026-02-19T19:12:34.8462816Z       go: downloading go.opentelemetry.io/otel/sdk/metric v1.39.0
+2026-02-19T19:12:34.8797827Z       go: downloading go.opentelemetry.io/otel/sdk v1.39.0
+2026-02-19T19:12:34.9210541Z       go: downloading google.golang.org/api v0.260.0
+2026-02-19T19:12:34.9285348Z       go: downloading cloud.google.com/go/cloudbuild v1.23.1
+2026-02-19T19:12:34.9489109Z       go: downloading cloud.google.com/go v0.123.0
+2026-02-19T19:12:35.0141595Z       go: downloading github.com/googleapis/gax-go/v2 v2.16.0
+2026-02-19T19:12:35.0142376Z       go: downloading sigs.k8s.io/kustomize/kyaml v0.21.0
+2026-02-19T19:12:35.0431092Z       go: downloading github.com/fatih/semgroup v1.3.0
+2026-02-19T19:12:35.0578958Z       go: downloading cloud.google.com/go/storage v1.59.1
+2026-02-19T19:12:38.1604177Z       go: downloading sigs.k8s.io/yaml v1.6.0
+2026-02-19T19:12:38.1605105Z       go: downloading github.com/segmentio/textio v1.2.0
+2026-02-19T19:12:38.1605792Z       go: downloading github.com/golang/protobuf v1.5.4
+2026-02-19T19:12:38.1794349Z       go: downloading google.golang.org/protobuf v1.36.11
+2026-02-19T19:12:38.2014867Z       go: downloading github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+2026-02-19T19:12:38.2015577Z       go: downloading github.com/containerd/containerd v1.7.30
+2026-02-19T19:12:38.2016130Z       go: downloading github.com/segmentio/encoding v0.5.3
+2026-02-19T19:12:38.2168386Z       go: downloading github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
+2026-02-19T19:12:38.3938167Z       go: downloading google.golang.org/grpc v1.78.0
+2026-02-19T19:12:38.6512916Z       go: downloading github.com/bmatcuk/doublestar v1.3.4
+2026-02-19T19:12:38.6620150Z       go: downloading golang.org/x/term v0.39.0
+2026-02-19T19:12:38.6706645Z       go: downloading google.golang.org/genproto/googleapis/api v0.0.0-20251213004720-97cd9d5aeac2
+2026-02-19T19:12:38.7051217Z       go: downloading google.golang.org/genproto v0.0.0-20251213004720-97cd9d5aeac2
+2026-02-19T19:12:38.7691068Z       go: downloading github.com/containerd/log v0.1.0
+2026-02-19T19:12:38.7691767Z       go: downloading github.com/moby/sys/user v0.4.0
+2026-02-19T19:12:38.7692445Z       go: downloading github.com/opencontainers/selinux v1.13.1
+2026-02-19T19:12:38.7831725Z       go: downloading github.com/containerd/stargz-snapshotter/estargz v0.18.1
+2026-02-19T19:12:38.7840659Z       go: downloading github.com/docker/distribution v2.8.3+incompatible
+2026-02-19T19:12:38.7968417Z       go: downloading gopkg.in/yaml.v2 v2.4.0
+2026-02-19T19:12:38.8049937Z       go: downloading github.com/mattn/go-isatty v0.0.20
+2026-02-19T19:12:38.8207753Z       go: downloading github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.11.0
+2026-02-19T19:12:38.8253068Z       go: downloading github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
+2026-02-19T19:12:38.8452667Z       go: downloading github.com/moby/sys/sequential v0.6.0
+2026-02-19T19:12:38.8536323Z       go: downloading github.com/moby/sys/userns v0.1.0
+2026-02-19T19:12:38.8640293Z       go: downloading github.com/tonistiigi/go-csvvalue v0.0.0-20240814133006-030d3b2625d0
+2026-02-19T19:12:38.8810377Z       go: downloading github.com/moby/sys/atomicwriter v0.1.0
+2026-02-19T19:12:38.9013631Z       go: downloading github.com/ProtonMail/go-crypto v1.3.0
+2026-02-19T19:12:38.9052433Z       go: downloading github.com/go-git/go-billy/v5 v5.7.0
+2026-02-19T19:12:38.9331472Z       go: downloading github.com/sergi/go-diff v1.4.0
+2026-02-19T19:12:38.9865976Z       go: downloading github.com/emirpasic/gods v1.18.1
+2026-02-19T19:12:38.9866622Z       go: downloading github.com/moby/term v0.5.2
+2026-02-19T19:12:38.9998324Z       go: downloading github.com/morikuni/aec v1.0.0
+2026-02-19T19:12:39.0196923Z       go: downloading github.com/xeipuuv/gojsonschema v1.2.0
+2026-02-19T19:12:39.0333812Z       go: downloading github.com/lucasb-eyer/go-colorful v1.3.0
+2026-02-19T19:12:39.0346022Z       go: downloading github.com/rivo/uniseg v0.4.7
+2026-02-19T19:12:39.0591301Z       go: downloading github.com/felixge/httpsnoop v1.0.4
+2026-02-19T19:12:39.0725911Z       go: downloading github.com/gdamore/encoding v1.0.1
+2026-02-19T19:12:39.0859370Z       go: downloading github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
+2026-02-19T19:12:39.0945416Z       go: downloading golang.org/x/net v0.49.0
+2026-02-19T19:12:39.1000156Z       go: downloading k8s.io/klog/v2 v2.130.1
+2026-02-19T19:12:39.1268422Z       go: downloading github.com/karrick/godirwalk v1.17.0
+2026-02-19T19:12:39.1445160Z       go: downloading sigs.k8s.io/structured-merge-diff/v4 v4.7.0
+2026-02-19T19:12:39.1465181Z       go: downloading github.com/Masterminds/goutils v1.1.1
+2026-02-19T19:12:39.1650031Z       go: downloading github.com/huandu/xstrings v1.5.0
+2026-02-19T19:12:39.1899421Z       go: downloading github.com/imdario/mergo v0.3.16
+2026-02-19T19:12:39.2081722Z       go: downloading github.com/mitchellh/copystructure v1.2.0
+2026-02-19T19:12:39.2300845Z       go: downloading golang.org/x/crypto v0.47.0
+2026-02-19T19:12:39.2330175Z       go: downloading gopkg.in/inf.v0 v0.9.1
+2026-02-19T19:12:39.2569397Z       go: downloading sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730
+2026-02-19T19:12:39.3014727Z       go: downloading github.com/sigstore/cosign/v2 v2.6.2
+2026-02-19T19:12:39.4941855Z       go: downloading golang.org/x/oauth2 v0.34.0
+2026-02-19T19:12:39.4943540Z       go: downloading go.uber.org/automaxprocs v1.6.0
+2026-02-19T19:12:39.4949063Z       go: downloading golang.org/x/time v0.14.0
+2026-02-19T19:12:39.5119145Z       go: downloading cloud.google.com/go/monitoring v1.24.3
+2026-02-19T19:12:39.5311636Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.54.0
+2026-02-19T19:12:39.5315320Z       go: downloading cloud.google.com/go/trace v1.11.7
+2026-02-19T19:12:39.5534232Z       go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b
+2026-02-19T19:12:39.5614126Z       go: downloading github.com/go-logr/logr v1.4.3
+2026-02-19T19:12:39.5617954Z       go: downloading github.com/go-logr/stdr v1.2.2
+2026-02-19T19:12:39.5720743Z       go: downloading cloud.google.com/go/iam v1.5.3
+2026-02-19T19:12:39.5731868Z       go: downloading cloud.google.com/go/longrunning v0.7.0
+2026-02-19T19:12:39.5991662Z       go: downloading github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
+2026-02-19T19:12:39.6001541Z       go: downloading k8s.io/kubectl v0.33.4
+2026-02-19T19:12:39.6002362Z       go: downloading github.com/evanphx/json-patch v5.9.11+incompatible
+2026-02-19T19:12:39.6166431Z       go: downloading github.com/golang/glog v1.2.5
+2026-02-19T19:12:39.6172879Z       go: downloading go.yaml.in/yaml/v2 v2.4.3
+2026-02-19T19:12:39.6362861Z       go: downloading k8s.io/kube-openapi v0.0.0-20250628140032-d90c4fd18f59
+2026-02-19T19:12:39.6652894Z       go: downloading cloud.google.com/go/auth v0.18.0
+2026-02-19T19:12:39.6653805Z       go: downloading cloud.google.com/go/compute/metadata v0.9.0
+2026-02-19T19:12:39.7133813Z       go: downloading go.opentelemetry.io/contrib/detectors/gcp v1.38.0
+2026-02-19T19:12:39.7479615Z       go: downloading github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+2026-02-19T19:12:39.7505730Z       go: downloading github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00
+2026-02-19T19:12:39.7603968Z       go: downloading github.com/xlab/treeprint v1.2.0
+2026-02-19T19:12:39.9012907Z       go: downloading github.com/google/gnostic-models v0.7.0
+2026-02-19T19:12:39.9013604Z       go: downloading github.com/AlecAivazis/survey/v2 v2.3.7
+2026-02-19T19:12:39.9351504Z       go: downloading sigs.k8s.io/cli-utils v0.37.2
+2026-02-19T19:12:39.9359401Z       go: downloading sigs.k8s.io/kustomize/api v0.21.0
+2026-02-19T19:12:39.9800519Z       go: downloading github.com/segmentio/asm v1.2.1
+2026-02-19T19:12:40.0103064Z       go: downloading github.com/Microsoft/hcsshim v0.14.0-rc.1
+2026-02-19T19:12:40.0104132Z       go: downloading github.com/containerd/platforms v1.0.0-rc.2
+2026-02-19T19:12:40.0274303Z       go: downloading github.com/rjeczalik/notify v0.9.3
+2026-02-19T19:12:40.0289622Z       go: downloading github.com/docker/docker-credential-helpers v0.9.5
+2026-02-19T19:12:40.0574750Z       go: downloading github.com/klauspost/compress v1.18.3
+2026-02-19T19:12:40.0580097Z       go: downloading github.com/vbatts/tar-split v0.12.2
+2026-02-19T19:12:40.0585425Z       go: downloading github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
+2026-02-19T19:12:40.0731465Z       go: downloading github.com/Azure/go-autorest/autorest v0.11.30
+2026-02-19T19:12:40.1116902Z       go: downloading github.com/Azure/go-autorest v14.2.0+incompatible
+2026-02-19T19:12:40.1124964Z       go: downloading github.com/agext/levenshtein v1.2.3
+2026-02-19T19:12:40.1395560Z       go: downloading github.com/containerd/typeurl/v2 v2.2.3
+2026-02-19T19:12:40.1396424Z       go: downloading github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
+2026-02-19T19:12:40.1801834Z       go: downloading github.com/cyphar/filepath-securejoin v0.6.0
+2026-02-19T19:12:40.2128878Z       go: downloading github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376
+2026-02-19T19:12:40.2188384Z       go: downloading github.com/pjbgf/sha1cd v0.5.0
+2026-02-19T19:12:40.2229245Z       go: downloading github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
+2026-02-19T19:12:40.2366203Z       go: downloading github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415
+2026-02-19T19:12:40.2503752Z       go: downloading github.com/fxamacker/cbor/v2 v2.9.0
+2026-02-19T19:12:40.2685714Z       go: downloading github.com/json-iterator/go v1.1.12
+2026-02-19T19:12:40.3122201Z       go: downloading github.com/mitchellh/reflectwalk v1.0.2
+2026-02-19T19:12:40.3231715Z       go: downloading github.com/sigstore/sigstore v1.10.4
+2026-02-19T19:12:40.3255354Z       go: downloading sigs.k8s.io/kind v0.30.0
+2026-02-19T19:12:40.4408545Z       go: downloading github.com/sigstore/sigstore-go v1.1.4
+2026-02-19T19:12:40.4410525Z       go: downloading github.com/dprotaso/go-yit v0.0.0-20240618133044-5a0af90af097
+2026-02-19T19:12:40.4576043Z       go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+2026-02-19T19:12:40.4740915Z       go: downloading github.com/cespare/xxhash/v2 v2.3.0
+2026-02-19T19:12:40.4909068Z       go: downloading cloud.google.com/go/auth/oauth2adapt v0.2.8
+2026-02-19T19:12:40.4922436Z       go: downloading go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.64.0
+2026-02-19T19:12:40.4973723Z       go: downloading github.com/go-errors/errors v1.5.1
+2026-02-19T19:12:40.5054278Z       go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0
+2026-02-19T19:12:40.5120946Z       go: downloading github.com/google/s2a-go v0.1.9
+2026-02-19T19:12:40.5141444Z       go: downloading github.com/go-openapi/jsonreference v0.21.4
+2026-02-19T19:12:40.5231153Z       go: downloading github.com/go-openapi/swag v0.25.4
+2026-02-19T19:12:40.5373306Z       go: downloading gopkg.in/evanphx/json-patch.v4 v4.13.0
+2026-02-19T19:12:40.5465631Z       go: downloading k8s.io/cli-runtime v0.34.1
+2026-02-19T19:12:40.5578198Z       go: downloading github.com/aws/aws-sdk-go-v2 v1.41.1
+2026-02-19T19:12:40.5778522Z       go: downloading github.com/aws/aws-sdk-go-v2/config v1.32.7
+2026-02-19T19:12:40.6463687Z       go: downloading github.com/aws/aws-sdk-go-v2/service/ecr v1.54.4
+2026-02-19T19:12:40.6479301Z       go: downloading github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.38.8
+2026-02-19T19:12:40.6480098Z       go: downloading github.com/aws/smithy-go v1.24.0
+2026-02-19T19:12:40.6963971Z       go: downloading github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
+2026-02-19T19:12:40.7172231Z       go: downloading github.com/Azure/go-autorest/autorest/adal v0.9.24
+2026-02-19T19:12:40.7231058Z       go: downloading github.com/Azure/go-autorest/autorest/azure/cli v0.4.7
+2026-02-19T19:12:40.7300793Z       go: downloading github.com/Azure/go-autorest/logger v0.2.2
+2026-02-19T19:12:40.7326806Z       go: downloading github.com/dimchansky/utfbom v1.1.1
+2026-02-19T19:12:40.7422604Z       go: downloading github.com/kevinburke/ssh_config v1.4.0
+2026-02-19T19:12:40.7431879Z       go: downloading github.com/skeema/knownhosts v1.3.2
+2026-02-19T19:12:40.7589541Z       go: downloading github.com/xanzy/ssh-agent v0.3.3
+2026-02-19T19:12:40.7627681Z       go: downloading gopkg.in/warnings.v0 v0.1.2
+2026-02-19T19:12:40.7684214Z       go: downloading github.com/cloudflare/circl v1.6.1
+2026-02-19T19:12:41.1855488Z       go: downloading github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c
+2026-02-19T19:12:41.2057323Z       go: downloading github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb
+2026-02-19T19:12:41.2063834Z       go: downloading github.com/x448/float16 v0.8.4
+2026-02-19T19:12:41.2373465Z       go: downloading github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+2026-02-19T19:12:41.2377250Z       go: downloading github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee
+2026-02-19T19:12:41.2746223Z       go: downloading github.com/secure-systems-lab/go-securesystemslib v0.10.0
+2026-02-19T19:12:41.2747479Z       go: downloading github.com/sigstore/protobuf-specs v0.5.0
+2026-02-19T19:12:41.3840331Z       go: downloading github.com/sigstore/rekor v1.5.0
+2026-02-19T19:12:41.3846843Z       go: downloading github.com/klauspost/cpuid/v2 v2.3.0
+2026-02-19T19:12:41.4121348Z       go: downloading github.com/in-toto/attestation v1.1.2
+2026-02-19T19:12:41.5064462Z       go: downloading github.com/googleapis/enterprise-certificate-proxy v0.3.9
+2026-02-19T19:12:41.5729973Z       go: downloading github.com/envoyproxy/go-control-plane/envoy v1.35.0
+2026-02-19T19:12:41.5749255Z       go: downloading github.com/go-openapi/jsonpointer v0.22.4
+2026-02-19T19:12:41.5968714Z       go: downloading github.com/go-openapi/swag/cmdutils v0.25.4
+2026-02-19T19:12:41.6100149Z       go: downloading github.com/go-openapi/swag/conv v0.25.4
+2026-02-19T19:12:41.6456418Z       go: downloading github.com/go-openapi/swag/fileutils v0.25.4
+2026-02-19T19:12:41.6628952Z       go: downloading github.com/go-openapi/swag/jsonname v0.25.4
+2026-02-19T19:12:41.6731965Z       go: downloading github.com/go-openapi/swag/jsonutils v0.25.4
+2026-02-19T19:12:41.6997181Z       go: downloading github.com/go-openapi/swag/loading v0.25.4
+2026-02-19T19:12:41.7222338Z       go: downloading github.com/go-openapi/swag/mangling v0.25.4
+2026-02-19T19:12:41.7349872Z       go: downloading github.com/go-openapi/swag/netutils v0.25.4
+2026-02-19T19:12:41.7474154Z       go: downloading github.com/go-openapi/swag/stringutils v0.25.4
+2026-02-19T19:12:41.7777069Z       go: downloading github.com/go-openapi/swag/typeutils v0.25.4
+2026-02-19T19:12:41.7949837Z       go: downloading github.com/go-openapi/swag/yamlutils v0.25.4
+2026-02-19T19:12:41.8083100Z       go: downloading github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
+2026-02-19T19:12:41.8216512Z       go: downloading cyphar.com/go-pathrs v0.2.1
+2026-02-19T19:12:41.8358338Z       go: downloading github.com/aws/aws-sdk-go-v2/credentials v1.19.7
+2026-02-19T19:12:41.8548942Z       go: downloading github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17
+2026-02-19T19:12:41.8685314Z       go: downloading github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4
+2026-02-19T19:12:41.8894390Z       go: downloading github.com/aws/aws-sdk-go-v2/service/signin v1.0.5
+2026-02-19T19:12:41.9083019Z       go: downloading github.com/aws/aws-sdk-go-v2/service/sso v1.30.9
+2026-02-19T19:12:41.9332272Z       go: downloading github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13
+2026-02-19T19:12:41.9530126Z       go: downloading github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
+2026-02-19T19:12:41.9767951Z       go: downloading github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17
+2026-02-19T19:12:41.9844300Z       go: downloading github.com/Azure/go-autorest/tracing v0.6.1
+2026-02-19T19:12:41.9914977Z       go: downloading github.com/Azure/go-autorest/autorest/date v0.3.1
+2026-02-19T19:12:42.0095554Z       go: downloading github.com/golang-jwt/jwt/v4 v4.5.2
+2026-02-19T19:12:42.0305417Z       go: downloading github.com/sigstore/timestamp-authority/v2 v2.0.3
+2026-02-19T19:12:42.0793793Z       go: downloading github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
+2026-02-19T19:12:42.0925668Z       go: downloading github.com/sigstore/rekor-tiles/v2 v2.0.1
+2026-02-19T19:12:42.1359142Z       go: downloading al.essio.dev/pkg/shellescape v1.6.0
+2026-02-19T19:12:42.1514170Z       go: downloading github.com/gorilla/mux v1.8.1
+2026-02-19T19:12:42.1730856Z       go: downloading github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467
+2026-02-19T19:12:42.2026412Z       go: downloading github.com/go-openapi/runtime v0.29.2
+2026-02-19T19:12:42.2444278Z       go: downloading github.com/go-openapi/strfmt v0.25.0
+2026-02-19T19:12:42.2597850Z       go: downloading github.com/google/certificate-transparency-go v1.3.2
+2026-02-19T19:12:42.4055863Z       go: downloading github.com/go-openapi/errors v0.22.6
+2026-02-19T19:12:42.4056601Z       go: downloading github.com/go-openapi/validate v0.25.1
+2026-02-19T19:12:42.4060435Z       go: downloading github.com/spiffe/go-spiffe/v2 v2.6.0
+2026-02-19T19:12:42.4211202Z       go: downloading github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f
+2026-02-19T19:12:42.4584278Z       go: downloading github.com/emicklei/go-restful/v3 v3.13.0
+2026-02-19T19:12:42.4599573Z       go: downloading github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4
+2026-02-19T19:12:42.4692095Z       go: downloading github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17
+2026-02-19T19:12:42.4802939Z       go: downloading github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17
+2026-02-19T19:12:42.4820407Z       go: downloading github.com/theupdateframework/go-tuf/v2 v2.4.1
+2026-02-19T19:12:42.5157732Z       go: downloading github.com/theupdateframework/go-tuf v0.7.0
+2026-02-19T19:12:42.7386229Z       go: downloading github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
+2026-02-19T19:12:42.7387194Z       go: downloading github.com/hashicorp/go-cleanhttp v0.5.2
+2026-02-19T19:12:42.7387874Z       go: downloading github.com/hashicorp/go-retryablehttp v0.7.8
+2026-02-19T19:12:42.7505839Z       go: downloading github.com/in-toto/in-toto-golang v0.9.0
+2026-02-19T19:12:42.7534631Z       go: downloading github.com/coreos/go-oidc/v3 v3.17.0
+2026-02-19T19:12:42.7540573Z       go: downloading github.com/go-jose/go-jose/v4 v4.1.3
+2026-02-19T19:12:42.7714437Z       go: downloading github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+2026-02-19T19:12:42.7814672Z       go: downloading github.com/docker/go-metrics v0.0.1
+2026-02-19T19:12:42.7908140Z       go: downloading github.com/oklog/ulid v1.3.1
+2026-02-19T19:12:42.7958017Z       go: downloading go.mongodb.org/mongo-driver v1.17.6
+2026-02-19T19:12:43.3074017Z       go: downloading github.com/transparency-dev/formats v0.0.0-20251208091212-1378f9e1b1b7
+2026-02-19T19:12:43.3075384Z       go: downloading github.com/transparency-dev/merkle v0.0.2
+2026-02-19T19:12:43.3254682Z       go: downloading github.com/envoyproxy/protoc-gen-validate v1.2.1
+2026-02-19T19:12:43.3349488Z       go: downloading cel.dev/expr v0.24.0
+2026-02-19T19:12:43.3365308Z       go: downloading github.com/blang/semver/v4 v4.0.0
+2026-02-19T19:12:43.3476882Z       go: downloading github.com/go-openapi/analysis v0.24.1
+2026-02-19T19:12:43.3808132Z       go: downloading github.com/go-openapi/loads v0.23.2
+2026-02-19T19:12:43.3824450Z       go: downloading github.com/go-openapi/spec v0.22.3
+2026-02-19T19:12:43.4119267Z       go: downloading github.com/cenkalti/backoff/v5 v5.0.3
+2026-02-19T19:12:43.4225193Z       go: downloading github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7
+2026-02-19T19:12:43.4272607Z       go: downloading github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+2026-02-19T19:12:43.4382481Z       go: downloading github.com/sassoftware/relic v7.2.1+incompatible
+2026-02-19T19:12:43.4534831Z       go: downloading github.com/evanphx/json-patch/v5 v5.9.11
+2026-02-19T19:12:43.4714914Z       go: downloading github.com/prometheus/client_golang v1.23.2
+2026-02-19T19:12:43.5465277Z       go: downloading github.com/shibumi/go-pathspec v1.3.0
+2026-02-19T19:12:43.5505384Z       go: downloading github.com/beorn7/perks v1.0.1
+2026-02-19T19:12:43.5506263Z       go: downloading github.com/prometheus/client_model v0.6.2
+2026-02-19T19:12:43.5835914Z       go: downloading github.com/prometheus/common v0.67.4
+2026-02-19T19:12:43.5886913Z       go: downloading github.com/prometheus/procfs v0.17.0
+2026-02-19T19:12:51.4219003Z       Completed in 22.39s
+2026-02-19T19:12:51.4219354Z 
+2026-02-19T19:12:51.4219550Z   Generating SBOM for /workspace/go.mod
+2026-02-19T19:12:55.6392024Z       Completed in 4.217s
+2026-02-19T19:12:55.6392359Z 
+2026-02-19T19:12:55.7455912Z Paketo Buildpack for Go Build 2.4.11
+2026-02-19T19:12:55.7457198Z   Executing build process
+2026-02-19T19:12:55.7458039Z     Running 'go build -o /layers/paketo-buildpacks_go-build/targets/bin -buildmode pie -trimpath ./cmd/op'
+2026-02-19T19:15:07.0140128Z       Completed in 2m11.268s
+2026-02-19T19:15:07.0140728Z 
+2026-02-19T19:15:08.7254411Z   Generating SBOM for /layers/paketo-buildpacks_go-build/targets/bin
+2026-02-19T19:15:10.1587571Z       Completed in 1.433s
+2026-02-19T19:15:10.1588013Z 
+2026-02-19T19:15:10.1591127Z   Assigning launch processes:
+2026-02-19T19:15:10.1591986Z     op (default): /layers/paketo-buildpacks_go-build/targets/bin/op
+2026-02-19T19:15:10.1592404Z 
+2026-02-19T19:15:10.2374262Z ===> EXPORTING
+2026-02-19T19:15:10.2375164Z Reusing layers from image 'ghcr.io/octopilot/op@sha256:f22f7407ad54acaf1638ec2af3ef4bc49115423ce110435dea35ec2b6aac4eca'
+2026-02-19T19:15:12.0284024Z Reusing layer 'paketo-buildpacks/ca-certificates:helper'
+2026-02-19T19:15:12.2169737Z Adding layer 'paketo-buildpacks/git:git'
+2026-02-19T19:15:12.4863723Z Adding layer 'paketo-buildpacks/go-build:targets'
+2026-02-19T19:15:14.3955164Z Adding layer 'buildpacksio/lifecycle:launch.sbom'
+2026-02-19T19:15:14.4021426Z Reused 1/1 app layer(s)
+2026-02-19T19:15:14.4096237Z Reusing layer 'buildpacksio/lifecycle:launcher'
+2026-02-19T19:15:14.4103736Z Adding layer 'buildpacksio/lifecycle:config'
+2026-02-19T19:15:14.4119905Z Reusing layer 'buildpacksio/lifecycle:process-types'
+2026-02-19T19:15:14.4123328Z Adding label 'io.buildpacks.lifecycle.metadata'
+2026-02-19T19:15:14.4127355Z Adding label 'io.buildpacks.build.metadata'
+2026-02-19T19:15:14.4129139Z Adding label 'io.buildpacks.project.metadata'
+2026-02-19T19:15:14.4131052Z Adding label 'org.opencontainers.image.revision'
+2026-02-19T19:15:14.4131871Z Adding label 'io.buildpacks.exec-env'
+2026-02-19T19:15:14.4135729Z Setting default process type 'op'
+2026-02-19T19:15:14.4137504Z Saving ghcr.io/octopilot/op:latest-linux-arm64...
+2026-02-19T19:15:15.5913164Z *** Images (sha256:bcbc5a0c88ec2b6fbc715352bf19a2a395802c950aff53812b91ac7622df0540):
+2026-02-19T19:15:15.5914502Z       ghcr.io/octopilot/op:latest-linux-arm64
+2026-02-19T19:15:19.2028863Z Adding cache layer 'paketo-buildpacks/go-dist:go'
+2026-02-19T19:15:38.7813042Z Adding cache layer 'paketo-buildpacks/go-mod-vendor:mod-cache'
+2026-02-19T19:15:54.0837293Z Adding cache layer 'paketo-buildpacks/go-build:gocache'
+2026-02-19T19:15:56.2733312Z Adding cache layer 'buildpacksio/lifecycle:cache.sbom'
+2026-02-19T19:16:03.4870139Z Creating manifest list ghcr.io/octopilot/op:latest from [ghcr.io/octopilot/op:latest-linux-amd64 ghcr.io/octopilot/op:latest-linux-arm64]
+2026-02-19T19:16:05.2104447Z Successfully pushed manifest list ghcr.io/octopilot/op:latest (digest: sha256:b18f1497eac41802b4c3d74b86d39c30afc450b381fdf4d2f46ed5c9eac9d084)
+2026-02-19T19:16:05.2106087Z Tagging ghcr.io/octopilot/op:latest as ghcr.io/octopilot/op:v0.0.41...
+2026-02-19T19:16:06.9319387Z Successfully pushed ghcr.io/octopilot/op:v0.0.41
+2026-02-19T19:16:06.9320950Z Waiting for image propagation: ghcr.io/octopilot/op:latest (timeout: 3m0s)
+2026-02-19T19:16:07.3003864Z 
+2026-02-19T19:16:07.3004333Z Image found: ghcr.io/octopilot/op:latest
+2026-02-19T19:16:07.3103693Z ./
+2026-02-19T19:16:07.3104131Z ./sbom/
+2026-02-19T19:16:07.3104560Z ./sbom/cache/
+2026-02-19T19:16:07.3105089Z ./sbom/cache/paketo-buildpacks_go-dist/
+2026-02-19T19:16:07.3105849Z ./sbom/cache/paketo-buildpacks_go-dist/go/
+2026-02-19T19:16:07.3106721Z ./sbom/cache/paketo-buildpacks_go-dist/go/sbom.spdx.json
+2026-02-19T19:16:07.3107794Z ./sbom/cache/paketo-buildpacks_go-dist/go/sbom.cdx.json
+2026-02-19T19:16:07.3109079Z ./sbom/cache/paketo-buildpacks_go-dist/go/sbom.syft.json
+2026-02-19T19:16:07.3109870Z ./sbom/launch/
+2026-02-19T19:16:07.3110466Z ./sbom/launch/buildpacksio_lifecycle/
+2026-02-19T19:16:07.3111339Z ./sbom/launch/buildpacksio_lifecycle/launcher/
+2026-02-19T19:16:07.3112052Z ./sbom/launch/buildpacksio_lifecycle/launcher/sbom.spdx.json
+2026-02-19T19:16:07.3112699Z ./sbom/launch/buildpacksio_lifecycle/launcher/sbom.cdx.json
+2026-02-19T19:16:07.3113315Z ./sbom/launch/buildpacksio_lifecycle/launcher/sbom.syft.json
+2026-02-19T19:16:07.3113866Z ./sbom/launch/sbom.legacy.json
+2026-02-19T19:16:07.3114290Z ./sbom/launch/paketo-buildpacks_ca-certificates/
+2026-02-19T19:16:07.3114828Z ./sbom/launch/paketo-buildpacks_ca-certificates/helper/
+2026-02-19T19:16:07.3115471Z ./sbom/launch/paketo-buildpacks_ca-certificates/helper/sbom.syft.json
+2026-02-19T19:16:07.3116073Z ./sbom/launch/paketo-buildpacks_go-build/
+2026-02-19T19:16:07.3116545Z ./sbom/launch/paketo-buildpacks_go-build/targets/
+2026-02-19T19:16:07.3117126Z ./sbom/launch/paketo-buildpacks_go-build/targets/sbom.spdx.json
+2026-02-19T19:16:07.3181866Z ./sbom/launch/paketo-buildpacks_go-build/targets/sbom.cdx.json
+2026-02-19T19:16:07.3218761Z ./sbom/launch/paketo-buildpacks_go-build/targets/sbom.syft.json
+2026-02-19T19:16:07.3254925Z ./sbom/build/
+2026-02-19T19:16:07.3255430Z ./sbom/build/buildpacksio_lifecycle/
+2026-02-19T19:16:07.3256135Z ./sbom/build/buildpacksio_lifecycle/sbom.spdx.json
+2026-02-19T19:16:07.3279247Z ./sbom/build/buildpacksio_lifecycle/sbom.cdx.json
+2026-02-19T19:16:07.3289202Z ./sbom/build/buildpacksio_lifecycle/sbom.syft.json
+2026-02-19T19:16:07.3303358Z ./sbom/build/paketo-buildpacks_go-dist/
+2026-02-19T19:16:07.3303955Z ./sbom/build/paketo-buildpacks_go-dist/go/
+2026-02-19T19:16:07.3304610Z ./sbom/build/paketo-buildpacks_go-dist/go/sbom.spdx.json
+2026-02-19T19:16:07.3308262Z ./sbom/build/paketo-buildpacks_go-dist/go/sbom.cdx.json
+2026-02-19T19:16:07.3309117Z ./sbom/build/paketo-buildpacks_go-dist/go/sbom.syft.json
+2026-02-19T19:16:07.3309793Z ./sbom/build/paketo-buildpacks_go-mod-vendor/
+2026-02-19T19:16:07.3310485Z ./sbom/build/paketo-buildpacks_go-mod-vendor/sbom.spdx.json
+2026-02-19T19:16:07.3374606Z ./sbom/build/paketo-buildpacks_go-mod-vendor/sbom.cdx.json
+2026-02-19T19:16:07.3426521Z ./sbom/build/paketo-buildpacks_go-mod-vendor/sbom.syft.json
+2026-02-19T19:16:07.3472176Z ./sbom/build/sbom.legacy.json
+2026-02-19T19:16:07.3522419Z ./
+2026-02-19T19:16:07.3522733Z ./sbom/
+2026-02-19T19:16:07.3523051Z ./sbom/cache/
+2026-02-19T19:16:07.3523439Z ./sbom/cache/paketo-buildpacks_go-dist/
+2026-02-19T19:16:07.3524000Z ./sbom/cache/paketo-buildpacks_go-dist/go/
+2026-02-19T19:16:07.3524621Z ./sbom/cache/paketo-buildpacks_go-dist/go/sbom.spdx.json
+2026-02-19T19:16:07.3525296Z ./sbom/cache/paketo-buildpacks_go-dist/go/sbom.cdx.json
+2026-02-19T19:16:07.3525984Z ./sbom/cache/paketo-buildpacks_go-dist/go/sbom.syft.json
+2026-02-19T19:16:07.3526532Z ./sbom/launch/
+2026-02-19T19:16:07.3526900Z ./sbom/launch/buildpacksio_lifecycle/
+2026-02-19T19:16:07.3527434Z ./sbom/launch/buildpacksio_lifecycle/launcher/
+2026-02-19T19:16:07.3527930Z ./sbom/launch/buildpacksio_lifecycle/launcher/sbom.spdx.json
+2026-02-19T19:16:07.3528403Z ./sbom/launch/buildpacksio_lifecycle/launcher/sbom.cdx.json
+2026-02-19T19:16:07.3529107Z ./sbom/launch/buildpacksio_lifecycle/launcher/sbom.syft.json
+2026-02-19T19:16:07.3529511Z ./sbom/launch/sbom.legacy.json
+2026-02-19T19:16:07.3529830Z ./sbom/launch/paketo-buildpacks_ca-certificates/
+2026-02-19T19:16:07.3530240Z ./sbom/launch/paketo-buildpacks_ca-certificates/helper/
+2026-02-19T19:16:07.3530724Z ./sbom/launch/paketo-buildpacks_ca-certificates/helper/sbom.syft.json
+2026-02-19T19:16:07.3531173Z ./sbom/launch/paketo-buildpacks_go-build/
+2026-02-19T19:16:07.3531523Z ./sbom/launch/paketo-buildpacks_go-build/targets/
+2026-02-19T19:16:07.3531949Z ./sbom/launch/paketo-buildpacks_go-build/targets/sbom.spdx.json
+2026-02-19T19:16:07.3585137Z ./sbom/launch/paketo-buildpacks_go-build/targets/sbom.cdx.json
+2026-02-19T19:16:07.3622251Z ./sbom/launch/paketo-buildpacks_go-build/targets/sbom.syft.json
+2026-02-19T19:16:07.3658375Z ./sbom/build/
+2026-02-19T19:16:07.3659073Z ./sbom/build/buildpacksio_lifecycle/
+2026-02-19T19:16:07.3659844Z ./sbom/build/buildpacksio_lifecycle/sbom.spdx.json
+2026-02-19T19:16:07.3683381Z ./sbom/build/buildpacksio_lifecycle/sbom.cdx.json
+2026-02-19T19:16:07.3692937Z ./sbom/build/buildpacksio_lifecycle/sbom.syft.json
+2026-02-19T19:16:07.3706638Z ./sbom/build/paketo-buildpacks_go-dist/
+2026-02-19T19:16:07.3707405Z ./sbom/build/paketo-buildpacks_go-dist/go/
+2026-02-19T19:16:07.3708271Z ./sbom/build/paketo-buildpacks_go-dist/go/sbom.spdx.json
+2026-02-19T19:16:07.3711564Z ./sbom/build/paketo-buildpacks_go-dist/go/sbom.cdx.json
+2026-02-19T19:16:07.3712542Z ./sbom/build/paketo-buildpacks_go-dist/go/sbom.syft.json
+2026-02-19T19:16:07.3713425Z ./sbom/build/paketo-buildpacks_go-mod-vendor/
+2026-02-19T19:16:07.3777654Z ./sbom/build/paketo-buildpacks_go-mod-vendor/sbom.spdx.json
+2026-02-19T19:16:07.3779008Z ./sbom/build/paketo-buildpacks_go-mod-vendor/sbom.cdx.json
+2026-02-19T19:16:07.3829943Z ./sbom/build/paketo-buildpacks_go-mod-vendor/sbom.syft.json
+2026-02-19T19:16:07.3876608Z ./sbom/build/sbom.legacy.json
+2026-02-19T19:16:07.4137421Z ##[group]Run actions/attest-build-provenance@v2
+2026-02-19T19:16:07.4137734Z with:
+2026-02-19T19:16:07.4137995Z   subject-name: ghcr.io/octopilot/octopilot-pipeline-tools
+2026-02-19T19:16:07.4139361Z   subject-digest: sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325
+2026-02-19T19:16:07.4139808Z   push-to-registry: true
+2026-02-19T19:16:07.4140030Z   show-summary: true
+2026-02-19T19:16:07.4140353Z   github-token: ***
+2026-02-19T19:16:07.4140543Z ##[endgroup]
+2026-02-19T19:16:07.4167994Z ##[group]Run actions/attest-build-provenance/predicate@1176ef556905f349f669722abf30bce1a6e16e01
+2026-02-19T19:16:07.4168468Z ##[endgroup]
+2026-02-19T19:16:08.3504222Z ##[group]Run actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc
+2026-02-19T19:16:08.3504596Z with:
+2026-02-19T19:16:08.3504963Z   subject-digest: sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325
+2026-02-19T19:16:08.3505540Z   subject-name: ghcr.io/octopilot/octopilot-pipeline-tools
+2026-02-19T19:16:08.3505985Z   predicate-type: https://slsa.dev/provenance/v1
+2026-02-19T19:16:08.3509486Z   predicate: {"buildDefinition":{"buildType":"https://actions.github.io/buildtypes/workflow/v1","externalParameters":{"workflow":{"ref":"refs/tags/v0.0.41","repository":"https://github.com/octopilot/octopilot-pipeline-tools","path":".github/workflows/ci.yml"}},"internalParameters":{"github":{"event_name":"push","repository_id":"1151877833","repository_owner_id":"125118626","runner_environment":"github-hosted"}},"resolvedDependencies":[{"uri":"git+https://github.com/octopilot/octopilot-pipeline-tools@refs/tags/v0.0.41","digest":{"gitCommit":"17b870bff33b9f2b8975ba6405a02432f8ad2427"}}]},"runDetails":{"builder":{"id":"https://github.com/octopilot/octopilot-pipeline-tools/.github/workflows/ci.yml@refs/tags/v0.0.41"},"metadata":{"invocationId":"https://github.com/octopilot/octopilot-pipeline-tools/actions/runs/22194514077/attempts/2"}}}
+2026-02-19T19:16:08.3512787Z   push-to-registry: true
+2026-02-19T19:16:08.3513019Z   show-summary: true
+2026-02-19T19:16:08.3513442Z   github-token: ***
+2026-02-19T19:16:08.3513652Z ##[endgroup]
+2026-02-19T19:16:10.1844393Z ##[error]OCIError: Error uploading artifact to container registry
+2026-02-19T19:16:10.1846288Z [38;5;244mError: Error fetching https://ghcr.io/v2/octopilot/octopilot-pipeline-tools/manifests/sha256:e12d16bd806b952a071446e45d71f88347ee6cafec9b220b52d1a0aee6c16325 - expected 200, received 404[39m
+2026-02-19T19:16:10.2026119Z Post job cleanup.
+2026-02-19T19:16:10.5250654Z ##[group]Logout from ghcr.io
+2026-02-19T19:16:10.5297751Z [command]/usr/bin/docker logout ghcr.io
+2026-02-19T19:16:10.5435427Z Removing login credentials for ghcr.io
+2026-02-19T19:16:10.5488399Z ##[endgroup]
+2026-02-19T19:16:10.5489322Z ##[group]Post cache
+2026-02-19T19:16:10.5490852Z State not set
+2026-02-19T19:16:10.5491938Z ##[endgroup]
+2026-02-19T19:16:10.5625385Z Post job cleanup.
+2026-02-19T19:16:10.8062400Z ##[group]Post cache
+2026-02-19T19:16:10.8064958Z Caching docker.io--tonistiigi--binfmt-latest-linux-x64 to GitHub Actions cache
+2026-02-19T19:16:10.8270423Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools --files-from manifest.txt --use-compress-program zstdmt
+2026-02-19T19:16:11.2383059Z Failed to save: Unable to reserve cache with key docker.io--tonistiigi--binfmt-latest-linux-x64, another job may be creating this cache.
+2026-02-19T19:16:11.2461775Z ##[endgroup]
+2026-02-19T19:16:11.2610275Z Post job cleanup.
+2026-02-19T19:16:11.5182421Z [command]/usr/bin/git version
+2026-02-19T19:16:11.5228189Z git version 2.53.0
+2026-02-19T19:16:11.5271825Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/350fc6a7-88f4-47e0-b672-0903101dd4fc/.gitconfig'
+2026-02-19T19:16:11.5283211Z Temporarily overriding HOME='/home/runner/work/_temp/350fc6a7-88f4-47e0-b672-0903101dd4fc' before making global git config changes
+2026-02-19T19:16:11.5284925Z Adding repository directory to the temporary git global config as a safe directory
+2026-02-19T19:16:11.5289950Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools
+2026-02-19T19:16:11.5324943Z Removing SSH command configuration
+2026-02-19T19:16:11.5332189Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-02-19T19:16:11.5367549Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-02-19T19:16:11.5675412Z Removing HTTP extra header
+2026-02-19T19:16:11.5681420Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-02-19T19:16:11.5716307Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-02-19T19:16:11.5949809Z Removing includeIf entries pointing to credentials config files
+2026-02-19T19:16:11.5957610Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-02-19T19:16:11.5983940Z includeif.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git.path
+2026-02-19T19:16:11.5985057Z includeif.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git/worktrees/*.path
+2026-02-19T19:16:11.5985937Z includeif.gitdir:/github/workspace/.git.path
+2026-02-19T19:16:11.5986506Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-02-19T19:16:11.5994054Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git.path
+2026-02-19T19:16:11.6015396Z /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6026273Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git.path /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6061518Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git/worktrees/*.path
+2026-02-19T19:16:11.6083958Z /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6093911Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/octopilot-pipeline-tools/octopilot-pipeline-tools/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6128708Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-02-19T19:16:11.6153020Z /github/runner_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6161642Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6194601Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-02-19T19:16:11.6216843Z /github/runner_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6227595Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config
+2026-02-19T19:16:11.6261697Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-02-19T19:16:11.6499772Z Removing credentials config '/home/runner/work/_temp/git-credentials-70d5011f-b1a9-40c3-9ac3-10270416614c.config'
+2026-02-19T19:16:11.6641033Z Evaluate and set job outputs
+2026-02-19T19:16:11.6645463Z Set output 'digest'
+2026-02-19T19:16:11.6647231Z Cleaning up orphan processes

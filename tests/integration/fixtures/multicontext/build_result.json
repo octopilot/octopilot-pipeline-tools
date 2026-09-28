@@ -1,0 +1,1 @@
+{"builds":[{"imageName":"base-image","tag":"localhost:5001/integration-test/base-image:v1.0.9-1-gdc6f21d@sha256:caf3de6bc28f734a7687d744f192693ee51d258e796f82ed0089a02b943c0f2e"},{"imageName":"app-image","tag":"localhost:5001/integration-test/app-image:latest@sha256:5b6721cc1a5e667b0644842556e3a1cbe9a7541752499156eb8a7b6704aa1048"}]}
