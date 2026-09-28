@@ -43,8 +43,6 @@ var (
 	getAllConfigs      = parser.GetAllConfigs
 	getRunContext      = runcontext.GetRunContext
 	remoteHead         = remote.Head
-	remoteImage        = remote.Image
-	remoteWrite        = remote.Write
 	resolveDefaultRepo = util.ResolveDefaultRepo
 )
 
