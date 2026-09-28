@@ -1,0 +1,1 @@
+{"builds":[{"imageName":"dockerfile-app","tag":"localhost:5001/integration-test/dockerfile-app:59f51e0c75fc763e0ab38366563da29ce30486403dc287007bde4adbd1e89fd8"}]}

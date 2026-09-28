@@ -1,0 +1,1 @@
+{"builds":[{"imageName":"buildpack-app-custom","tag":"localhost:5001/integration-test/buildpack-app-custom:latest@sha256:493fda7efb17f50c3c515ae55d042b26d6fa75f8b4d3d8c94c765a0dae39827b"}]}

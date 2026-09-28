@@ -1,0 +1,1 @@
+{"builds":[{"imageName":"helm-integration-test","tag":"localhost:5001/integration-test/helm-integration-test:latest@sha256:52f9fe1361b186512979b89492e5d6862995159db73cc1c1c672aa08aaaee6fa"}]}
