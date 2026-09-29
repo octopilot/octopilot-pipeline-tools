@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"time"
 
@@ -27,11 +26,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/pack"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/util"
 	"github.com/spf13/cobra"
@@ -67,32 +62,16 @@ var buildCmd = &cobra.Command{
 			return fmt.Errorf("error getting cwd: %w", err)
 		}
 
-		// Clean environment variables that might contain platform suffixes
-		// This ensures that we are targeting the "manifest list" tag (clean) rather than a specific platform tag
-		// which might be passed by CI.
-		cleanEnvVars := []string{"DOCKER_METADATA_OUTPUT_VERSION", "SKAFFOLD_TAG", "VERSION", "TAG", "IMAGE_TAG"}
+		// The version tag for the local skaffold image name comes straight from the caller (DOCKER_METADATA_OUTPUT_VERSION
+		// or VERSION); the pipeline is responsible for passing a clean value.
 		var targetVersion string
 
-		for _, key := range cleanEnvVars {
+		for _, key := range []string{"DOCKER_METADATA_OUTPUT_VERSION", "SKAFFOLD_TAG", "VERSION", "TAG", "IMAGE_TAG"} {
 			if val := os.Getenv(key); val != "" {
-				// Clean it if it looks like it has a platform suffix
-				// We expect formats like: v0.0.34_linux_arm64, v0.0.34_linux_amd64
-				if strings.Contains(val, "_linux_") {
-					parts := strings.Split(val, "_linux_")
-					if len(parts) > 0 {
-						newVal := parts[0]
-						fmt.Printf("Stripping platform suffix from %s: %s -> %s\n", key, val, newVal)
-						os.Setenv(key, newVal)
-						if targetVersion == "" {
-							targetVersion = newVal
-						}
-					}
-				} else if targetVersion == "" {
-					targetVersion = val
-				}
+				targetVersion = val
+				break
 			}
 		}
-
 		opts := prepareSkaffoldOptions(cmd, cwd)
 
 		// Force the tag to be the clean version if we found one
@@ -115,16 +94,20 @@ var buildCmd = &cobra.Command{
 		if ttlTag == "" {
 			ttlTag = "1h"
 		}
+		// --ttl-uuid is sugar: push to ttl.sh under the run UUID. Nothing else changes; in particular platforms are
+		// whatever --platform says (ttl.sh serves manifest lists; only re-tagging them is unsupported, which we no longer do).
 		if ttlUUID != "" {
-			repo = "ttl.sh"
-			// Ephemeral ttl.sh builds: single platform
-			if len(opts.Platforms) == 0 {
-				opts.Platforms = []string{"linux/amd64"}
-			} else if len(opts.Platforms) > 1 {
-				opts.Platforms = opts.Platforms[:1]
+			repo = ttlRegistry
+			if !cmd.Flags().Changed("tag") {
+				pushTag = ttlTag
 			}
 		}
-
+		fromResults, _ := cmd.Flags().GetStringSlice("from-build-result")
+		runImageOverrides, _ := cmd.Flags().GetStringSlice("run-image-override")
+		priorImages, err := loadBuiltImages(fromResults, runImageOverrides)
+		if err != nil {
+			return err
+		}
 		ctx := context.Background()
 
 		// 1. Parse Config
@@ -188,18 +171,16 @@ var buildCmd = &cobra.Command{
 			}
 			fmt.Printf("Building with direct Pack integration (repo: %s, %s)....\n", repo, pushStr)
 
-			// Build primary app first so build_result.json gets the correct digest for the main image
-			// (avoids mix-up where chart or integration-cronjob digest is written for the controller).
-			sort.Slice(artifactsToRun, func(i, j int) bool {
-				pi := artifactBuildOrder(artifactsToRun[i].ImageName)
-				pj := artifactBuildOrder(artifactsToRun[j].ImageName)
-				return pi < pj
-			})
-			fmt.Printf("Build order (primary first): %s\n", strings.Join(artifactImageNames(artifactsToRun), " | "))
+			// Build order from skaffold's own declarations (requires, runImage), not from names.
+			artifactsToRun, err = orderArtifacts(artifactsToRun)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Build order (dependencies first): %s\n", strings.Join(artifactImageNames(artifactsToRun), " | "))
 
 			var built []util.Build
 			// Track built images for dependency resolution (imageName -> fullTag with digest)
-			builtImages := make(map[string]string)
+			builtImages := priorImages
 
 			// Pack runs the lifecycle in a Docker container. On Mac/Windows the container cannot
 			// reach the host registry at localhost; use host.docker.internal. On Linux 127.0.0.1 works.
@@ -217,7 +198,10 @@ var buildCmd = &cobra.Command{
 					// It's a buildpack artifact
 					imageName := art.ImageName
 
-					fullTag := pushTarget(imageName, repo, pushTag, ttlUUID, ttlTag, artifactKey)
+					fullTag, err := pushTarget(imageName, repo, pushTag, ttlUUID, artifactKey)
+					if err != nil {
+						return err
+					}
 
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
@@ -342,12 +326,7 @@ var buildCmd = &cobra.Command{
 
 					// Build for each platform
 					for _, platform := range targetPlatforms {
-						currentTag := fullTag
-						// If explicit multi-platform build, use distinct tags for intermediate images
-						if len(targetPlatforms) > 1 && platform != "" {
-							sanitized := strings.ReplaceAll(platform, "/", "-")
-							currentTag = fmt.Sprintf("%s-%s", fullTag, sanitized)
-						}
+						currentTag := platformTag(fullTag, platform, len(targetPlatforms))
 
 						fmt.Printf("  -> Platform: %s, Tag: %s\n", platform, currentTag)
 
@@ -411,94 +390,11 @@ var buildCmd = &cobra.Command{
 						platformManifests = append(platformManifests, currentTag)
 					}
 
-					// Prepare remote options for index creation/push
-					remoteOpts := []remote.Option{
-						remote.WithAuthFromKeychain(authn.DefaultKeychain),
+					propagation, _ := cmd.Flags().GetDuration("propagation-timeout")
+					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
+					if err != nil {
+						return err
 					}
-					for _, reg := range opts.InsecureRegistries {
-						if strings.HasPrefix(fullTag, reg) {
-							t := &http.Transport{
-								TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-							}
-							remoteOpts = append(remoteOpts, remote.WithTransport(t))
-							break
-						}
-					}
-
-					finalDigest := ""
-
-					// Create Manifest List (Index) if we built multiple platforms
-					if len(targetPlatforms) > 1 {
-						fmt.Printf("Creating manifest list %s from %v\n", fullTag, platformManifests)
-
-						var idx mutate.IndexAddendum
-						_ = idx
-
-						// Start with empty index
-						// We'll default to OCI, but can switch to Docker
-						// GHCR usually works fine with OCI Index
-						var index v1.ImageIndex = empty.Index
-						index = mutate.IndexMediaType(index, types.DockerManifestList)
-
-						for _, pTag := range platformManifests {
-							pRef, err := parseReferenceForRemote(pTag, opts.InsecureRegistries)
-							if err != nil {
-								return fmt.Errorf("parsing platform tag %s: %w", pTag, err)
-							}
-
-							// Get the remote image descriptor and image
-							desc, err := remote.Get(pRef, remoteOpts...)
-							if err != nil {
-								return fmt.Errorf("getting platform image %s: %w", pTag, err)
-							}
-
-							img, err := desc.Image()
-							if err != nil {
-								return fmt.Errorf("getting image content for %s: %w", pTag, err)
-							}
-
-							index = mutate.AppendManifests(index, mutate.IndexAddendum{
-								Add:        img,
-								Descriptor: desc.Descriptor,
-							})
-						}
-
-						// Push the index
-						ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
-						if err != nil {
-							return fmt.Errorf("parsing full tag %s: %w", fullTag, err)
-						}
-
-						if err := remote.WriteIndex(ref, index, remoteOpts...); err != nil {
-							return fmt.Errorf("writing manifest list %s: %w", fullTag, err)
-						}
-
-						// Get the digest of the index we just pushed
-						// Note: WriteIndex doesn't return digest directly easily without computing it
-						// We can compute it from index.Digest()
-						d, err := index.Digest()
-						if err != nil {
-							return fmt.Errorf("computing index digest: %w", err)
-						}
-						finalDigest = d.String()
-						fmt.Printf("Successfully pushed manifest list %s (digest: %s)\n", fullTag, finalDigest)
-
-					} else {
-						// Single platform, just get the digest
-						ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
-						if err != nil {
-							return fmt.Errorf("parsing reference %q: %w", fullTag, err)
-						}
-						img, err := remoteHead(ref, remoteOpts...)
-						if err != nil {
-							return fmt.Errorf("getting image digest for %q: %w", fullTag, err)
-						}
-						finalDigest = img.Digest.String()
-					}
-
-					// Append digest to tag so consumers (CI) can extract it
-					fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, finalDigest)
-
 					built = append(built, util.Build{
 						ImageName: imageName,
 						Tag:       fullTagWithDigest,
@@ -508,16 +404,7 @@ var buildCmd = &cobra.Command{
 					// Record for dependency resolution
 					builtImages[imageName] = fullTagWithDigest
 
-					// WAIT FOR IMAGE PROPAGATION
-					// In some registries (GHCR, etc.), a pushed image might not be immediately available
-					// for pulling by a subsequent build step (even if push succeeded).
-					// We poll for it to ensure the next step in the skaffold graph can succeed.
-					timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
-					if err := waitForImage(fullTag, timeout, opts.InsecureRegistries, remoteOpts...); err != nil {
-						return fmt.Errorf("image %s was pushed but is not resolvable from the registry: %w", fullTag, err)
-					}
-
-				} else if (len(opts.Platforms) > 1 || ttlUUID != "") && art.DockerArtifact != nil {
+				} else if art.DockerArtifact != nil && len(opts.Platforms) > 0 {
 					// Multi-arch Docker artifact: build each platform separately and assemble the
 					// manifest list ourselves. The Skaffold fork runner has a bug where BuildKit's
 					// provenance/attestation manifest turns per-platform tags into OCI Indexes; the
@@ -527,7 +414,10 @@ var buildCmd = &cobra.Command{
 					// manifest list assembly, with BUILDX_NO_DEFAULT_ATTESTATIONS=1 to suppress
 					// attestation manifests so each per-platform tag is a clean single-arch image.
 
-					fullTag := pushTarget(art.ImageName, repo, pushTag, ttlUUID, ttlTag, artifactKey)
+					fullTag, err := pushTarget(art.ImageName, repo, pushTag, ttlUUID, artifactKey)
+					if err != nil {
+						return err
+					}
 
 					contextDir := filepath.Join(cwd, art.Workspace)
 					dockerfilePath := art.DockerArtifact.DockerfilePath
@@ -538,26 +428,10 @@ var buildCmd = &cobra.Command{
 						dockerfilePath = filepath.Join(contextDir, dockerfilePath)
 					}
 
-					dockerRemoteOpts := []remote.Option{
-						remote.WithAuthFromKeychain(authn.DefaultKeychain),
-					}
-					for _, reg := range opts.InsecureRegistries {
-						if strings.HasPrefix(fullTag, reg) {
-							dockerRemoteOpts = append(dockerRemoteOpts, remote.WithTransport(&http.Transport{
-								TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-							}))
-							break
-						}
-					}
-
 					var platformManifests []string
 
 					for _, platform := range opts.Platforms {
-						sanitized := strings.ReplaceAll(platform, "/", "-")
-						platformTag := fmt.Sprintf("%s-%s", fullTag, sanitized)
-						if ttlUUID != "" && len(opts.Platforms) == 1 {
-							platformTag = fullTag
-						}
+						platformTag := platformTag(fullTag, platform, len(opts.Platforms))
 
 						fmt.Printf("Building Docker artifact %s for platform %s -> %s\n", art.ImageName, platform, platformTag)
 
@@ -585,54 +459,11 @@ var buildCmd = &cobra.Command{
 						platformManifests = append(platformManifests, platformTag)
 					}
 
-					// Assemble manifest list from per-platform images (same logic as buildpack path)
-					fmt.Printf("Creating manifest list %s from %v\n", fullTag, platformManifests)
-
-					var index v1.ImageIndex = empty.Index
-					index = mutate.IndexMediaType(index, types.DockerManifestList)
-
-					for _, pTag := range platformManifests {
-						pRef, err := parseReferenceForRemote(pTag, opts.InsecureRegistries)
-						if err != nil {
-							return fmt.Errorf("parsing platform tag %s: %w", pTag, err)
-						}
-						desc, err := remote.Get(pRef, dockerRemoteOpts...)
-						if err != nil {
-							return fmt.Errorf("getting platform image %s: %w", pTag, err)
-						}
-						img, err := desc.Image()
-						if err != nil {
-							return fmt.Errorf("getting image content for %s: %w", pTag, err)
-						}
-						index = mutate.AppendManifests(index, mutate.IndexAddendum{
-							Add:        img,
-							Descriptor: desc.Descriptor,
-						})
-					}
-
-					ref, err := parseReferenceForRemote(fullTag, opts.InsecureRegistries)
+					propagation, _ := cmd.Flags().GetDuration("propagation-timeout")
+					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
 					if err != nil {
-						return fmt.Errorf("parsing full tag %s: %w", fullTag, err)
+						return err
 					}
-					if err := remote.WriteIndex(ref, index, dockerRemoteOpts...); err != nil {
-						return fmt.Errorf("writing manifest list %s: %w", fullTag, err)
-					}
-
-					d, err := index.Digest()
-					if err != nil {
-						return fmt.Errorf("computing index digest: %w", err)
-					}
-					finalDigest := d.String()
-					fmt.Printf("Successfully pushed manifest list %s (digest: %s)\n", fullTag, finalDigest)
-
-					fullTagWithDigest := fmt.Sprintf("%s@%s", fullTag, finalDigest)
-
-					// Wait for propagation
-					timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
-					if err := waitForImage(fullTag, timeout, opts.InsecureRegistries, dockerRemoteOpts...); err != nil {
-						return fmt.Errorf("image %s was pushed but is not resolvable from the registry: %w", fullTag, err)
-					}
-
 					built = append(built, util.Build{ImageName: art.ImageName, Tag: fullTagWithDigest})
 					builtImages[art.ImageName] = fullTagWithDigest
 
@@ -668,14 +499,13 @@ var buildCmd = &cobra.Command{
 
 						timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
 						if err := waitForImage(ba.Tag, timeout, opts.InsecureRegistries, singleRemoteOpts...); err != nil {
-							fmt.Printf("Warning: failed to wait for image propagation for %s: %v\n", ba.Tag, err)
+							return fmt.Errorf("image %s was pushed but is not resolvable from the registry: %w", ba.Tag, err)
 						}
 					}
 				}
 			}
 
-			// Deterministic order for build_result.json (primary first)
-			sortBuildResultByArtifactOrder(built)
+			// build_result.json lists artifacts in build order (dependencies first)
 			fmt.Printf("Writing build_result.json (%d entries):\n", len(built))
 			for _, b := range built {
 				fmt.Printf("  %s -> %s\n", b.ImageName, b.Tag)
@@ -686,13 +516,11 @@ var buildCmd = &cobra.Command{
 			return nil
 		}
 
-		// Skaffold path: sort artifacts so build order is deterministic (primary first)
-		sort.Slice(artifactsToRun, func(i, j int) bool {
-			pi := artifactBuildOrder(artifactsToRun[i].ImageName)
-			pj := artifactBuildOrder(artifactsToRun[j].ImageName)
-			return pi < pj
-		})
-		fmt.Printf("Build order (primary first): %s\n", strings.Join(artifactImageNames(artifactsToRun), " | "))
+		artifactsToRun, err = orderArtifacts(artifactsToRun)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Build order (dependencies first): %s\n", strings.Join(artifactImageNames(artifactsToRun), " | "))
 
 		fmt.Printf("Building with Skaffold library (repo: %s)....\n", repo)
 		buildArtifacts, err := r.Build(ctx, os.Stdout, artifactsToRun)
@@ -705,7 +533,6 @@ var buildCmd = &cobra.Command{
 		for _, ba := range buildArtifacts {
 			built = append(built, util.Build{ImageName: ba.ImageName, Tag: ba.Tag})
 		}
-		sortBuildResultByArtifactOrder(built)
 		fmt.Printf("Writing build_result.json (%d entries):\n", len(built))
 		for _, b := range built {
 			fmt.Printf("  %s -> %s\n", b.ImageName, b.Tag)
@@ -1045,26 +872,6 @@ func prepareSkaffoldOptionsWithRepo(cmd *cobra.Command, cwd string, repo string)
 	return opts
 }
 
-// artifactBuildOrder returns a sort key so primary app is built before chart, and chart before integration.
-// Prevents build_result.json from associating the wrong digest with the main image (e.g. controller).
-func artifactBuildOrder(imageName string) int {
-	if strings.HasSuffix(imageName, "-chart") {
-		return 1
-	}
-	if strings.Contains(imageName, "integration") {
-		return 2
-	}
-	return 0
-}
-
-// sortBuildResultByArtifactOrder sorts built so build_result.json has deterministic order (primary first).
-func sortBuildResultByArtifactOrder(built []util.Build) {
-	sort.Slice(built, func(i, j int) bool {
-		return artifactBuildOrder(built[i].ImageName) < artifactBuildOrder(built[j].ImageName)
-	})
-}
-
-// artifactImageNames returns image names from artifacts for error messages.
 func artifactImageNames(artifacts []*latest.Artifact) []string {
 	names := make([]string, 0, len(artifacts))
 	for _, a := range artifacts {
@@ -1073,57 +880,14 @@ func artifactImageNames(artifacts []*latest.Artifact) []string {
 	return names
 }
 
-// pushTarget is the single rule for where an artifact goes. Ephemeral (--ttl-uuid): ttl.sh has no namespaces, so the
-// image name carries the run UUID and the artifact key. Otherwise: <repo>/<basename>:<tag>, where basename is the last
-// path component of the skaffold image name (a skaffold name like ghcr.io/org/app must not be nested under another
-// registry path). No registry is inferred from the name; the caller decides repo, tag and platforms.
-func pushTarget(imageName, repo, tag, ttlUUID, ttlTag, artifactKey string) string {
-	if ttlUUID != "" {
-		key := artifactKey
-		if key == "" {
-			key = deriveTTLSuffix(imageName)
-			fmt.Printf("Warning: --artifact-key not set; derived %q from %s (pass the key from the pipeline to avoid collisions)\n", key, imageName)
-		}
-		return fmt.Sprintf("ttl.sh/%s-%s:%s", ttlUUID, key, ttlTag)
-	}
-	base := imageName
-	if i := strings.LastIndex(base, ":"); i > 0 && !strings.Contains(base[i:], "/") {
-		base = base[:i]
-	}
-	if repo == "" {
-		return fmt.Sprintf("%s:%s", base, tag)
-	}
-	if i := strings.LastIndex(base, "/"); i >= 0 {
-		base = base[i+1:]
-	}
-	return fmt.Sprintf("%s/%s:%s", strings.TrimSuffix(repo, "/"), base, tag)
-}
-
-// deriveTTLSuffix returns the last segment of the image name (e.g. cronjob-log-monitor-chart -> chart).
-// Used for ttl.sh tagging: ttl.sh/<uuid>-<suffix>:<tag>.
-func deriveTTLSuffix(imageName string) string {
-	// Strip tag if present (host/path:tag -> host/path)
-	base := imageName
-	if idx := strings.LastIndex(base, ":"); idx > 0 {
-		base = base[:idx]
-	}
-	// Last path component (ghcr.io/org/cronjob-log-monitor -> cronjob-log-monitor)
-	if idx := strings.LastIndex(base, "/"); idx >= 0 {
-		base = base[idx+1:]
-	}
-	parts := strings.Split(base, "-")
-	if len(parts) == 0 {
-		return "image"
-	}
-	return parts[len(parts)-1]
-}
-
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.Flags().String("repo", "", "Registry to push to (overrides defaults)")
 	buildCmd.Flags().String("ttl-uuid", "", "When set, push to ttl.sh/<ttl-uuid>-<suffix>:<ttl-tag> for ephemeral integration builds (overrides repo)")
-	buildCmd.Flags().String("ttl-tag", "1h", "Tag for ttl.sh pushes when --ttl-uuid is set (default 1h)")
-	buildCmd.Flags().String("artifact-key", "", "Short, unique key for the artifact being built (from the pipeline's detect step). With --ttl-uuid the image is ttl.sh/<ttl-uuid>-<key>; required when --artifact is set with --ttl-uuid, otherwise derived from the image name (last dash-segment) with a warning")
+	buildCmd.Flags().String("ttl-tag", "1h", "Tag for ttl.sh pushes when --ttl-uuid is set and --tag is not (default 1h)")
+	buildCmd.Flags().String("artifact-key", "", "Short, unique key for the artifact being built (from the pipeline's detect step); with ttl.sh the image is ttl.sh/<ttl-uuid>-<key>")
+	buildCmd.Flags().StringSlice("from-build-result", nil, "build_result.json file(s) from earlier builds; their images satisfy runImage references from this build (repeatable)")
+	buildCmd.Flags().StringSlice("run-image-override", nil, "name=ref: use ref for a buildpack runImage that names artifact <name> (repeatable)")
 	buildCmd.Flags().String("tag", "latest", "Tag for --repo pushes (release jobs re-tag by version themselves)")
 	buildCmd.Flags().String("artifact", "", "Build only this artifact (exact image name from skaffold, e.g. ghcr.io/org/myimage)")
 	buildCmd.Flags().String("insecure-registry", "", "Registry host(s) to treat as insecure (self-signed TLS or HTTP). Comma-separated (e.g. localhost:5001,myreg:5000). Also set via SKAFFOLD_INSECURE_REGISTRY or SKAFFOLD_INSECURE_REGISTRIES.")
