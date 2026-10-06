@@ -152,21 +152,16 @@ Next publish:
 
 ### rust (the buildpack)
 
-`0.1.13` / `0.1.14` place the binary correctly for a single crate with no
-`build.rs` (igniteflux is in this set). Remaining buildpack work, before
-calling 0.1.14 the new floor:
+`0.1.13` / `0.1.14` (the buildpack inside `rust-builder-c3c756a`) place the
+binary correctly for a single crate with no `build.rs`. `octopilot/rust`
+0.1.15 is the follow-up and is not in that builder image:
 
-- Copy only Cargo targets whose `kind` contains `bin`. `cargo build` also
-  emits build-script executables. Those get a process, and the first artifact
-  becomes the default `web` process.
-- Honor `BP_RUST_BINARY_NAME` as the default process even when JSON discovery
-  succeeds.
-- Fail the build if the prune's `tar` restore does not put `bin/<name>` back
-  in the app dir. `set -e` does not see a failure in that pipeline, so a
-  failed restore still prints "Rust build complete".
-- `scripts/package.sh --split-images` sets `CMD ["/workspace/bin/<name>"]`.
-  The image entrypoint is the launcher, so Docker passes that absolute path
-  as a process type. Split images need a process type, not a `CMD` path.
+- Only targets whose Cargo `kind` contains `bin` become processes.
+- `web` is the sole bin, else `default-run`, else the single package-named
+  bin. `BP_RUST_BINARY_NAME` overrides that on a successful build. Several
+  remaining bins fail the build.
+- The prune fails if `bin/<name>` is not executable after restore.
+- `scripts/package.sh --split-images` sets the launcher process type.
 
 ### actions
 
