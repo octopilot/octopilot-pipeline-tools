@@ -179,13 +179,15 @@ just free-disk
 
 ### 3. Builder Image (`ghcr.io/octopilot/builder-jammy-base`)
 
-- **Source**: [https://github.com/octopilot/buildpacks](https://github.com/octopilot/buildpacks)
-- **Purpose**: Custom Cloud Native Buildpacks builder based on Ubuntu Jammy. Includes the `octopilot/rust` buildpack and is optimised for the pipeline's caching and multi-arch requirements.
-- **Compatibility**: **Only this builder** may be used in the `op` toolchain. Other builders (e.g. `gcr.io/buildpacks/builder`, `paketobuildpacks/builder-jammy-base`) are **not compatible** with `op`'s Pack integration. All `skaffold.yaml` configs and integration test fixtures must use `ghcr.io/octopilot/builder-jammy-base`.
+- **Source**: [octopilot/builder-jammy-base](https://github.com/octopilot/builder-jammy-base), branch `rust-builder` until that branch is merged to `main`.
+- **Purpose**: Custom Cloud Native Buildpacks builder based on Ubuntu Jammy. Includes `octopilot/rust` and `octopilot/helm`.
+- **Pin**: `ghcr.io/octopilot/builder-jammy-base:rust-builder-c3c756a` (`octopilot/rust` 0.1.14, lifecycle 0.21.22, same digest as `:latest`). Do not pin `rust-builder-d5eb42a` (rust 0.1.6, no launch processes) or `:latest`.
+- **Compatibility**: Only this builder may be used in the `op` toolchain. `gcr.io/buildpacks/builder` and `paketobuildpacks/builder-jammy-base` are not compatible. Every `skaffold.yaml` and integration fixture names the pin above.
+- **Launch contract and the next tag move**: [docs/image-launch-and-builder-tags.md](docs/image-launch-and-builder-tags.md).
 
 ### 4. Rust Buildpack (`ghcr.io/octopilot/rust`)
 
-- **Purpose**: Specialized Rust build support for the `builder-jammy-base` stack, filling gaps not covered by standard Paketo buildpacks.
+- **Purpose**: Builds a Rust crate or workspace into `/workspace/bin/<name>` and registers CNB processes so the launcher can start them. Behavior by version, and the follow-ups still required in the buildpack, are in [docs/image-launch-and-builder-tags.md](docs/image-launch-and-builder-tags.md).
 
 ---
 

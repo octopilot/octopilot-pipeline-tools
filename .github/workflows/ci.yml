@@ -8,6 +8,8 @@ on:
       - "go.mod"
       - "go.sum"
       - "Dockerfile"
+      - "skaffold.yaml"
+      - "base/**"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, master]
@@ -16,6 +18,8 @@ on:
       - "tests/**"
       - "pyproject.toml"
       - "Dockerfile"
+      - "skaffold.yaml"
+      - "base/**"
       - ".pre-commit-config.yaml"
       - ".github/workflows/ci.yml"
   workflow_dispatch:

@@ -211,13 +211,13 @@ build:
     - image: my-app
       context: .
       buildpacks:
-        builder: ghcr.io/octopilot/builder-jammy-base:latest
+        builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-c3c756a
         runImage: my-app-base
         env:
           - BP_GO_BUILD_FLAGS=-buildvcs=false
 ```
 
-**Buildpacks builder:** Only `ghcr.io/octopilot/builder-jammy-base` (with a tag such as `latest` or a version) is compatible with the `op` toolchain. Other builders (e.g. `gcr.io/buildpacks/builder`, `paketobuildpacks/builder-jammy-base`) must not be used—they are not compatible with `op`'s Pack integration and pipeline behaviour.
+**Buildpacks builder:** Pin `ghcr.io/octopilot/builder-jammy-base:rust-builder-c3c756a` (`octopilot/rust` 0.1.14, lifecycle 0.21.22). `:latest` is only the moving alias of the last publish. `rust-builder-d5eb42a` (rust 0.1.6) puts the binary in the image and registers no processes. `paketobuildpacks/builder-jammy-base` and `gcr.io/buildpacks/builder` are not compatible with `op`. The tag policy and the cross-repo update order are in [docs/image-launch-and-builder-tags.md](docs/image-launch-and-builder-tags.md).
 
 > `op build --push --platform linux/amd64,linux/arm64` handles both artifact types: Dockerfile artifacts are built per-platform and assembled into a manifest list; buildpack artifacts are built per-platform with the Pack library.
 
