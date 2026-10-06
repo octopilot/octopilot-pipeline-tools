@@ -656,7 +656,7 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	refBytes, err := os.ReadFile(refPath)
 	if err == nil {
 		ref := strings.TrimSpace(string(refBytes))
-		if isValidHelmChartRef(ref) {
+		if isValidHelmChartRef(ref, chartName) {
 			return ref, nil
 		}
 		// Buildpack wrote an invalid (image-style) ref; normalize to repo/chartname:version@digest.
@@ -675,17 +675,21 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	return chartRef, nil
 }
 
-// isValidHelmChartRef reports whether ref has Helm OCI shape: registry/repo/chartname:version[@digest].
-// Invalid examples: ttl.sh/uuid-chart:1h@sha256:... (image-style, no chart name path segment).
-func isValidHelmChartRef(ref string) bool {
+// isValidHelmChartRef reports whether ref has Helm OCI shape: registry/repo/<chartName>:version[@digest], i.e. its last
+// path segment is the chart name (helm push always appends it). Invalid: ttl.sh/uuid-chart:0.1.0@sha256:... (image-style;
+// it has a slash and a tag, but the repository Helm pushed to is ttl.sh/uuid-chart/<chartName>).
+func isValidHelmChartRef(ref, chartName string) bool {
 	beforeDigest := ref
 	if at := strings.Index(ref, "@"); at > 0 {
 		beforeDigest = ref[:at]
 	}
 	// Must contain at least one "/" and a ":" with ":" after the last "/" (repo/chartname:tag).
 	lastSlash := strings.LastIndex(beforeDigest, "/")
-	colon := strings.Index(beforeDigest, ":")
-	return lastSlash > 0 && colon > lastSlash
+	colon := strings.LastIndex(beforeDigest, ":")
+	if lastSlash <= 0 || colon <= lastSlash {
+		return false
+	}
+	return beforeDigest[lastSlash+1:colon] == chartName
 }
 
 // extractDigestFromRef returns the digest part of ref (e.g. "sha256:...") or empty if none.
