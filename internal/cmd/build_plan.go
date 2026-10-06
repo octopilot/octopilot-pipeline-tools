@@ -122,6 +122,27 @@ func publishImage(fullTag string, platformTags []string, insecureRegistries []st
 	return fmt.Sprintf("%s@%s", fullTag, digest), nil
 }
 
+// tagAlias points an additional tag (e.g. the branch or version from DOCKER_METADATA_OUTPUT_VERSION) at the manifest
+// already pushed at fullTag, in the same repository. Works for single images and manifest lists. Not used for ttl.sh,
+// which cannot re-tag manifest lists and whose run UUID already identifies the build.
+func tagAlias(fullTag, alias string, insecureRegistries []string) error {
+	ropts := remoteOptionsFor(fullTag, insecureRegistries)
+	ref, err := parseReferenceForRemote(fullTag, insecureRegistries)
+	if err != nil {
+		return fmt.Errorf("parsing %s: %w", fullTag, err)
+	}
+	desc, err := remote.Get(ref, ropts...)
+	if err != nil {
+		return fmt.Errorf("getting %s: %w", fullTag, err)
+	}
+	aliasRef := ref.Context().Tag(alias)
+	if err := remote.Tag(aliasRef, desc, ropts...); err != nil {
+		return fmt.Errorf("tagging %s as %s: %w", fullTag, aliasRef, err)
+	}
+	fmt.Printf("Tagged %s as %s\n", fullTag, aliasRef)
+	return nil
+}
+
 // orderArtifacts sorts artifacts so that every artifact comes after the artifacts it depends on, as declared in
 // skaffold.yaml: `requires` (Dependencies) and a buildpack `runImage` naming another artifact. Ties are broken by
 // name so the order is deterministic. A cycle is an error.
