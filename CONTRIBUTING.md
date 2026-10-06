@@ -181,7 +181,7 @@ just free-disk
 
 - **Source**: [octopilot/builder-jammy-base](https://github.com/octopilot/builder-jammy-base), branch `rust-builder` until that branch is merged to `main`.
 - **Purpose**: Custom Cloud Native Buildpacks builder based on Ubuntu Jammy. Includes `octopilot/rust` and `octopilot/helm`.
-- **Pin**: `ghcr.io/octopilot/builder-jammy-base:rust-builder-c3c756a` (`octopilot/rust` 0.1.14, lifecycle 0.21.22, same digest as `:latest`). Do not pin `rust-builder-d5eb42a` (rust 0.1.6, no launch processes) or `:latest`.
+- **Pin**: `ghcr.io/octopilot/builder-jammy-base:rust-builder-d741287` (`octopilot/rust` 0.1.15, lifecycle 0.21.22, same digest as `:latest`). Do not pin `rust-builder-d5eb42a` (rust 0.1.6, no launch processes) or `:latest`.
 - **Compatibility**: Only this builder may be used in the `op` toolchain. `gcr.io/buildpacks/builder` and `paketobuildpacks/builder-jammy-base` are not compatible. Every `skaffold.yaml` and integration fixture names the pin above.
 - **Launch contract and the next tag move**: [docs/image-launch-and-builder-tags.md](docs/image-launch-and-builder-tags.md).
 

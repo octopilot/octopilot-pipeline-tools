@@ -49,7 +49,7 @@ Pulled from GHCR on 2026-10-06 (the buildpack layer, not the git tree).
 | `ghcr.io/octopilot/rust:0.1.0` | Renamed to `/workspace/bin/web` | Written to `<layers>/launch/launch.toml`. The lifecycle reads `<layers>/launch.toml`, so the image has no processes. |
 | `ghcr.io/octopilot/rust:0.1.6` | `/workspace/bin/<name>` | `command = ["bin/<name>"]` (TOML array). Lifecycle 0.21.1 rejects it (`[]any` vs string). Binary present, no processes. |
 | `ghcr.io/octopilot/rust:0.1.13` | `/workspace/bin/<name>` after a prune that keeps only `bin/` | String command, named process plus `web` default, `/workspace` chmod `0755`. |
-| `ghcr.io/octopilot/rust:0.1.14` | Same as 0.1.13, plus cargo-sweep on the cache layer | Inside builder `rust-builder-c3c756a` and `:latest`. |
+| `ghcr.io/octopilot/rust:0.1.14` | Same as 0.1.13, plus cargo-sweep on the cache layer | Inside builder `rust-builder-d741287` and `:latest`. |
 
 `0.1.12` is the prune that left `/workspace` mode `700`. Do not ship it.
 `0.1.11` has named processes but not the mode fix.
@@ -65,8 +65,8 @@ stays upstream's `run-jammy-base:latest`. The February rust 0.1.0 pin is gone.
 
 | Tag | Config digest (prefix) | `octopilot/rust` | Lifecycle | Notes |
 |---|---|---|---|---|
-| `latest` | `sha256:b8db544fac01` | **0.1.14** | 0.21.22 | Same image as `rust-builder-c3c756a`. Also helm 0.1.3. |
-| `rust-builder-c3c756a` | `sha256:b8db544fac01` | **0.1.14** | 0.21.22 | Current consumer pin. Published from `builder-sync` at `c3c756a`. |
+| `latest` | `sha256:7f089cb1687a` | **0.1.15** | 0.21.22 | Same image as `rust-builder-d741287`. Also helm 0.1.3. |
+| `rust-builder-d741287` | `sha256:7f089cb1687a` | **0.1.15** | 0.21.22 | Current consumer pin. |
 | `rust-builder-d5eb42a` | different | **0.1.6** | 0.21.1 | Retired. Binary at `/workspace/bin`, no launch processes. |
 | local `main` `c3c756a` | not published | **0.1.14** | 0.21.22 | 75 Paketo commits past the July base, plus the octopilot additions. |
 
@@ -82,7 +82,7 @@ before `:latest` moves.
 One immutable builder tag is the pin. `latest` is only the moving alias of
 the last successful publish, and it is not what `skaffold.yaml` files name.
 
-**Current pin:** `ghcr.io/octopilot/builder-jammy-base:rust-builder-c3c756a`
+**Current pin:** `ghcr.io/octopilot/builder-jammy-base:rust-builder-d741287`
 
 Use it in:
 
@@ -132,7 +132,7 @@ The Rust buildpack in the builder does not compile `op`, but the same builder
 image is what every Rust repo copies. Pinning `op` at `rust-builder-d5eb42a`
 kept that tag looking supported.
 
-Done in this change: pin moved to `rust-builder-c3c756a`; CI paths include
+Done in this change: pin moved to `rust-builder-d741287`; CI paths include
 `skaffold.yaml` and `base/**`.
 
 ### builder-jammy-base
@@ -144,15 +144,15 @@ It is ahead of `origin/main` and has not been pushed. Pushing it runs
 Next publish:
 
 1. `workflow_dispatch` on `push-image-ghcr.yml` with an explicit tag
-   (for example `rust-builder-c3c756a`) so there is an immutable name before
+   (for example `rust-builder-d741287`) so there is an immutable name before
    `:latest` moves. A push of `main` itself tags only `latest`.
 2. Confirm the image label `io.buildpacks.buildpack.order` contains
    `octopilot/rust` `0.1.14`, `octopilot/helm` `0.1.3`, and lifecycle 0.21.22.
-3. Move every consumer pin from `rust-builder-c3c756a` to that new tag.
+3. Move every consumer pin from `rust-builder-d741287` to that new tag.
 
 ### rust (the buildpack)
 
-`0.1.13` / `0.1.14` (the buildpack inside `rust-builder-c3c756a`) place the
+`0.1.13` / `0.1.14` (the buildpack inside `rust-builder-d741287`) place the
 binary correctly for a single crate with no `build.rs`. `octopilot/rust`
 0.1.15 is the follow-up and is not in that builder image:
 
@@ -182,7 +182,7 @@ with the new builder pin.
 The controller image is Rust on a custom run image (`base/Dockerfile`:
 Ubuntu Jammy, git, kustomize, empty `CMD`, explicit `PATH`). The chart is
 the helm buildpack in the same builder. Both artifacts now use
-`rust-builder-c3c756a`.
+`rust-builder-d741287`.
 
 `op_version: latest` in `.github/workflows/ci.yml` stays until `op:main` is
 rebuilt from this pin. The chart does not set a container command, so the
@@ -217,7 +217,7 @@ valid if `CMD` is empty and `/workspace` is `0755`.
    0.1.14 if the behavior changes. The rebased builder stays on 0.1.14 until
    that image exists. If the floor moves, bump the publish guard with it.
 4. Publish an immutable tag from the rebased tree, confirm the order label,
-   then move consumer pins off `rust-builder-c3c756a`.
+   then move consumer pins off `rust-builder-d741287`.
 5. Push pipeline-tools `main` so CI rebuilds `op:main` on the new builder.
    Compare `op:main` to the previous digest before pointing igniteflux
    `op_version` at `main`.
@@ -230,7 +230,7 @@ TOKEN=$(curl -s "https://ghcr.io/token?service=ghcr.io&scope=repository:octopilo
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
 curl -s -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-  "https://ghcr.io/v2/octopilot/builder-jammy-base/manifests/rust-builder-c3c756a" \
+  "https://ghcr.io/v2/octopilot/builder-jammy-base/manifests/rust-builder-d741287" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["config"]["digest"])'
 ```
 
