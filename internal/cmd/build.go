@@ -316,6 +316,11 @@ var buildCmd = &cobra.Command{
 							packEnv[parts[0]] = parts[1]
 						}
 					}
+					// Private git deps during cargo fetch. The buildpack writes
+					// a git insteadOf and deletes it before the layer is exported.
+					if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
+						packEnv["GITHUB_TOKEN"] = tok
+					}
 
 					// Prepare platform list
 					targetPlatforms := opts.Platforms
@@ -411,6 +416,18 @@ var buildCmd = &cobra.Command{
 
 					// Record for dependency resolution
 					builtImages[imageName] = fullTagWithDigest
+
+					if packEnv["BP_RUST_BRRTROUTER"] == "1" {
+						slices, err := fanoutSuite(filepath.Join(cwd, art.Workspace), fullTagWithDigest, repo, pushTag, ttlUUID, opts.InsecureRegistries, propagation)
+						if err != nil {
+							return fmt.Errorf("suite fan-out for %s: %w", imageName, err)
+						}
+						for _, s := range slices {
+							built = append(built, s)
+							builtImages[s.ImageName] = s.Tag
+							fmt.Printf("  build_result entry: %s -> %s\n", s.ImageName, s.Tag)
+						}
+					}
 
 				} else if art.DockerArtifact != nil && len(opts.Platforms) > 0 {
 					// Multi-arch Docker artifact: build each platform separately and assemble the

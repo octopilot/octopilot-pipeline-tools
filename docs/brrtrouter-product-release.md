@@ -172,12 +172,104 @@ vary `PORTAL` or the crate name.
 The service and worker files that Tilt uses are templates. They `COPY` a
 binary that is not in git. A CI `docker build` of those files fails.
 
-The Rust buildpack would also build the crate, and `BP_RUST_KEEP` can keep
-`gen/doc` and `static_site`. That is the right shape for `pet_store`, whose
-process is the CNB launcher and whose paths hang off `CARGO_MANIFEST_DIR`.
-It is the wrong shape for PriceWhisperer until the chart stops mounting
-`/app/config` and the entrypoint stops being the four-flag command. That
-chart change is not part of the first release.
+The Rust buildpack already compiles many crates in one `cargo build`
+(`BP_RUST_PACKAGES`) and can keep `gen/doc` and `static_site`
+(`BP_RUST_KEEP`). It records the bins in `.rust-binaries` for per-package
+image tooling. What it does not do is put arguments on the process, and one
+`pack` build still exports one image.
+
+## `BP_RUST_BRRTROUTER` on the existing Rust buildpack
+
+No second builder. The jammy builder that already contains `octopilot/rust`
+gains one argument. Unset, the buildpack behaves as it does today
+(`pet_store`, a single service bin, `op`). Set to `1`, it is a BRRTRouter
+suite build.
+
+For each bin whose crate has `../gen/doc` beside the impl directory:
+
+- Keep that `gen/doc` and `../gen/static_site`. The repo does not list the
+  paths in `BP_RUST_KEEP`.
+- The process command is not bare `bin/<name>`. It is
+  `bin/<name> --spec <doc>/openapi.yaml --doc-dir <doc> --static-dir <static> --config /app/config/config.yaml`.
+- The chart keeps mounting the ConfigMap at `/app/config` and still sets no
+  `command`. The CNB launcher is the entrypoint. The default process carries
+  the four flags.
+
+A bin with no `gen/doc` (an ingestor) stays `bin/<name>` with no flags. The
+worker chart also sets no command, so that default process is what starts.
+
+`op` publishes after that one compile. The GitHub workflow does not grow a
+matrix leg per service. detect-contexts turns each `skaffold.yaml` artifact
+into a job, so the suite is **one** artifact with `BP_RUST_BRRTROUTER=1`.
+That job compiles the workspace once. `op` then pushes one image per line of
+`.rust-binaries`: that binary, its kept spec and static site, and that
+process command. The fan-out is publish calls, not runners. Flux still has
+one repository per HelmRelease. The buildpack does not publish N images.
+The lifecycle exports one build. `op` slices it.
+
+Portals and `db-init` stay Dockerfiles. They are not Rust suite bins.
+`pet_store` does not set the argument. It keeps today's `BP_RUST_KEEP` and
+`bin/pet_store`.
+
+The Dockerfiles under `docker/microservices/` and `docker/workers/` are the
+bootstrap that publishes an image before this argument exists. They compile
+the workspace once per service. The argument replaces them for services and
+workers. It does not replace Tilt.
+
+### Dependency cook, then one pull
+
+The screenshot of one Integration job per service is a cold `cargo build`
+per image. Retiring that matrix is what stops the repeated compiles. The
+cache does not. After the move, one suite job compiles, and the publish
+fan-out copies binaries. Those publishes do not run cargo and do not pull
+the cache.
+
+What still has to be fast is the next suite run, on a fresh runner. That
+runner pulls one cache image, once.
+
+`octopilot/rust` already writes two `cache = true` layers: the toolchain
+(`CARGO_HOME`) and `CARGO_TARGET_DIR` (`rust-target`). `op` exports and
+restores them as `ghcr.io/<owner>/pricewhisperer-suite-buildcache` when
+`OP_CACHE_IMAGE` is set. The pipeline already sets that for an image
+artifact. `cargo-sweep` drops artifacts the current build did not touch, so
+the image stays the size of one workspace compile. No new registry and no
+cache job in front of the matrix. There is no matrix.
+
+The cook fills that layer with dependency rlibs before the product crates
+compile, and only when the lockfile changed. Do not check in a second
+`Cargo.toml`. Generate the cook inputs from the locked workspace at the
+start of the buildpack run:
+
+1. Stamp is `Cargo.lock` plus `rustc -vV` plus the release profile. If the
+   restored `rust-target` layer carries that stamp, skip the cook. Cargo's
+   incremental build recompiles only the crates whose sources changed.
+2. Otherwise copy the real workspace manifests and `Cargo.lock` into the
+   cache layer. Leave `[patch]`, `[profile.release]`, and every member
+   manifest as they are. Replace each member's sources with an empty
+   `lib.rs` or `fn main() {}`.
+3. `cargo build --release --locked --workspace` in that copy. Dependencies
+   compile. The product crates are empty, so they are cheap.
+4. The real build uses the same `CARGO_TARGET_DIR`, the same rustc, and the
+   same profile. Unchanged dependency rlibs are cache hits. The workspace
+   crates compile for real. Then stamp the layer.
+
+A flattened `Cargo.toml` that lists each third-party crate once is the same
+cook only if it is generated, not written by hand. `cargo metadata --locked
+--filter-platform <triple>` is already the deduplicated resolve. Each
+direct dependency is emitted with `=<exact version>`, the feature union
+from `resolve.nodes[].features`, the git `rev` when the source is git, and
+the workspace `[patch]` and `[profile.release]` copied verbatim. A list of
+crate names is not enough: `uuid` with and without `serde` are different
+rlibs, and a profile that does not match (`lto`, `codegen-units`) makes
+cargo ignore the cached files. The empty-member copy cannot drift from
+those, so it is the cook we build. The flattened file is the same data,
+harder to keep honest, and it does not get committed either way.
+
+The cook is a step inside the suite build, not a GitHub job that pushes a
+multi-gigabyte target directory for the suite job to pull again in the
+same workflow. That second transfer costs more than letting one `cargo
+build` compile dependencies and then the crates. The pull happens once, at
+the start of the next run, from `pricewhisperer-suite-buildcache`.
 
 ## What we add
 
@@ -240,8 +332,36 @@ match that. Target platforms for GCP are `linux/amd64` first.
 
 ### skaffold.yaml
 
-New, repo root of PriceWhisperer. This is the list detect-contexts reads.
-Illustrative, not the file to commit yet:
+The file detect-contexts reads. One artifact becomes one job. The Rust
+suite is a single buildpack artifact, not one artifact per HelmRelease.
+Portals and `db-init` stay a handful of docker artifacts. The per-service
+docker entries that are in the tree today are the bootstrap. They compile
+the workspace once per image and are what this argument retires.
+
+```yaml
+- image: ghcr.io/microscaler/pricewhisperer-suite
+  context: .
+  buildpacks:
+    builder: ghcr.io/octopilot/builder-jammy-base:rust-builder-d741287
+    buildpacks:
+      - docker://ghcr.io/octopilot/rust:0.1.16
+    env:
+      - BP_RUST_BRRTROUTER=1
+      - BP_RUST_WORKSPACE_DIR=microservices
+```
+
+The context is the repo, not `microservices/`. `pricewhisperer-econ` embeds
+`research/training/rules_v1.json` with `include_str!` from outside the
+workspace. A build that only copies `microservices/` cannot compile orders.
+The test-only market calendar fixture is under `deployment-configuration/`
+and is not in a release build.
+
+`suite-images.txt` maps each cargo bin to the HelmRelease image repository.
+`op` pushes the suite image, then one config-only image per line (same
+layers, entrypoint `/cnb/process/<bin>`). That is a publish, not a compile.
+The cache image is `pricewhisperer-suite-buildcache`, pulled once on the
+next run. The illustrative per-service blocks below are the retired
+bootstrap:
 
 ```yaml
 apiVersion: skaffold/v4beta11
@@ -406,26 +526,24 @@ the Dockerfiles.
    Sibling paths are `[workspace.metadata.local-deps]`, applied only when
    `PW_LOCAL_DEPS=1`. Commit a `Cargo.lock` generated with that flag unset
    before the first image build, so transitive crates stop floating.
-3. **One service proves the contract.** `docker/microservices/Dockerfile`
-   for `orders` only, one skaffold artifact, the workflow caller. The build
-   fetches the git revs. It does not mount sibling checkouts. Image starts
-   with the four-flag entrypoint and reads config from `/app/config`. Tilt
-   for orders is unchanged.
-4. **Portals and db-init.** website, trader, platform, db-init artifacts.
-   These Dockerfiles already exist. They only need the pipeline to find
-   them and pass `PORTAL`.
-5. **Remaining services and both BFFs.** Same Dockerfile, more artifacts.
-   Add trader-bff and platform-bff to the Tilt loop only if local dev is
-   still missing those images. That is independent of the release.
-6. **Workers.** `Dockerfile.release`, six artifacts.
-7. **Tag promotion.** Cut `v0.1.0` (or whatever the first product tag is).
+3. **`BP_RUST_BRRTROUTER=1`.** The existing Rust buildpack keeps `gen/doc`
+   and `gen/static_site` per impl crate and writes the four-flag process
+   command, including `--config /app/config/config.yaml`. One suite
+   artifact. `op` pushes one image per `.rust-binaries` line from that
+   job. Services and workers leave the per-image Dockerfiles. The same
+   build cooks dependencies into the existing `rust-target` cache layer
+   when `Cargo.lock` changes, and the next run pulls
+   `pricewhisperer-suite-buildcache` once. Publish does not compile.
+4. **Portals and db-init.** website, trader, platform, db-init stay docker
+   artifacts. A few jobs, not a matrix of crates.
+5. **Tag promotion.** Cut `v0.1.0` (or whatever the first product tag is).
    Confirm GHCR holds every image at that tag, digest-pinned from the
    ttl.sh build. No `:latest`.
-8. **Preprod profile.** New Flux profile, GHCR pull, image policies on the
+6. **Preprod profile.** New Flux profile, GHCR pull, image policies on the
    release tags. Prod is the same profile shape after preprod has run.
    sesame-idam in that cluster is deployed from the sesame-idam repo, at the
    commit the vendored spec names.
-9. **BRRTRouter pipeline.** Move its skaffold builder to
+7. **BRRTRouter pipeline.** Move its skaffold builder to
    `rust-builder-d741287`, keep pet_store and the two `-lib` artifacts, call
    `pipeline.yml@v1.0.0`. The PriceWhisperer `rev` for `brrtrouter` should be
    a commit that pipeline has already built.
@@ -433,7 +551,7 @@ the Dockerfiles.
 ## Out of the first release
 
 - Replacing Tilt, or making Tilt call the release Dockerfiles.
-- Building PriceWhisperer services with `octopilot/rust`.
+- A second builder image. `BP_RUST_BRRTROUTER` is an argument on `octopilot/rust`.
 - Publishing `pw-mock`, fte, disclosures, or the Helm chart as OCI.
 - armv7.
 - A Kind integration deploy of the whole product.
