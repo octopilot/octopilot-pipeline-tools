@@ -689,17 +689,22 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	return chartRef, nil
 }
 
-// isValidHelmChartRef reports whether ref has Helm OCI shape: registry/repo/chartname:version[@digest].
-// Invalid examples: ttl.sh/uuid-chart:1h@sha256:... (image-style, no chart name path segment).
+// isValidHelmChartRef reports whether ref is a pullable Helm OCI chart:
+// registry/repo/chartname:version[@digest]. helm push oci://registry/repo
+// stores the chart at registry/repo/<chart name>:<version>. A single path
+// segment (ttl.sh/<uuid>-chart:0.1.0) is only the prefix op handed helm, not
+// the chart location.
 func isValidHelmChartRef(ref string) bool {
 	beforeDigest := ref
 	if at := strings.Index(ref, "@"); at > 0 {
 		beforeDigest = ref[:at]
 	}
-	// Must contain at least one "/" and a ":" with ":" after the last "/" (repo/chartname:tag).
+	if strings.Count(beforeDigest, "/") < 2 {
+		return false
+	}
 	lastSlash := strings.LastIndex(beforeDigest, "/")
 	colon := strings.Index(beforeDigest, ":")
-	return lastSlash > 0 && colon > lastSlash
+	return colon > lastSlash
 }
 
 // extractDigestFromRef returns the digest part of ref (e.g. "sha256:...") or empty if none.
