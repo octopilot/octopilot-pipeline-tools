@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -447,14 +448,7 @@ var buildCmd = &cobra.Command{
 						// Without this, `docker build --push` via BuildKit produces an Index even
 						// for a single platform, breaking our manifest-list assembly below.
 						buildEnv := append(os.Environ(), "BUILDX_NO_DEFAULT_ATTESTATIONS=1")
-						buildArgs := []string{
-							"build",
-							"--platform", platform,
-							"--push",
-							"--tag", platformTag,
-							"--file", dockerfilePath,
-							contextDir,
-						}
+						buildArgs := dockerCLIArgs(art, platform, platformTag, dockerfilePath, contextDir)
 						buildCmd := exec.CommandContext(ctx, "docker", buildArgs...)
 						buildCmd.Stdout = os.Stdout
 						buildCmd.Stderr = os.Stderr
@@ -810,6 +804,39 @@ func writeBuildResult(builds []util.Build) error {
 		}
 	}
 	return nil
+}
+
+// dockerCLIArgs is the `docker build` argv for one platform. Skaffold
+// buildArgs become --build-arg. A GITHUB_TOKEN in the environment is passed
+// as a BuildKit secret named github_token so a Dockerfile can fetch private
+// git dependencies without writing the token into an image layer.
+func dockerCLIArgs(art *latest.Artifact, platform, tag, dockerfilePath, contextDir string) []string {
+	args := []string{
+		"build",
+		"--platform", platform,
+		"--push",
+		"--tag", tag,
+		"--file", dockerfilePath,
+	}
+	if art != nil && art.DockerArtifact != nil {
+		keys := make([]string, 0, len(art.DockerArtifact.BuildArgs))
+		for key := range art.DockerArtifact.BuildArgs {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			value := art.DockerArtifact.BuildArgs[key]
+			if value == nil {
+				continue
+			}
+			args = append(args, "--build-arg", key+"="+*value)
+		}
+	}
+	if os.Getenv("GITHUB_TOKEN") != "" {
+		args = append(args, "--secret", "id=github_token,env=GITHUB_TOKEN")
+	}
+	args = append(args, contextDir)
+	return args
 }
 
 func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptions {
