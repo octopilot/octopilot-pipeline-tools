@@ -395,6 +395,13 @@ var buildCmd = &cobra.Command{
 					if err != nil {
 						return err
 					}
+					// The caller's version (branch on main, v1.2.3 on tags) as an additional tag on the same manifest, so
+					// consumers can pin e.g. op:main. build_result.json keeps the digest-pinned primary reference.
+					if targetVersion != "" && targetVersion != pushTag && repo != ttlRegistry {
+						if err := tagAlias(fullTag, targetVersion, opts.InsecureRegistries); err != nil {
+							return err
+						}
+					}
 					built = append(built, util.Build{
 						ImageName: imageName,
 						Tag:       fullTagWithDigest,
@@ -463,6 +470,13 @@ var buildCmd = &cobra.Command{
 					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
 					if err != nil {
 						return err
+					}
+					// The caller's version (branch on main, v1.2.3 on tags) as an additional tag on the same manifest, so
+					// consumers can pin e.g. op:main. build_result.json keeps the digest-pinned primary reference.
+					if targetVersion != "" && targetVersion != pushTag && repo != ttlRegistry {
+						if err := tagAlias(fullTag, targetVersion, opts.InsecureRegistries); err != nil {
+							return err
+						}
 					}
 					built = append(built, util.Build{ImageName: art.ImageName, Tag: fullTagWithDigest})
 					builtImages[art.ImageName] = fullTagWithDigest
