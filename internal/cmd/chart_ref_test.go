@@ -45,3 +45,22 @@ func TestReadChartRefNormalisesImageStyleRef(t *testing.T) {
 		t.Errorf("readChartRef = %q, want %q", got, want)
 	}
 }
+
+func TestReadChartRefKeepsChartPath(t *testing.T) {
+	const digest = "sha256:deadbeef"
+	ws, out := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(ws, "Chart.yaml"), []byte("name: igniteflux\nversion: 0.1.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	want := "ttl.sh/uuid-chart/igniteflux:0.1.0@" + digest
+	if err := os.WriteFile(filepath.Join(out, "ref"), []byte(want+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readChartRef(out, "ttl.sh/uuid-chart:1d", ws, "chart")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Errorf("readChartRef = %q, want %q", got, want)
+	}
+}

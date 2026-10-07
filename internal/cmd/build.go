@@ -675,15 +675,15 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	return chartRef, nil
 }
 
-// isValidHelmChartRef reports whether ref has Helm OCI shape: registry/repo/<chartName>:version[@digest], i.e. its last
-// path segment is the chart name (helm push always appends it). Invalid: ttl.sh/uuid-chart:0.1.0@sha256:... (image-style;
-// it has a slash and a tag, but the repository Helm pushed to is ttl.sh/uuid-chart/<chartName>).
+// isValidHelmChartRef reports whether ref is registry/repo/<chartName>:version[@digest].
+// helm push oci://registry/repo stores the chart at registry/repo/<chart name>:<version>.
+// A ref whose last path segment is not the chart name (ttl.sh/<uuid>-chart:0.1.0, or
+// ghcr.io/octopilot/igniteflux-chart:0.1.0) is only the prefix op handed helm.
 func isValidHelmChartRef(ref, chartName string) bool {
 	beforeDigest := ref
 	if at := strings.Index(ref, "@"); at > 0 {
 		beforeDigest = ref[:at]
 	}
-	// Must contain at least one "/" and a ":" with ":" after the last "/" (repo/chartname:tag).
 	lastSlash := strings.LastIndex(beforeDigest, "/")
 	colon := strings.LastIndex(beforeDigest, ":")
 	if lastSlash <= 0 || colon <= lastSlash {
