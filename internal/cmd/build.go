@@ -670,7 +670,7 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	refBytes, err := os.ReadFile(refPath)
 	if err == nil {
 		ref := strings.TrimSpace(string(refBytes))
-		if isValidHelmChartRef(ref) {
+		if isValidHelmChartRef(ref, chartName) {
 			return ref, nil
 		}
 		// Buildpack wrote an invalid (image-style) ref; normalize to repo/chartname:version@digest.
@@ -689,22 +689,21 @@ func readChartRef(helmOutDir, fullTag, workspaceDir, imageName string) (string, 
 	return chartRef, nil
 }
 
-// isValidHelmChartRef reports whether ref is a pullable Helm OCI chart:
-// registry/repo/chartname:version[@digest]. helm push oci://registry/repo
-// stores the chart at registry/repo/<chart name>:<version>. A single path
-// segment (ttl.sh/<uuid>-chart:0.1.0) is only the prefix op handed helm, not
-// the chart location.
-func isValidHelmChartRef(ref string) bool {
+// isValidHelmChartRef reports whether ref is registry/repo/<chartName>:version[@digest].
+// helm push oci://registry/repo stores the chart at registry/repo/<chart name>:<version>.
+// A ref whose last path segment is not the chart name (ttl.sh/<uuid>-chart:0.1.0, or
+// ghcr.io/octopilot/igniteflux-chart:0.1.0) is only the prefix op handed helm.
+func isValidHelmChartRef(ref, chartName string) bool {
 	beforeDigest := ref
 	if at := strings.Index(ref, "@"); at > 0 {
 		beforeDigest = ref[:at]
 	}
-	if strings.Count(beforeDigest, "/") < 2 {
+	lastSlash := strings.LastIndex(beforeDigest, "/")
+	colon := strings.LastIndex(beforeDigest, ":")
+	if lastSlash <= 0 || colon <= lastSlash {
 		return false
 	}
-	lastSlash := strings.LastIndex(beforeDigest, "/")
-	colon := strings.Index(beforeDigest, ":")
-	return colon > lastSlash
+	return beforeDigest[lastSlash+1:colon] == chartName
 }
 
 // extractDigestFromRef returns the digest part of ref (e.g. "sha256:...") or empty if none.
