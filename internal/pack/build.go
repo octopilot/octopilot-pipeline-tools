@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/octopilot/octopilot-pipeline-tools/internal/util"
 )
 
 // BuildOptions mimics the options we need for `pack build --publish`
@@ -36,7 +37,9 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 	if os.Getenv("OP_DEBUG") == "true" {
 		logger.WantVerbose(true)
 	}
-	packClient, err := client.NewClient(client.WithLogger(logger))
+	// util.Keychain adds Google credentials (Workload Identity) to the docker config, so the lifecycle's
+	// CNB_REGISTRY_AUTH covers Artifact Registry builders, run images and cache images too.
+	packClient, err := client.NewClient(client.WithLogger(logger), client.WithKeychain(util.Keychain))
 	if err != nil {
 		return fmt.Errorf("failed to create pack client: %w", err)
 	}

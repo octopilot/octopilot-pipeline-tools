@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -57,7 +56,7 @@ func platformTag(fullTag, platform string, platformCount int) string {
 }
 
 func remoteOptionsFor(tag string, insecureRegistries []string) []remote.Option {
-	opts := []remote.Option{remote.WithAuthFromKeychain(authn.DefaultKeychain)}
+	opts := []remote.Option{remote.WithAuthFromKeychain(util.Keychain)}
 	for _, reg := range insecureRegistries {
 		if strings.HasPrefix(tag, reg) {
 			opts = append(opts, remote.WithTransport(&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}))
