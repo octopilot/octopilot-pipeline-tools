@@ -99,8 +99,11 @@ op build --repo ghcr.io/my-org --push --platform linux/amd64,linux/arm64
 | `--filename` / `-f` | Path to `skaffold.yaml` (default: `skaffold.yaml` in cwd). |
 | `--sbom-output` | Directory for generated SBOMs. |
 | `--propagation-timeout` | How long to wait for registry image availability after push (default `3m`). |
+| `--image-registry` | Pull buildpack builders and run images through this registry, keeping their repository path (`ghcr.io/x/y:t` → `<registry>/x/y:t`, `ubuntu:jammy` → `<registry>/library/ubuntu:jammy`). Images the config builds, localhost and ttl.sh are never rewritten. Dockerfile builds get it as `--build-arg OP_IMAGE_REGISTRY`. Default `$OP_IMAGE_REGISTRY`; unset, images are pulled as written. |
 
-**Environment variables**: `SKAFFOLD_DEFAULT_REPO`, `DOCKER_METADATA_OUTPUT_VERSION`, `SKAFFOLD_PROFILE`, `SKAFFOLD_LABEL`, `SKAFFOLD_NAMESPACE`.
+**Registry auth**: the docker config (`DOCKER_CONFIG`, credential helpers), then Google credentials (Workload Identity, metadata server, `GOOGLE_APPLICATION_CREDENTIALS`) for `gcr.io` and `*.pkg.dev`, so Artifact Registry works inside the op container without a credential helper.
+
+**Environment variables**: `OP_IMAGE_REGISTRY`, `SKAFFOLD_DEFAULT_REPO`, `DOCKER_METADATA_OUTPUT_VERSION`, `SKAFFOLD_PROFILE`, `SKAFFOLD_LABEL`, `SKAFFOLD_NAMESPACE`.
 
 ---
 

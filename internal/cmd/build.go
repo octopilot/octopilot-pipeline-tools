@@ -25,7 +25,6 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/octopilot/octopilot-pipeline-tools/internal/pack"
@@ -123,6 +122,17 @@ var buildCmd = &cobra.Command{
 			return fmt.Errorf("error creating run context: %w", err)
 		}
 
+		// Where builders and run images are pulled from (--image-registry, else OP_IMAGE_REGISTRY; empty = as written).
+		// Every artifact in the config counts as ours, including ones another job builds, so they are never rewritten.
+		imageRegistry, _ := cmd.Flags().GetString("image-registry")
+		if imageRegistry == "" {
+			imageRegistry = os.Getenv(util.ImageRegistryEnv)
+		}
+		images := util.NewImageSource(imageRegistry, artifactImageNames(runCtx.Artifacts()))
+		if images.Registry() != "" {
+			fmt.Printf("Pulling builders and run images through %s\n", images.Registry())
+		}
+
 		// Optional: filter to a single artifact (for matrix/fan-out integration builds)
 		artifactsToRun := runCtx.Artifacts()
 		if onlyArtifact, _ := cmd.Flags().GetString("artifact"); onlyArtifact != "" {
@@ -206,6 +216,11 @@ var buildCmd = &cobra.Command{
 
 					fmt.Printf("Building artifact %s -> %s\n", imageName, fullTag)
 
+					builder := images.Resolve(art.BuildpackArtifact.Builder)
+					if builder != art.BuildpackArtifact.Builder {
+						fmt.Printf("Builder %s pulled as %s\n", art.BuildpackArtifact.Builder, builder)
+					}
+
 					// Chart artifacts (image name ends with "-chart"): run only the helm buildpack inside
 					// the builder (no pack, no run image). The buildpack pushes the Helm OCI chart and
 					// writes the ref to BP_HELM_OCI_OUTPUT; we consume that and never build a container image.
@@ -282,7 +297,7 @@ var buildCmd = &cobra.Command{
 							}
 						}
 
-						if err := runChartBuildInBuilder(ctx, art.BuildpackArtifact.Builder, workspacePath, layersDirHost, helmOutDirHost, chartEnv); err != nil {
+						if err := runChartBuildInBuilder(ctx, builder, workspacePath, layersDirHost, helmOutDirHost, chartEnv); err != nil {
 							return fmt.Errorf("chart build (helm buildpack in builder) failed for %s: %w", imageName, err)
 						}
 
@@ -304,6 +319,20 @@ var buildCmd = &cobra.Command{
 					if resolved, ok := builtImages[runImage]; ok {
 						fmt.Printf("Resolving runImage %s to built artifact %s\n", runImage, resolved)
 						runImage = resolved
+					} else {
+						if runImage == "" && images.Registry() != "" {
+							// pack would pull the builder's default run image from its own registry; name it so it can be
+							// pulled through the configured registry too.
+							if def, err := builderRunImageLookup(builder, opts.InsecureRegistries); err != nil {
+								fmt.Printf("Warning: default run image of %s not read (%v); pack uses the builder's own\n", builder, err)
+							} else {
+								runImage = def
+							}
+						}
+						if pulled := images.Resolve(runImage); pulled != runImage {
+							fmt.Printf("Run image %s pulled as %s\n", runImage, pulled)
+							runImage = pulled
+						}
 					}
 
 					// Construct env
@@ -374,7 +403,7 @@ var buildCmd = &cobra.Command{
 
 						po := pack.BuildOptions{
 							ImageName:  packImageName,
-							Builder:    art.BuildpackArtifact.Builder,
+							Builder:    builder,
 							Path:       filepath.Join(cwd, art.Workspace),
 							Publish:    true,
 							RunImage:   packRunImage,
@@ -465,7 +494,7 @@ var buildCmd = &cobra.Command{
 						// Without this, `docker build --push` via BuildKit produces an Index even
 						// for a single platform, breaking our manifest-list assembly below.
 						buildEnv := append(os.Environ(), "BUILDX_NO_DEFAULT_ATTESTATIONS=1")
-						buildArgs := dockerCLIArgs(art, platform, platformTag, dockerfilePath, contextDir)
+						buildArgs := dockerCLIArgs(art, platform, platformTag, dockerfilePath, contextDir, images.Registry())
 						buildCmd := exec.CommandContext(ctx, "docker", buildArgs...)
 						buildCmd.Stdout = os.Stdout
 						buildCmd.Stderr = os.Stderr
@@ -511,7 +540,7 @@ var buildCmd = &cobra.Command{
 						builtImages[ba.ImageName] = ba.Tag
 
 						singleRemoteOpts := []remote.Option{
-							remote.WithAuthFromKeychain(authn.DefaultKeychain),
+							remote.WithAuthFromKeychain(util.Keychain),
 						}
 						for _, reg := range opts.InsecureRegistries {
 							if strings.HasPrefix(ba.Tag, reg) {
@@ -823,11 +852,33 @@ func writeBuildResult(builds []util.Build) error {
 	return nil
 }
 
+// builderRunImageLookup reads a builder's default run image from its metadata label in the registry. A variable so
+// tests can stub the registry.
+var builderRunImageLookup = func(builder string, insecureRegistries []string) (string, error) {
+	ref, err := name.ParseReference(builder, name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	img, err := remote.Image(ref, remoteOptionsFor(builder, insecureRegistries)...)
+	if err != nil {
+		return "", err
+	}
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		return "", err
+	}
+	return util.BuilderRunImage(cfg.Config.Labels[util.BuilderMetadataLabel])
+}
+
 // dockerCLIArgs is the `docker build` argv for one platform. Skaffold
 // buildArgs become --build-arg. A GITHUB_TOKEN in the environment is passed
 // as a BuildKit secret named github_token so a Dockerfile can fetch private
 // git dependencies without writing the token into an image layer.
-func dockerCLIArgs(art *latest.Artifact, platform, tag, dockerfilePath, contextDir string) []string {
+//
+// imageRegistry (--image-registry) is offered as the build arg OP_IMAGE_REGISTRY
+// unless skaffold already sets it. op cannot rewrite FROM lines; a Dockerfile
+// opts in with `ARG OP_IMAGE_REGISTRY=docker.io` and `FROM ${OP_IMAGE_REGISTRY}/library/ubuntu:jammy`.
+func dockerCLIArgs(art *latest.Artifact, platform, tag, dockerfilePath, contextDir, imageRegistry string) []string {
 	args := []string{
 		"build",
 		"--platform", platform,
@@ -847,6 +898,11 @@ func dockerCLIArgs(art *latest.Artifact, platform, tag, dockerfilePath, contextD
 				continue
 			}
 			args = append(args, "--build-arg", key+"="+*value)
+		}
+	}
+	if imageRegistry != "" {
+		if art == nil || art.DockerArtifact == nil || art.DockerArtifact.BuildArgs[util.ImageRegistryEnv] == nil {
+			args = append(args, "--build-arg", util.ImageRegistryEnv+"="+imageRegistry)
 		}
 	}
 	if os.Getenv("GITHUB_TOKEN") != "" {
@@ -951,6 +1007,7 @@ func init() {
 	buildCmd.Flags().StringSlice("from-build-result", nil, "build_result.json file(s) from earlier builds; their images satisfy runImage references from this build (repeatable)")
 	buildCmd.Flags().StringSlice("run-image-override", nil, "name=ref: use ref for a buildpack runImage that names artifact <name> (repeatable)")
 	buildCmd.Flags().String("tag", "latest", "Tag for --repo pushes (release jobs re-tag by version themselves)")
+	buildCmd.Flags().String("image-registry", "", "Pull buildpack builders and run images through this registry, keeping their repository path (e.g. us-docker.pkg.dev/<project>/<mirror>: ghcr.io/x/y:t -> <registry>/x/y:t, ubuntu:jammy -> <registry>/library/ubuntu:jammy). Images this config builds are never rewritten. Default: $OP_IMAGE_REGISTRY, else images are pulled as written. Dockerfile builds receive it as --build-arg OP_IMAGE_REGISTRY")
 	buildCmd.Flags().String("artifact", "", "Build only this artifact (exact image name from skaffold, e.g. ghcr.io/org/myimage)")
 	buildCmd.Flags().String("insecure-registry", "", "Registry host(s) to treat as insecure (self-signed TLS or HTTP). Comma-separated (e.g. localhost:5001,myreg:5000). Also set via SKAFFOLD_INSECURE_REGISTRY or SKAFFOLD_INSECURE_REGISTRIES.")
 	buildCmd.Flags().String("platform", "", "Target platforms (e.g. linux/amd64,linux/arm64)")
