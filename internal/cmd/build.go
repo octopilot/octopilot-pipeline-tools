@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -630,6 +631,16 @@ func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, la
 	// Ignore pull errors (e.g. image already present or no network); ContainerCreate will fail with a clear error if missing.
 
 	envSlice := []string{"CNB_BUILD_DIR=/workspace", "CNB_LAYERS_DIR=/layers"}
+	// Registry credentials for helm push (copied in after create; never in env or a bind mount).
+	var authTar []byte
+	if raw, err := os.ReadFile(hostDockerConfigPath()); err == nil {
+		if cfgJSON := chartAuthConfig(raw); cfgJSON != nil {
+			if authTar, err = chartAuthTar(cfgJSON); err != nil {
+				return fmt.Errorf("helm buildpack in builder: registry auth: %w", err)
+			}
+			envSlice = append(envSlice, "DOCKER_CONFIG="+chartDockerConfigDir)
+		}
+	}
 	for k, v := range env {
 		envSlice = append(envSlice, k+"="+v)
 	}
@@ -657,6 +668,12 @@ func runChartBuildInBuilder(ctx context.Context, builderImage, workspacePath, la
 	createResp, err := cli.ContainerCreate(ctx, cfg, hostCfg, nil, nil, "")
 	if err != nil {
 		return fmt.Errorf("helm buildpack in builder: create container: %w", err)
+	}
+	if authTar != nil {
+		if err := cli.CopyToContainer(ctx, createResp.ID, "/tmp", bytes.NewReader(authTar), container.CopyToContainerOptions{}); err != nil {
+			_ = cli.ContainerRemove(ctx, createResp.ID, container.RemoveOptions{Force: true})
+			return fmt.Errorf("helm buildpack in builder: copy registry auth: %w", err)
+		}
 	}
 	if err := cli.ContainerStart(ctx, createResp.ID, container.StartOptions{}); err != nil {
 		return fmt.Errorf("helm buildpack in builder: start container: %w", err)
