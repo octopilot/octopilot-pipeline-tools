@@ -67,9 +67,10 @@ func imageWithEntrypoint(img v1.Image, bin string) (v1.Image, error) {
 	return mutate.Config(img, cfg)
 }
 
-// fanoutSuite publishes one image per suite-images.txt line. Each image is
-// the suite image with a different entrypoint, so the compile happens once
-// and the publish does not run cargo.
+// fanoutSuite publishes one image per suite-images.txt line: the suite image
+// with an app layer holding only that binary (suite_slim.go) and its process
+// as the entrypoint. The compile happens once and the publish does not run
+// cargo.
 func fanoutSuite(workspace, suiteRef, repo, tag, ttlUUID string, insecure []string, propagation time.Duration) ([]util.Build, error) {
 	mapPath := filepath.Join(workspace, "suite-images.txt")
 	images, err := parseSuiteImages(mapPath)
@@ -92,13 +93,30 @@ func fanoutSuite(workspace, suiteRef, repo, tag, ttlUUID string, insecure []stri
 	if err != nil {
 		return nil, fmt.Errorf("reading suite image %s: %w", suiteRef, err)
 	}
+	slim, err := newSlimSuite(base)
+	if err != nil {
+		return nil, fmt.Errorf("suite image %s: %w", suiteRef, err)
+	}
+	if slim != nil {
+		defer slim.Close()
+	}
 	var built []util.Build
 	for _, item := range images {
 		dest, err := pushTarget(item.Image, repo, tag, ttlUUID, imageBasename(item.Image))
 		if err != nil {
 			return nil, err
 		}
-		img, err := imageWithEntrypoint(base, item.Bin)
+		var img v1.Image
+		if slim != nil {
+			var dropped int64
+			img, dropped, err = slim.image(item.Bin)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Printf("Suite fan-out %s: the other binaries left out (%.1f MiB)\n", item.Bin, float64(dropped)/(1<<20))
+		} else {
+			img, err = imageWithEntrypoint(base, item.Bin)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("entrypoint for %s: %w", item.Bin, err)
 		}
