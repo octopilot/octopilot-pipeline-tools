@@ -67,12 +67,25 @@ func imageWithEntrypoint(img v1.Image, bin string) (v1.Image, error) {
 	return mutate.Config(img, cfg)
 }
 
-// fanoutSuite publishes one image per suite-images.txt line: the suite image
-// with an app layer holding only that binary (suite_slim.go) and its process
-// as the entrypoint. The compile happens once and the publish does not run
-// cargo.
-func fanoutSuite(workspace, suiteRef, repo, tag, ttlUUID string, insecure []string, propagation time.Duration) ([]util.Build, error) {
-	mapPath := filepath.Join(workspace, "suite-images.txt")
+// suiteImagesPath is the fan-out map for a suite build: BP_SUITE_IMAGES
+// (relative to the artifact's context) when the artifact names one, so
+// several suites in one repository each publish their own services, else
+// suite-images.txt at the context root.
+func suiteImagesPath(workspace string, env map[string]string) string {
+	if p := strings.TrimSpace(env["BP_SUITE_IMAGES"]); p != "" {
+		if filepath.IsAbs(p) {
+			return p
+		}
+		return filepath.Join(workspace, p)
+	}
+	return filepath.Join(workspace, "suite-images.txt")
+}
+
+// fanoutSuite publishes one image per line of the suite's map
+// (suiteImagesPath): the suite image with an app layer holding only that
+// binary (suite_slim.go) and its process as the entrypoint. The compile
+// happens once and the publish does not run cargo.
+func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, insecure []string, propagation time.Duration) ([]util.Build, error) {
 	images, err := parseSuiteImages(mapPath)
 	if err != nil {
 		return nil, err

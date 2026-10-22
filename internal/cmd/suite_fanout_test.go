@@ -51,3 +51,16 @@ func TestImageBasename(t *testing.T) {
 	assert.Equal(t, "pricewhisperer-orders", imageBasename("ghcr.io/microscaler/pricewhisperer-orders"))
 	assert.Equal(t, "pricewhisperer-orders", imageBasename("ghcr.io/microscaler/pricewhisperer-orders:1.2.3"))
 }
+
+func TestSuiteImagesPathFollowsBPSuiteImages(t *testing.T) {
+	ws := "/repo"
+	if got := suiteImagesPath(ws, map[string]string{}); got != "/repo/suite-images.txt" {
+		t.Fatalf("default: got %s", got)
+	}
+	if got := suiteImagesPath(ws, map[string]string{"BP_SUITE_IMAGES": "suites/crm.txt"}); got != "/repo/suites/crm.txt" {
+		t.Fatalf("relative: got %s", got)
+	}
+	if got := suiteImagesPath(ws, map[string]string{"BP_SUITE_IMAGES": " /abs/a.txt "}); got != "/abs/a.txt" {
+		t.Fatalf("absolute: got %s", got)
+	}
+}
