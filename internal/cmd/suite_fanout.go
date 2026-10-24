@@ -81,15 +81,42 @@ func suiteImagesPath(workspace string, env map[string]string) string {
 	return filepath.Join(workspace, "suite-images.txt")
 }
 
+// suiteVariants is the binary variants a suite was built with: BP_RUST_VARIANTS=true makes the Rust buildpack ship
+// every bin as <bin>-debug (release-optimised, full debug info) and <bin>-release (debug info stripped).
+func suiteVariants(env map[string]string) []string {
+	switch strings.ToLower(strings.TrimSpace(env["BP_RUST_VARIANTS"])) {
+	case "true", "1", "yes":
+		return []string{"debug", "release"}
+	}
+	return nil
+}
+
+// expandVariants turns each map line into one line per variant: bin <bin>-<v> published as <image>-<v>. Without
+// variants the map is returned as is.
+func expandVariants(images []suiteImage, variants []string) []suiteImage {
+	if len(variants) == 0 {
+		return images
+	}
+	out := make([]suiteImage, 0, len(images)*len(variants))
+	for _, item := range images {
+		for _, v := range variants {
+			out = append(out, suiteImage{Bin: item.Bin + "-" + v, Image: item.Image + "-" + v})
+		}
+	}
+	return out
+}
+
 // fanoutSuite publishes one image per line of the suite's map
 // (suiteImagesPath): the suite image with an app layer holding only that
 // binary (suite_slim.go) and its process as the entrypoint. The compile
-// happens once and the publish does not run cargo.
-func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, insecure []string, propagation time.Duration) ([]util.Build, error) {
+// happens once and the publish does not run cargo. With variants (suiteVariants) each line publishes one image per
+// variant, <image>-debug and <image>-release.
+func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, variants []string, insecure []string, propagation time.Duration) ([]util.Build, error) {
 	images, err := parseSuiteImages(mapPath)
 	if err != nil {
 		return nil, err
 	}
+	images = expandVariants(images, variants)
 	srcRef, err := parseReferenceForRemote(suiteRef, insecure)
 	if err != nil {
 		return nil, fmt.Errorf("parsing suite image %s: %w", suiteRef, err)

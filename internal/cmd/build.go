@@ -448,7 +448,7 @@ var buildCmd = &cobra.Command{
 					builtImages[imageName] = fullTagWithDigest
 
 					if packEnv["BP_RUST_BRRTROUTER"] == "1" {
-						slices, err := fanoutSuite(suiteImagesPath(filepath.Join(cwd, art.Workspace), packEnv), fullTagWithDigest, repo, pushTag, ttlUUID, opts.InsecureRegistries, propagation)
+						slices, err := fanoutSuite(suiteImagesPath(filepath.Join(cwd, art.Workspace), packEnv), fullTagWithDigest, repo, pushTag, ttlUUID, suiteVariants(packEnv), opts.InsecureRegistries, propagation)
 						if err != nil {
 							return fmt.Errorf("suite fan-out for %s: %w", imageName, err)
 						}
