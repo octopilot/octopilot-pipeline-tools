@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/v1/random"
@@ -63,4 +64,39 @@ func TestSuiteImagesPathFollowsBPSuiteImages(t *testing.T) {
 	if got := suiteImagesPath(ws, map[string]string{"BP_SUITE_IMAGES": " /abs/a.txt "}); got != "/abs/a.txt" {
 		t.Fatalf("absolute: got %s", got)
 	}
+}
+
+func TestSuiteVariantsFollowsBPRustVariants(t *testing.T) {
+	if v := suiteVariants(map[string]string{}); v != nil {
+		t.Fatalf("unset: %v", v)
+	}
+	if v := suiteVariants(map[string]string{"BP_RUST_VARIANTS": "false"}); v != nil {
+		t.Fatalf("false: %v", v)
+	}
+	if v := suiteVariants(map[string]string{"BP_RUST_VARIANTS": "True"}); !reflect.DeepEqual(v, []string{"debug", "release"}) {
+		t.Fatalf("true: %v", v)
+	}
+}
+
+func TestExpandVariantsPublishesEachBinPerVariant(t *testing.T) {
+	in := []suiteImage{{Bin: "news", Image: "ghcr.io/o/pricewhisperer-news"}, {Bin: "social_worker", Image: "ghcr.io/o/pw-social"}}
+	if got := expandVariants(in, nil); !reflect.DeepEqual(got, in) {
+		t.Fatalf("no variants changed the map: %v", got)
+	}
+	want := []suiteImage{
+		{Bin: "news-debug", Image: "ghcr.io/o/pricewhisperer-news-debug"},
+		{Bin: "news-release", Image: "ghcr.io/o/pricewhisperer-news-release"},
+		{Bin: "social_worker-debug", Image: "ghcr.io/o/pw-social-debug"},
+		{Bin: "social_worker-release", Image: "ghcr.io/o/pw-social-release"},
+	}
+	if got := expandVariants(in, []string{"debug", "release"}); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestAVariantKeepsOnlyItsOwnBinary(t *testing.T) {
+	assert.False(t, isOtherBinary("workspace/bin/news-debug", "news-debug"))
+	assert.True(t, isOtherBinary("workspace/bin/news-release", "news-debug"))
+	assert.True(t, isOtherBinary("workspace/bin/news", "news-debug"))
+	assert.True(t, isOtherBinary("workspace/bin/news-debug", "news"))
 }
