@@ -58,6 +58,7 @@ var buildCmd = &cobra.Command{
 	Short: "Build with Skaffold. Use 'op build' for full build.",
 	Long:  `Build with Skaffold. Wraps 'skaffold build' using the Go library.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		util.ReportGoogleCredentials(context.Background())
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("error getting cwd: %w", err)

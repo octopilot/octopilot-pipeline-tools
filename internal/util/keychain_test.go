@@ -1,7 +1,10 @@
 package util
 
 import (
+	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -44,5 +47,31 @@ func TestKeychainOrderFollowsGoogleApplicationCredentials(t *testing.T) {
 	kc, ok = keychainFor("/tmp/gcp-credentials.json").(fallbackKeychain)
 	if !ok || len(kc) != 2 || kc[1] != authn.DefaultKeychain {
 		t.Errorf("GOOGLE_APPLICATION_CREDENTIALS set: want Google credentials first, got %#v", kc)
+	}
+}
+
+func TestReportGoogleCredentials(t *testing.T) {
+	old := newGoogleEnvAuthenticator
+	t.Cleanup(func() { newGoogleEnvAuthenticator = old })
+	calls := 0
+	newGoogleEnvAuthenticator = func(context.Context) (authn.Authenticator, error) {
+		calls++
+		return nil, errors.New("sts: invalid_grant")
+	}
+
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+	ReportGoogleCredentials(context.Background())
+	if calls != 0 {
+		t.Fatalf("no GOOGLE_APPLICATION_CREDENTIALS: no token should be minted")
+	}
+
+	path := filepath.Join(t.TempDir(), "creds.json")
+	if err := os.WriteFile(path, []byte(`{"type":"external_account"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", path)
+	ReportGoogleCredentials(context.Background()) // a failure is reported, not fatal
+	if calls != 1 {
+		t.Fatalf("want one token attempt, got %d", calls)
 	}
 }

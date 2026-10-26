@@ -1,6 +1,9 @@
 package util
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
@@ -52,4 +55,35 @@ func (k fallbackKeychain) Resolve(target authn.Resource) (authn.Authenticator, e
 		return nil, firstErr
 	}
 	return authn.Anonymous, nil
+}
+
+// newGoogleEnvAuthenticator is google.NewEnvAuthenticator; a variable for tests.
+var newGoogleEnvAuthenticator = google.NewEnvAuthenticator
+
+// ReportGoogleCredentials says, when GOOGLE_APPLICATION_CREDENTIALS is set, whether a token can be minted from it.
+// Keychain falls back to the docker config silently when it cannot, which would hide a broken credential
+// configuration until the docker login's token expired an hour later. Never prints the token.
+func ReportGoogleCredentials(ctx context.Context) {
+	path := strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	if path == "" {
+		return
+	}
+	kind := "unreadable"
+	if raw, err := os.ReadFile(path); err == nil {
+		var f struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(raw, &f) == nil && f.Type != "" {
+			kind = f.Type
+		}
+	}
+	auth, err := newGoogleEnvAuthenticator(ctx)
+	if err == nil {
+		_, err = auth.Authorization()
+	}
+	if err != nil {
+		fmt.Printf("warning: registry auth: GOOGLE_APPLICATION_CREDENTIALS (%s) gives no token: %v; Google registries fall back to the docker config\n", kind, err)
+		return
+	}
+	fmt.Printf("Registry auth: Google registries use GOOGLE_APPLICATION_CREDENTIALS (%s): token minted, refreshed when it expires\n", kind)
 }
