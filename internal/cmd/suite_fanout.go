@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -111,7 +112,12 @@ func expandVariants(images []suiteImage, variants []string) []suiteImage {
 // binary (suite_slim.go) and its process as the entrypoint. The compile
 // happens once and the publish does not run cargo. With variants (suiteVariants) each line publishes one image per
 // variant, <image>-debug and <image>-release.
-func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, variants []string, insecure []string, propagation time.Duration) ([]util.Build, error) {
+//
+// Up to parallel images are slimmed and pushed at once (fewer than 1 means 1): each push is mostly the one slim app
+// layer (the other layers are mounted from the suite), so one at a time left the uplink and the CPU idle between
+// layers, and ~60 variant images took ~40 minutes. The result keeps the map's order whatever order the pushes finish
+// in, and the first failure stops images not yet started.
+func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, variants []string, insecure []string, propagation time.Duration, parallel int) ([]util.Build, error) {
 	images, err := parseSuiteImages(mapPath)
 	if err != nil {
 		return nil, err
@@ -140,47 +146,111 @@ func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, variants []string
 	if slim != nil {
 		defer slim.Close()
 	}
-	var built []util.Build
-	for _, item := range images {
-		dest, err := pushTarget(item.Image, repo, tag, ttlUUID, imageBasename(item.Image))
-		if err != nil {
-			return nil, err
-		}
-		var img v1.Image
-		if slim != nil {
-			var dropped int64
-			img, dropped, err = slim.image(item.Bin)
-			if err != nil {
-				return nil, err
-			}
-			fmt.Printf("Suite fan-out %s: the other binaries left out (%.1f MiB)\n", item.Bin, float64(dropped)/(1<<20))
-		} else {
-			img, err = imageWithEntrypoint(base, item.Bin)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("entrypoint for %s: %w", item.Bin, err)
-		}
-		destRef, err := parseReferenceForRemote(dest, insecure)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", dest, err)
-		}
-		fmt.Printf("Suite fan-out %s -> %s\n", item.Bin, dest)
-		if err := remote.Write(destRef, img, remoteOptionsFor(dest, insecure)...); err != nil {
-			return nil, fmt.Errorf("pushing %s: %w", dest, err)
-		}
-		if err := waitForImage(dest, propagation, insecure, remoteOptionsFor(dest, insecure)...); err != nil {
-			return nil, err
-		}
-		head, err := remote.Head(destRef, remoteOptionsFor(dest, insecure)...)
-		if err != nil {
-			return nil, fmt.Errorf("digest for %s: %w", dest, err)
-		}
-		built = append(built, util.Build{
-			ImageName: item.Image,
-			Tag:       fmt.Sprintf("%s@%s", dest, head.Digest),
-		})
+	publish := func(item suiteImage) (util.Build, error) {
+		return publishSuiteImage(item, base, slim, repo, tag, ttlUUID, insecure, propagation)
 	}
-	return built, nil
+	return fanoutEach(images, parallel, publish)
+}
+
+// fanoutEach runs publish for every image with at most parallel running at once and returns the results in the
+// images' order. After the first error no further image is started; the error of the earliest failed image in map
+// order is returned, once the pushes already running have finished.
+func fanoutEach(images []suiteImage, parallel int, publish func(suiteImage) (util.Build, error)) ([]util.Build, error) {
+	if parallel < 1 {
+		parallel = 1
+	}
+	if parallel > len(images) {
+		parallel = len(images)
+	}
+	start := time.Now()
+	fmt.Printf("Suite fan-out: %d images, %d at a time\n", len(images), parallel)
+	results := make([]util.Build, len(images))
+	errs := make([]error, len(images))
+	var (
+		mu     sync.Mutex
+		failed bool
+		wg     sync.WaitGroup
+	)
+	sem := make(chan struct{}, parallel)
+	for i, item := range images {
+		sem <- struct{}{}
+		mu.Lock()
+		stop := failed
+		mu.Unlock()
+		if stop {
+			<-sem
+			break
+		}
+		wg.Add(1)
+		go func(i int, item suiteImage) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			b, err := publish(item)
+			if err != nil {
+				fmt.Printf("Suite fan-out %s: FAILED: %v\n", item.Bin, err)
+				mu.Lock()
+				failed = true
+				mu.Unlock()
+				errs[i] = err
+				return
+			}
+			results[i] = b
+		}(i, item)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+	}
+	fmt.Printf("Suite fan-out: %d images published in %s\n", len(images), time.Since(start).Round(time.Second))
+	return results, nil
+}
+
+// publishSuiteImage slims the suite image down to item's binary, pushes it and waits until the registry serves it.
+func publishSuiteImage(item suiteImage, base v1.Image, slim *slimSuite, repo, tag, ttlUUID string, insecure []string, propagation time.Duration) (util.Build, error) {
+	began := time.Now()
+	dest, err := pushTarget(item.Image, repo, tag, ttlUUID, imageBasename(item.Image))
+	if err != nil {
+		return util.Build{}, err
+	}
+	var img v1.Image
+	var dropped int64
+	if slim != nil {
+		img, dropped, err = slim.image(item.Bin)
+	} else {
+		img, err = imageWithEntrypoint(base, item.Bin)
+	}
+	if err != nil {
+		return util.Build{}, fmt.Errorf("image for %s: %w", item.Bin, err)
+	}
+	destRef, err := parseReferenceForRemote(dest, insecure)
+	if err != nil {
+		return util.Build{}, fmt.Errorf("parsing %s: %w", dest, err)
+	}
+	if slim != nil {
+		fmt.Printf("Suite fan-out %s -> %s (the other binaries left out: %.1f MiB)\n", item.Bin, dest, float64(dropped)/(1<<20))
+	} else {
+		fmt.Printf("Suite fan-out %s -> %s\n", item.Bin, dest)
+	}
+	if err := remote.Write(destRef, img, remoteOptionsFor(dest, insecure)...); err != nil {
+		if classifyRegistryError(err) == registryAuth {
+			return util.Build{}, fmt.Errorf("pushing %s: %w: %v", dest, errRegistryAuth, err)
+		}
+		return util.Build{}, fmt.Errorf("pushing %s: %w", dest, err)
+	}
+	if err := waitForImage(dest, propagation, insecure, remoteOptionsFor(dest, insecure)...); err != nil {
+		return util.Build{}, err
+	}
+	head, err := remote.Head(destRef, remoteOptionsFor(dest, insecure)...)
+	if err != nil {
+		return util.Build{}, fmt.Errorf("digest for %s: %w", dest, err)
+	}
+	fmt.Printf("Suite fan-out %s: pushed %s in %s\n", item.Bin, head.Digest, time.Since(began).Round(100*time.Millisecond))
+	return util.Build{
+		ImageName: item.Image,
+		Tag:       fmt.Sprintf("%s@%s", dest, head.Digest),
+	}, nil
 }
 
 func imageBasename(ref string) string {

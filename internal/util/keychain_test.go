@@ -35,3 +35,14 @@ func TestFallbackKeychain(t *testing.T) {
 		t.Errorf("no credential anywhere and a broken helper: want the helper's error")
 	}
 }
+
+func TestKeychainOrderFollowsGoogleApplicationCredentials(t *testing.T) {
+	kc, ok := keychainFor("").(fallbackKeychain)
+	if !ok || len(kc) != 2 || kc[0] != authn.DefaultKeychain {
+		t.Errorf("no GOOGLE_APPLICATION_CREDENTIALS: want the docker config first, got %#v", kc)
+	}
+	kc, ok = keychainFor("/tmp/gcp-credentials.json").(fallbackKeychain)
+	if !ok || len(kc) != 2 || kc[1] != authn.DefaultKeychain {
+		t.Errorf("GOOGLE_APPLICATION_CREDENTIALS set: want Google credentials first, got %#v", kc)
+	}
+}
