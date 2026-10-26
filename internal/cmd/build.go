@@ -426,7 +426,7 @@ var buildCmd = &cobra.Command{
 						platformManifests = append(platformManifests, currentTag)
 					}
 
-					propagation, _ := cmd.Flags().GetDuration("propagation-timeout")
+					propagation := propagationTimeout(cmd)
 					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
 					if err != nil {
 						return err
@@ -448,7 +448,7 @@ var buildCmd = &cobra.Command{
 					builtImages[imageName] = fullTagWithDigest
 
 					if packEnv["BP_RUST_BRRTROUTER"] == "1" {
-						slices, err := fanoutSuite(suiteImagesPath(filepath.Join(cwd, art.Workspace), packEnv), fullTagWithDigest, repo, pushTag, ttlUUID, suiteVariants(packEnv), opts.InsecureRegistries, propagation)
+						slices, err := fanoutSuite(suiteImagesPath(filepath.Join(cwd, art.Workspace), packEnv), fullTagWithDigest, repo, pushTag, ttlUUID, suiteVariants(packEnv), opts.InsecureRegistries, propagation, fanoutParallel(cmd))
 						if err != nil {
 							return fmt.Errorf("suite fan-out for %s: %w", imageName, err)
 						}
@@ -507,7 +507,7 @@ var buildCmd = &cobra.Command{
 						platformManifests = append(platformManifests, platformTag)
 					}
 
-					propagation, _ := cmd.Flags().GetDuration("propagation-timeout")
+					propagation := propagationTimeout(cmd)
 					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
 					if err != nil {
 						return err
@@ -552,7 +552,7 @@ var buildCmd = &cobra.Command{
 							}
 						}
 
-						timeout, _ := cmd.Flags().GetDuration("propagation-timeout")
+						timeout := propagationTimeout(cmd)
 						if err := waitForImage(ba.Tag, timeout, opts.InsecureRegistries, singleRemoteOpts...); err != nil {
 							return fmt.Errorf("image %s was pushed but is not resolvable from the registry: %w", ba.Tag, err)
 						}
@@ -809,41 +809,6 @@ func parseReferenceForRemote(tag string, insecureRegistries []string) (name.Refe
 	return name.ParseReference(tag)
 }
 
-// waitForImage polls the registry until the image is available or timeout
-func waitForImage(tag string, timeout time.Duration, insecureRegistries []string, opts ...remote.Option) error {
-	fmt.Printf("Waiting for image propagation: %s (timeout: %s)\n", tag, timeout)
-
-	ref, err := parseReferenceForRemote(tag, insecureRegistries)
-	if err != nil {
-		return err
-	}
-
-	start := time.Now()
-	ticker := time.NewTicker(3 * time.Second)
-	defer ticker.Stop()
-
-	// Initial check
-	if _, err := remoteHead(ref, opts...); err == nil {
-		fmt.Printf("\nImage found: %s\n", tag)
-		return nil
-	}
-
-	fmt.Print("Waiting")
-	for range ticker.C {
-		fmt.Print(".") // Progress indicator
-		_, err := remoteHead(ref, opts...)
-		if err == nil {
-			fmt.Printf("\nImage found: %s\n", tag)
-			return nil
-		}
-		if time.Since(start) > timeout {
-			fmt.Println() // Newline after progress
-			return fmt.Errorf("timeout waiting for image %s after %s", tag, timeout)
-		}
-	}
-	return fmt.Errorf("timeout waiting for image %s", tag)
-}
-
 func writeBuildResult(builds []util.Build) error {
 	if len(builds) > 0 {
 		buildResult := util.BuildResult{
@@ -1031,5 +996,6 @@ func init() {
 	buildCmd.Flags().Bool("push", false, "Push the built images to the registry")
 	buildCmd.Flags().StringP("filename", "f", "skaffold.yaml", "Path to the Skaffold configuration file")
 	buildCmd.Flags().String("sbom-output", "", "Directory to output SBOMs")
-	buildCmd.Flags().Duration("propagation-timeout", 180*time.Second, "Timeout for waiting for image propagation (default 180s)")
+	buildCmd.Flags().Duration("propagation-timeout", 180*time.Second, "How long a pushed image may take to resolve from the registry. Not-found and transient errors are retried until then; a refused credential (401/403) fails at once. Default: $OP_PROPAGATION_TIMEOUT, else 180s")
+	buildCmd.Flags().Int("fanout-parallel", 6, "Suite fan-out (BP_RUST_BRRTROUTER): images slimmed and pushed at once. Default: $OP_FANOUT_PARALLEL, else 6")
 }
