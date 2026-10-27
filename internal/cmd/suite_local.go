@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -49,6 +51,13 @@ func startLocalSuite() (*localSuite, error) {
 	place, err := localreg.Place(os.Getenv("OP_PACK_NETWORK"))
 	if err != nil {
 		return nil, err
+	}
+	if id, ok := strings.CutPrefix(place.Network, "container:"); ok {
+		own, err := ownContainerOnDaemon(context.Background(), id)
+		if err != nil {
+			return nil, fmt.Errorf("the lifecycle cannot join op's container network: %w", err)
+		}
+		place.Network = "container:" + own
 	}
 	dir, err := os.MkdirTemp(os.Getenv("OP_TMPDIR"), "op-suite-registry-")
 	if err != nil {
@@ -198,4 +207,50 @@ func pushSplitSuite(ctx context.Context, localRef, dest, runImage string, insecu
 	}
 	fmt.Printf("Suite: pushed %s in %s; %s\n", dest, time.Since(began).Round(time.Second), util.Uploads.Since(before))
 	return nil
+}
+
+// inspectContainer and hostname are what ownContainerOnDaemon asks; variables so tests can supply them.
+var (
+	inspectContainer = func(ctx context.Context, id string) (container.InspectResponse, error) {
+		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		if err != nil {
+			return container.InspectResponse{}, err
+		}
+		defer cli.Close()
+		return cli.ContainerInspect(ctx, id)
+	}
+	hostname = os.Hostname
+)
+
+// ownContainerOnDaemon is the full id, on the Docker daemon pack uses, of the container op runs in. The lifecycle
+// joins that container's network to reach op's local registry, so the daemon must know it: with nested Docker (an
+// ARC runner talking to a dind sidecar) the id read from /proc/self/mountinfo can be one this daemon does not have.
+// The candidate from mountinfo is tried first, then the hostname (Docker names a container's host by its short id);
+// either counts only if the daemon reports it running with this process's hostname. Otherwise it is an error and the
+// caller publishes from the lifecycle instead.
+func ownContainerOnDaemon(ctx context.Context, candidate string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	host, _ := hostname()
+	var tried []string
+	for _, id := range []string{candidate, host} {
+		if id == "" {
+			continue
+		}
+		c, err := inspectContainer(ctx, id)
+		switch {
+		case err != nil:
+			tried = append(tried, fmt.Sprintf("%.12s: %v", id, err))
+		case c.ContainerJSONBase == nil || c.State == nil || !c.State.Running:
+			tried = append(tried, fmt.Sprintf("%.12s: not running", id))
+		case c.Config != nil && host != "" && c.Config.Hostname != host:
+			tried = append(tried, fmt.Sprintf("%.12s: hostname %q, not this process's %q", id, c.Config.Hostname, host))
+		default:
+			if id != candidate {
+				fmt.Printf("Suite: op's container is %.12s on this Docker daemon (mountinfo said %.12s)\n", c.ID, candidate)
+			}
+			return c.ID, nil
+		}
+	}
+	return "", fmt.Errorf("the Docker daemon does not know op's container (%s)", strings.Join(tried, "; "))
 }
