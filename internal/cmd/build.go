@@ -352,6 +352,9 @@ var buildCmd = &cobra.Command{
 					if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
 						packEnv["GITHUB_TOKEN"] = tok
 					}
+					// Shared compile cache: OP_SCCACHE=true turns on the rust buildpack's sccache wrapper
+					// and hands it the cache backend (SCCACHE_*). Platform env only: never in a layer.
+					sccachePackEnv(packEnv)
 
 					// Prepare platform list
 					targetPlatforms := opts.Platforms
@@ -1018,4 +1021,28 @@ func init() {
 	buildCmd.Flags().String("sbom-output", "", "Directory to output SBOMs")
 	buildCmd.Flags().Duration("propagation-timeout", 180*time.Second, "How long a pushed image may take to resolve from the registry. Not-found and transient errors are retried until then; a refused credential (401/403) fails at once. Default: $OP_PROPAGATION_TIMEOUT, else 180s")
 	buildCmd.Flags().Int("fanout-parallel", 6, "Suite fan-out (BP_RUST_BRRTROUTER): images slimmed and pushed at once. Default: $OP_FANOUT_PARALLEL, else 6")
+}
+
+// sccachePackEnv adds BP_RUST_SCCACHE=true and every SCCACHE_* variable of op's environment to the
+// pack build env when OP_SCCACHE is true. The octopilot/rust buildpack then installs sccache, wraps
+// rustc with it and prints its hit/miss stats. Values are never logged (they include the cache
+// credentials). Without OP_SCCACHE nothing is added.
+func sccachePackEnv(packEnv map[string]string) {
+	switch strings.ToLower(os.Getenv("OP_SCCACHE")) {
+	case "true", "1", "yes":
+	default:
+		return
+	}
+	packEnv["BP_RUST_SCCACHE"] = "true"
+	var names []string
+	for _, kv := range os.Environ() {
+		name, value, ok := strings.Cut(kv, "=")
+		if !ok || !strings.HasPrefix(name, "SCCACHE_") {
+			continue
+		}
+		packEnv[name] = value
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	fmt.Printf("sccache: on; forwarding %s to the build\n", strings.Join(names, ", "))
 }
