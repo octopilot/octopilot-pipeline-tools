@@ -1,16 +1,21 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -55,12 +60,53 @@ func pushTarget(imageName, repo, tag, ttlUUID, artifactKey string) (string, erro
 }
 
 // platformTag is where one platform's image is pushed before the index is assembled. A single-platform build goes
-// straight to the final tag; no index is written over it.
+// straight to the final tag; no index is written over it. The staging tag belongs to this run (stagingRunID): two runs
+// building the same tag at once (a main push and a release tag, say) must not read each other's platform images.
 func platformTag(fullTag, platform string, platformCount int) string {
 	if platformCount <= 1 || platform == "" {
 		return fullTag
 	}
-	return fmt.Sprintf("%s-%s", fullTag, strings.ReplaceAll(platform, "/", "-"))
+	return fmt.Sprintf("%s-%s-%s", fullTag, strings.ReplaceAll(platform, "/", "-"), stagingRunID())
+}
+
+// stagingRunID names this run's staging tags: the GitHub Actions run and attempt, else a random id kept for the
+// process.
+func stagingRunID() string {
+	if id := os.Getenv("GITHUB_RUN_ID"); id != "" {
+		return id + "-" + cmp.Or(os.Getenv("GITHUB_RUN_ATTEMPT"), "1")
+	}
+	return stagingRandomID()
+}
+
+var stagingRandomID = sync.OnceValue(func() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%08x", os.Getpid())
+	}
+	return hex.EncodeToString(b)
+})
+
+// imagePlatform is the platform an image's config says it was built for. With want set (the platform it was built
+// as, e.g. "linux/arm64") a different platform is an error: a builder without that platform builds the host's, and an
+// index that labels an amd64 image arm64 is worse than an index without arm64.
+func imagePlatform(img v1.Image, tag, want string) (*v1.Platform, error) {
+	cf, err := img.ConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("reading the config of %s: %w", tag, err)
+	}
+	got := &v1.Platform{OS: cf.OS, Architecture: cf.Architecture, Variant: cf.Variant, OSVersion: cf.OSVersion}
+	if want == "" {
+		return got, nil
+	}
+	w, err := v1.ParsePlatform(want)
+	if err != nil {
+		return nil, fmt.Errorf("platform %q: %w", want, err)
+	}
+	if w.OS != got.OS || w.Architecture != got.Architecture || (w.Variant != "" && w.Variant != got.Variant) {
+		return nil, fmt.Errorf("%s was built as %s but the image is %s; refusing to publish it under %s (is the builder published for %s?)",
+			tag, want, got.String(), want, want)
+	}
+	return got, nil
 }
 
 func remoteOptionsFor(tag string, insecureRegistries []string) []remote.Option {
@@ -75,17 +121,19 @@ func remoteOptionsFor(tag string, insecureRegistries []string) []remote.Option {
 	return []remote.Option{remote.WithAuthFromKeychain(util.Keychain), remote.WithTransport(util.Transport(base))}
 }
 
-// publishImage is the one push path. Given the per-platform images already pushed (at platformTag), it writes a
-// manifest list at fullTag when there is more than one, waits until fullTag resolves from the registry, and returns
-// fullTag@digest. A registry that never serves what was just pushed is an error here, not two steps later.
-func publishImage(fullTag string, platformTags []string, insecureRegistries []string, propagation time.Duration) (string, error) {
+// publishImage is the one push path. Given the per-platform images already pushed (at platformTag, built as
+// platforms[i]), it writes a manifest list at fullTag when there is more than one, each entry carrying the platform
+// its image's config states (and refused if that is not the platform it was built as), waits until fullTag resolves
+// from the registry, and returns fullTag@digest. A registry that never serves what was just pushed is an error here,
+// not two steps later.
+func publishImage(fullTag string, platformTags, platforms []string, insecureRegistries []string, propagation time.Duration) (string, error) {
 	ropts := remoteOptionsFor(fullTag, insecureRegistries)
 	var digest string
 	if len(platformTags) > 1 {
 		fmt.Printf("Creating manifest list %s from %v\n", fullTag, platformTags)
 		var index v1.ImageIndex = empty.Index
 		index = mutate.IndexMediaType(index, types.DockerManifestList)
-		for _, pTag := range platformTags {
+		for i, pTag := range platformTags {
 			pRef, err := parseReferenceForRemote(pTag, insecureRegistries)
 			if err != nil {
 				return "", fmt.Errorf("parsing platform tag %s: %w", pTag, err)
@@ -98,7 +146,17 @@ func publishImage(fullTag string, platformTags []string, insecureRegistries []st
 			if err != nil {
 				return "", fmt.Errorf("getting image content for %s: %w", pTag, err)
 			}
-			index = mutate.AppendManifests(index, mutate.IndexAddendum{Add: img, Descriptor: desc.Descriptor})
+			want := ""
+			if i < len(platforms) {
+				want = platforms[i]
+			}
+			plat, err := imagePlatform(img, pTag, want)
+			if err != nil {
+				return "", err
+			}
+			d := desc.Descriptor
+			d.Platform = plat
+			index = mutate.AppendManifests(index, mutate.IndexAddendum{Add: img, Descriptor: d})
 		}
 		ref, err := parseReferenceForRemote(fullTag, insecureRegistries)
 		if err != nil {
@@ -133,13 +191,21 @@ func publishImage(fullTag string, platformTags []string, insecureRegistries []st
 // tagAlias points an additional tag (e.g. the branch or version from DOCKER_METADATA_OUTPUT_VERSION) at the manifest
 // already pushed at fullTag, in the same repository. Works for single images and manifest lists. Not used for ttl.sh,
 // which cannot re-tag manifest lists and whose run UUID already identifies the build.
+//
+// fullTag may carry the digest publishImage returned (tag@sha256:...). The alias then points at exactly that manifest,
+// not at whatever the tag resolves to by now: another run may have pushed to the same tag in between.
 func tagAlias(fullTag, alias string, insecureRegistries []string) error {
-	ropts := remoteOptionsFor(fullTag, insecureRegistries)
-	ref, err := parseReferenceForRemote(fullTag, insecureRegistries)
+	source, digest, _ := strings.Cut(fullTag, "@")
+	ropts := remoteOptionsFor(source, insecureRegistries)
+	ref, err := parseReferenceForRemote(source, insecureRegistries)
 	if err != nil {
-		return fmt.Errorf("parsing %s: %w", fullTag, err)
+		return fmt.Errorf("parsing %s: %w", source, err)
 	}
-	desc, err := remote.Get(ref, ropts...)
+	var get name.Reference = ref
+	if digest != "" {
+		get = ref.Context().Digest(digest)
+	}
+	desc, err := remote.Get(get, ropts...)
 	if err != nil {
 		return fmt.Errorf("getting %s: %w", fullTag, err)
 	}

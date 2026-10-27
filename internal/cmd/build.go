@@ -364,7 +364,7 @@ var buildCmd = &cobra.Command{
 						targetPlatforms = []string{""} // Default/Host
 					}
 
-					var platformManifests []string
+					var platformManifests, platformsBuilt []string
 
 					// Build for each platform
 					for _, platform := range targetPlatforms {
@@ -457,17 +457,18 @@ var buildCmd = &cobra.Command{
 
 						// Keep track of the pushed tag (original registry host, not 127.0.0.1)
 						platformManifests = append(platformManifests, currentTag)
+						platformsBuilt = append(platformsBuilt, platform)
 					}
 
 					propagation := propagationTimeout(cmd)
-					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
+					fullTagWithDigest, err := publishImage(fullTag, platformManifests, platformsBuilt, opts.InsecureRegistries, propagation)
 					if err != nil {
 						return err
 					}
 					// The caller's version (branch on main, v1.2.3 on tags) as an additional tag on the same manifest, so
 					// consumers can pin e.g. op:main. build_result.json keeps the digest-pinned primary reference.
 					if targetVersion != "" && targetVersion != pushTag && repo != ttlRegistry {
-						if err := tagAlias(fullTag, targetVersion, opts.InsecureRegistries); err != nil {
+						if err := tagAlias(fullTagWithDigest, targetVersion, opts.InsecureRegistries); err != nil {
 							return err
 						}
 					}
@@ -516,7 +517,7 @@ var buildCmd = &cobra.Command{
 						dockerfilePath = filepath.Join(contextDir, dockerfilePath)
 					}
 
-					var platformManifests []string
+					var platformManifests, platformsBuilt []string
 
 					for _, platform := range opts.Platforms {
 						platformTag := platformTag(fullTag, platform, len(opts.Platforms))
@@ -536,17 +537,18 @@ var buildCmd = &cobra.Command{
 						}
 
 						platformManifests = append(platformManifests, platformTag)
+						platformsBuilt = append(platformsBuilt, platform)
 					}
 
 					propagation := propagationTimeout(cmd)
-					fullTagWithDigest, err := publishImage(fullTag, platformManifests, opts.InsecureRegistries, propagation)
+					fullTagWithDigest, err := publishImage(fullTag, platformManifests, platformsBuilt, opts.InsecureRegistries, propagation)
 					if err != nil {
 						return err
 					}
 					// The caller's version (branch on main, v1.2.3 on tags) as an additional tag on the same manifest, so
 					// consumers can pin e.g. op:main. build_result.json keeps the digest-pinned primary reference.
 					if targetVersion != "" && targetVersion != pushTag && repo != ttlRegistry {
-						if err := tagAlias(fullTag, targetVersion, opts.InsecureRegistries); err != nil {
+						if err := tagAlias(fullTagWithDigest, targetVersion, opts.InsecureRegistries); err != nil {
 							return err
 						}
 					}
