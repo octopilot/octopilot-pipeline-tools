@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.5
+
+### Fixed: multi-platform images are what their index says they are
+
+v1.2.4's image index was mixed. Its first entry came from a main-branch build that raced the release build, and every op index so far listed two amd64 images with no platform field.
+- **Per-run staging tags:** each run stages its per-platform images under its own tags (`<tag>-<os>-<arch>-<run id>-<attempt>`). Two runs building the same tag at once (a main push and a release tag) no longer read each other's images.
+- **Platform fields:** every index entry carries the platform its image's config states.
+- **Wrong-platform guard:** an entry whose image is not the platform it was built as stops the push. Before, a builder without arm64 built amd64 and published it as arm64.
+- **Aliases by digest:** version and branch aliases (`v1.2.5`, `main`) point at the exact manifest this run pushed, not at whatever the tag resolves to by then.
+- **op's own image** is now built with the multi-arch `builder-jammy-base` (linux/amd64 and linux/arm64), so its arm64 image is arm64.
+
 ## v1.2.4
 
 ### Changed: the Rust layer cache is off by default when no cache image is configured
