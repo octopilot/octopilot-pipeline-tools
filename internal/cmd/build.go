@@ -406,6 +406,23 @@ var buildCmd = &cobra.Command{
 							packEnv["SSL_CERT_FILE"] = "/etc/ssl/certs/registry-ca.crt"
 						}
 
+						// A suite is published to op's local registry and pushed on split per binary by op
+						// (suite_local.go): the lifecycle's own push sends the whole app layer every build.
+						var local *localSuite
+						var localRef string
+						if suiteSplitEnabled(packEnv, len(targetPlatforms)) {
+							if local, err = startLocalSuite(); err != nil {
+								fmt.Printf("::warning::suite pushed by the lifecycle: no local registry (%v)\n", err)
+								local = nil
+							} else if localRef, err = local.ref(currentTag); err != nil {
+								local.Close()
+								return err
+							} else {
+								defer local.Close()
+								packImageName = localRef
+								packInsecureRegistries = append(packInsecureRegistries, local.reg.Addr)
+							}
+						}
 						po := pack.BuildOptions{
 							ImageName:  packImageName,
 							Builder:    builder,
@@ -421,9 +438,19 @@ var buildCmd = &cobra.Command{
 							}(),
 							InsecureRegistries: packInsecureRegistries,
 							Volumes:            packVolumes,
+							LocalPublish:       local != nil,
+						}
+						if local != nil {
+							po.Network = local.network
 						}
 						if err := packBuild(ctx, po, os.Stdout); err != nil {
 							return fmt.Errorf("direct pack build failed for %s (%s): %w", imageName, platform, err)
+						}
+						if local != nil {
+							if err := pushSplitSuite(ctx, localRef, currentTag, runImage, opts.InsecureRegistries); err != nil {
+								return fmt.Errorf("suite push for %s: %w", imageName, err)
+							}
+							local.Close()
 						}
 
 						// Keep track of the pushed tag (original registry host, not 127.0.0.1)

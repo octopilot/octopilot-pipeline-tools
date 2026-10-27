@@ -29,6 +29,11 @@ type BuildOptions struct {
 	Target             string
 	InsecureRegistries []string
 	Volumes            []string
+	// LocalPublish: ImageName is on op's own local registry, so the export uploads nothing over the network and a
+	// long silence is a stuck build (watchdog.go).
+	LocalPublish bool
+	// Network for the lifecycle container; empty = $OP_PACK_NETWORK, else pack's own network.
+	Network string
 }
 
 // Build performs a pack build using the library.
@@ -36,7 +41,13 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 	// The lifecycle's output is kept (its tail) so a failed export can be classified: a dropped connection is
 	// exported again, a refused credential is not.
 	tail := util.NewTailWriter(tailKeep)
-	logger := logging.NewLogWithWriters(io.MultiWriter(out, tail), io.MultiWriter(out, tail))
+	// The watchdog sees every line the lifecycle prints and speaks up while it is quiet (watchdog.go).
+	act := newActivity()
+	logger := logging.NewLogWithWriters(io.MultiWriter(out, tail, act), io.MultiWriter(out, tail, act))
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	remotePublish := opts.Publish && !opts.LocalPublish
+	idleStop := watch(ctx, act, idleTimeout(remotePublish), remotePublish, out, cancel)
 	if os.Getenv("OP_DEBUG") == "true" {
 		logger.WantVerbose(true)
 	}
@@ -62,7 +73,7 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 		Platform:                opts.Target,
 		InsecureRegistries:      opts.InsecureRegistries,
 		ContainerConfig: client.ContainerConfig{
-			Network: os.Getenv("OP_PACK_NETWORK"),
+			Network: packNetwork(opts.Network),
 			Volumes: opts.Volumes,
 		},
 		ExportRetry: exportRetry(tail),
@@ -93,10 +104,13 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 
 	// Log build options for debugging
 	fmt.Printf("[pack] BuildOptions: Image=%s Builder=%s RunImage=%s Target=%s Network=%s Publish=%v InsecureRegistries=%v CacheImage=%s\n",
-		opts.ImageName, opts.Builder, opts.RunImage, opts.Target, os.Getenv("OP_PACK_NETWORK"), opts.Publish, opts.InsecureRegistries, buildOpts.CacheImage)
+		opts.ImageName, opts.Builder, opts.RunImage, opts.Target, packNetwork(opts.Network), opts.Publish, opts.InsecureRegistries, buildOpts.CacheImage)
 
 	_, _ = fmt.Fprintf(out, "Building %s using builder %s (publish=%v)...\n", opts.ImageName, opts.Builder, opts.Publish)
 	if err := packClient.Build(ctx, buildOpts); err != nil {
+		if stopped := idleStop(); stopped != nil {
+			return fmt.Errorf("pack build failed: %w", stopped)
+		}
 		return fmt.Errorf("pack build failed: %w", err)
 	}
 	return nil
@@ -123,4 +137,12 @@ func exportRetry(tail *util.TailWriter) func(attempt int, err error) (time.Durat
 		fmt.Printf("::warning::image export failed on a transient registry error (attempt %d of %d); exporting again in %s without rebuilding\n", attempt, util.PushAttempts, wait)
 		return wait, true
 	}
+}
+
+// packNetwork is the lifecycle container's network: the caller's, else $OP_PACK_NETWORK, else "" (pack's own).
+func packNetwork(network string) string {
+	if network != "" {
+		return network
+	}
+	return os.Getenv("OP_PACK_NETWORK")
 }
