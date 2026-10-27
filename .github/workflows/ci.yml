@@ -13,7 +13,11 @@ on:
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, master]
+    # Same Go paths as push: without them a pull request changing only Go code ran no lint or tests.
     paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
       - "src/**"
       - "tests/**"
       - "pyproject.toml"
