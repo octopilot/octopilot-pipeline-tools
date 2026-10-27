@@ -497,11 +497,9 @@ var buildCmd = &cobra.Command{
 						// for a single platform, breaking our manifest-list assembly below.
 						buildEnv := append(os.Environ(), "BUILDX_NO_DEFAULT_ATTESTATIONS=1")
 						buildArgs := dockerCLIArgs(art, platform, platformTag, dockerfilePath, contextDir, images.Registry())
-						buildCmd := exec.CommandContext(ctx, "docker", buildArgs...)
-						buildCmd.Stdout = os.Stdout
-						buildCmd.Stderr = os.Stderr
-						buildCmd.Env = buildEnv
-						if err := buildCmd.Run(); err != nil {
+						// BuildKit pushes at the end of the build. A push the registry dropped (GOAWAY, reset, 5xx, 429)
+						// is run again: the layers come from BuildKit's cache, so only the push is repeated.
+						if err := dockerBuildPush(ctx, buildArgs, buildEnv); err != nil {
 							return fmt.Errorf("docker build failed for %s (%s): %w", art.ImageName, platform, err)
 						}
 
@@ -893,6 +891,27 @@ func dockerCLIArgs(art *latest.Artifact, platform, tag, dockerfilePath, contextD
 	}
 	args = append(args, contextDir)
 	return args
+}
+
+// runDocker runs the docker CLI with stdout and stderr; a variable for tests.
+var runDocker = func(ctx context.Context, args, env []string, stdout, stderr io.Writer) error {
+	c := exec.CommandContext(ctx, "docker", args...)
+	c.Stdout, c.Stderr, c.Env = stdout, stderr, env
+	return c.Run()
+}
+
+// dockerBuildPush runs `docker build --push`, again when it fails on a transient registry error (read from its output,
+// as docker reports the push failure only there).
+func dockerBuildPush(ctx context.Context, args, env []string) error {
+	tail := util.NewTailWriter(16 << 10)
+	return util.RetryPush(ctx, "docker build --push", func() error {
+		tail.Reset()
+		err := runDocker(ctx, args, env, io.MultiWriter(os.Stdout, tail), io.MultiWriter(os.Stderr, tail))
+		if err != nil && util.TransientPushText(tail.String()) {
+			return util.MarkTransient(err)
+		}
+		return err
+	})
 }
 
 func prepareSkaffoldOptions(cmd *cobra.Command, cwd string) config.SkaffoldOptions {

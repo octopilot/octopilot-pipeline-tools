@@ -61,7 +61,7 @@ image; base images appear first by convention).`,
 
 		fmt.Printf("Promoting %s\n     -> %s\n", srcRef, destRef)
 
-		if err := craneCopy(srcRef, destRef); err != nil {
+		if err := util.RetryPush(cmd.Context(), destRef, func() error { return craneCopy(srcRef, destRef) }); err != nil {
 			return fmt.Errorf("promotion failed: %w", err)
 		}
 
