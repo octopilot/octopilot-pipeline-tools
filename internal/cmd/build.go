@@ -355,6 +355,8 @@ var buildCmd = &cobra.Command{
 					// Shared compile cache: OP_SCCACHE=true turns on the rust buildpack's sccache wrapper
 					// and hands it the cache backend (SCCACHE_*). Platform env only: never in a layer.
 					sccachePackEnv(packEnv)
+					// No cache image: the rust layer cache would only be a local volume (see rustCachePackEnv).
+					rustCachePackEnv(packEnv)
 
 					// Prepare platform list
 					targetPlatforms := opts.Platforms
@@ -1048,6 +1050,26 @@ func init() {
 	buildCmd.Flags().String("sbom-output", "", "Directory to output SBOMs")
 	buildCmd.Flags().Duration("propagation-timeout", 180*time.Second, "How long a pushed image may take to resolve from the registry. Not-found and transient errors are retried until then; a refused credential (401/403) fails at once. Default: $OP_PROPAGATION_TIMEOUT, else 180s")
 	buildCmd.Flags().Int("fanout-parallel", 6, "Suite fan-out (BP_RUST_BRRTROUTER): images slimmed and pushed at once. Default: $OP_FANOUT_PARALLEL, else 6")
+}
+
+// rustCachePackEnv sets BP_RUST_CACHE=false when no cache image is configured (OP_CACHE_IMAGE empty).
+// The octopilot/rust buildpack then marks its toolchain and target layers cache = false. Without a cache
+// image the lifecycle would export them to a local volume, which an ephemeral CI runner throws away
+// with the runner. Exporting a multi-GB target dir there costs minutes per build and looks like a hang.
+// A BP_RUST_CACHE from the project env or from op's own environment wins.
+func rustCachePackEnv(packEnv map[string]string) {
+	if _, set := packEnv["BP_RUST_CACHE"]; set {
+		return
+	}
+	if v, set := os.LookupEnv("BP_RUST_CACHE"); set {
+		packEnv["BP_RUST_CACHE"] = v
+		return
+	}
+	if strings.TrimSpace(os.Getenv("OP_CACHE_IMAGE")) != "" {
+		return
+	}
+	packEnv["BP_RUST_CACHE"] = "false"
+	fmt.Println("rust layer cache: off (no OP_CACHE_IMAGE); set BP_RUST_CACHE=true to keep a local-volume cache")
 }
 
 // sccachePackEnv adds BP_RUST_SCCACHE=true and every SCCACHE_* variable of op's environment to the
