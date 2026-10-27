@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-
 	"os"
+	"time"
 
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/client"
@@ -33,7 +33,10 @@ type BuildOptions struct {
 
 // Build performs a pack build using the library.
 func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
-	logger := logging.NewLogWithWriters(out, out)
+	// The lifecycle's output is kept (its tail) so a failed export can be classified: a dropped connection is
+	// exported again, a refused credential is not.
+	tail := util.NewTailWriter(tailKeep)
+	logger := logging.NewLogWithWriters(io.MultiWriter(out, tail), io.MultiWriter(out, tail))
 	if os.Getenv("OP_DEBUG") == "true" {
 		logger.WantVerbose(true)
 	}
@@ -62,6 +65,7 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 			Network: os.Getenv("OP_PACK_NETWORK"),
 			Volumes: opts.Volumes,
 		},
+		ExportRetry: exportRetry(tail),
 	}
 
 	// Build-cache-as-registry-image: ephemeral CI runners lose pack's local
@@ -71,7 +75,7 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 	// exports to, so warm caches survive runner recycling. Only meaningful for
 	// per-artifact invocations (CI passes --artifact); multi-arch or
 	// multi-artifact local builds should leave it unset (volume cache default).
-	if cacheImage := os.Getenv("OP_CACHE_IMAGE"); cacheImage != "" {
+	if cacheImage := ensureCacheImage(ctx, os.Getenv("OP_CACHE_IMAGE"), opts.InsecureRegistries); cacheImage != "" {
 		buildOpts.Cache = cache.CacheOpts{
 			Build: cache.CacheInfo{Format: cache.CacheImage, Source: cacheImage},
 		}
@@ -89,11 +93,34 @@ func Build(ctx context.Context, opts BuildOptions, out io.Writer) error {
 
 	// Log build options for debugging
 	fmt.Printf("[pack] BuildOptions: Image=%s Builder=%s RunImage=%s Target=%s Network=%s Publish=%v InsecureRegistries=%v CacheImage=%s\n",
-		opts.ImageName, opts.Builder, opts.RunImage, opts.Target, os.Getenv("OP_PACK_NETWORK"), opts.Publish, opts.InsecureRegistries, os.Getenv("OP_CACHE_IMAGE"))
+		opts.ImageName, opts.Builder, opts.RunImage, opts.Target, os.Getenv("OP_PACK_NETWORK"), opts.Publish, opts.InsecureRegistries, buildOpts.CacheImage)
 
 	_, _ = fmt.Fprintf(out, "Building %s using builder %s (publish=%v)...\n", opts.ImageName, opts.Builder, opts.Publish)
 	if err := packClient.Build(ctx, buildOpts); err != nil {
 		return fmt.Errorf("pack build failed: %w", err)
 	}
 	return nil
+}
+
+// tailKeep is how much lifecycle output is kept for classifying a failed export.
+const tailKeep = 64 << 10
+
+// exportRetry is the lifecycle's export retry policy. The lifecycle pushes the image itself, and a registry that drops
+// the connection mid-upload (Artifact Registry: "http2: server sent GOAWAY ... server_shutting_down") fails the
+// export after the whole build is done. pack then runs the exporter again against the layers already built, so a
+// retry costs a re-push of what the registry does not have yet, not a rebuild. Retried only when the output of the
+// failed export reads as transient (util.TransientPushText); a refused credential (401/403) fails at once.
+func exportRetry(tail *util.TailWriter) func(attempt int, err error) (time.Duration, bool) {
+	return func(attempt int, err error) (time.Duration, bool) {
+		if attempt >= util.PushAttempts {
+			return 0, false
+		}
+		export := exportSection(tail.String())
+		if !util.TransientPushText(export) {
+			return 0, false
+		}
+		wait := util.PushBackoffFor(attempt)
+		fmt.Printf("::warning::image export failed on a transient registry error (attempt %d of %d); exporting again in %s without rebuilding\n", attempt, util.PushAttempts, wait)
+		return wait, true
+	}
 }

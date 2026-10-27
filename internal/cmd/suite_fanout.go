@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -233,7 +234,8 @@ func publishSuiteImage(item suiteImage, base v1.Image, slim *slimSuite, repo, ta
 	} else {
 		fmt.Printf("Suite fan-out %s -> %s\n", item.Bin, dest)
 	}
-	if err := remote.Write(destRef, img, remoteOptionsFor(dest, insecure)...); err != nil {
+	push := func() error { return remoteWrite(destRef, img, remoteOptionsFor(dest, insecure)...) }
+	if err := util.RetryPush(context.Background(), dest, push); err != nil {
 		if classifyRegistryError(err) == registryAuth {
 			return util.Build{}, fmt.Errorf("pushing %s: %w: %v", dest, errRegistryAuth, err)
 		}

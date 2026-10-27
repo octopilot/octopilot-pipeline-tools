@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -23,6 +24,13 @@ import (
 // ttlRegistry is the only registry with special naming: it has no namespaces, so an ephemeral image is named
 // <run uuid>-<artifact key>. Everything else is <repo>/<basename>:<tag>.
 const ttlRegistry = "ttl.sh"
+
+// Registry writes op makes itself; variables so tests can drop connections.
+var (
+	remoteWrite      = remote.Write
+	remoteWriteIndex = remote.WriteIndex
+	remoteTag        = remote.Tag
+)
 
 // pushTarget is the single rule for where an artifact goes. No registry behaviour is inferred from the image name:
 // the caller decides repo, tag and platforms. With repo == ttl.sh, ttlUUID and artifactKey are required.
@@ -95,7 +103,7 @@ func publishImage(fullTag string, platformTags []string, insecureRegistries []st
 		if err != nil {
 			return "", fmt.Errorf("parsing full tag %s: %w", fullTag, err)
 		}
-		if err := remote.WriteIndex(ref, index, ropts...); err != nil {
+		if err := util.RetryPush(context.Background(), fullTag, func() error { return remoteWriteIndex(ref, index, ropts...) }); err != nil {
 			return "", fmt.Errorf("writing manifest list %s: %w", fullTag, err)
 		}
 		d, err := index.Digest()
@@ -135,7 +143,7 @@ func tagAlias(fullTag, alias string, insecureRegistries []string) error {
 		return fmt.Errorf("getting %s: %w", fullTag, err)
 	}
 	aliasRef := ref.Context().Tag(alias)
-	if err := remote.Tag(aliasRef, desc, ropts...); err != nil {
+	if err := util.RetryPush(context.Background(), aliasRef.String(), func() error { return remoteTag(aliasRef, desc, ropts...) }); err != nil {
 		return fmt.Errorf("tagging %s as %s: %w", fullTag, aliasRef, err)
 	}
 	fmt.Printf("Tagged %s as %s\n", fullTag, aliasRef)

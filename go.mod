@@ -323,7 +323,7 @@ replace (
 	github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20260211155027-33b8b33f2d7a
 	github.com/buildpacks/lifecycle => github.com/buildpacks/lifecycle v0.21.0
 	// Pack: release/build uses this pinned version only. After fixing pack, push octopilot/pack then run: GOPROXY=direct go get github.com/octopilot/pack@<commit-sha> && go mod vendor (see CONTRIBUTING.md).
-	github.com/buildpacks/pack => github.com/octopilot/pack v0.0.0-20260301171535-59c81a3c9764
+	github.com/buildpacks/pack => github.com/octopilot/pack v0.0.0-20261027025815-ecbb9426391f
 	github.com/docker/cli => github.com/docker/cli v28.5.2+incompatible
 	github.com/dprotaso/go-yit => github.com/dprotaso/go-yit v0.0.0-20240618133044-5a0af90af097
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
