@@ -64,14 +64,15 @@ func platformTag(fullTag, platform string, platformCount int) string {
 }
 
 func remoteOptionsFor(tag string, insecureRegistries []string) []remote.Option {
-	opts := []remote.Option{remote.WithAuthFromKeychain(util.Keychain)}
+	// Every push through these options is counted (util.Uploads), so op can say what a push cost the uplink.
+	var base http.RoundTripper = remote.DefaultTransport
 	for _, reg := range insecureRegistries {
 		if strings.HasPrefix(tag, reg) {
-			opts = append(opts, remote.WithTransport(&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}))
+			base = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 			break
 		}
 	}
-	return opts
+	return []remote.Option{remote.WithAuthFromKeychain(util.Keychain), remote.WithTransport(util.Transport(base))}
 }
 
 // publishImage is the one push path. Given the per-platform images already pushed (at platformTag), it writes a

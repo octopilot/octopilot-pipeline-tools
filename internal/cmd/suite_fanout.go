@@ -140,6 +140,30 @@ func fanoutSuite(mapPath, suiteRef, repo, tag, ttlUUID string, variants []string
 	if err != nil {
 		return nil, fmt.Errorf("reading suite image %s: %w", suiteRef, err)
 	}
+	cf, err := base.ConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("reading suite image %s: %w", suiteRef, err)
+	}
+	// A split suite (suite_split.go): each image is a choice of the suite's layers, all mounted from the suite's
+	// repository. Nothing is downloaded or compressed, and no layer is uploaded.
+	if m, err := readSuiteLayerMap(cf); err != nil {
+		return nil, fmt.Errorf("suite image %s: %w", suiteRef, err)
+	} else if m != nil {
+		before := util.Uploads.Snapshot()
+		publish := func(item suiteImage) (util.Build, error) {
+			return publishSuiteImageWith(item, func() (v1.Image, string, error) {
+				img, err := serviceFromSplit(base, m, item.Bin)
+				return img, "", err
+			}, repo, tag, ttlUUID, insecure, propagation)
+		}
+		out, err := fanoutEach(images, parallel, publish)
+		if err == nil {
+			fmt.Printf("Suite fan-out: %s\n", util.Uploads.Since(before))
+		}
+		return out, err
+	}
+	before := util.Uploads.Snapshot()
+	defer func() { fmt.Printf("Suite fan-out: %s\n", util.Uploads.Since(before)) }()
 	slim, err := newSlimSuite(base)
 	if err != nil {
 		return nil, fmt.Errorf("suite image %s: %w", suiteRef, err)
@@ -210,18 +234,24 @@ func fanoutEach(images []suiteImage, parallel int, publish func(suiteImage) (uti
 
 // publishSuiteImage slims the suite image down to item's binary, pushes it and waits until the registry serves it.
 func publishSuiteImage(item suiteImage, base v1.Image, slim *slimSuite, repo, tag, ttlUUID string, insecure []string, propagation time.Duration) (util.Build, error) {
+	return publishSuiteImageWith(item, func() (v1.Image, string, error) {
+		if slim == nil {
+			img, err := imageWithEntrypoint(base, item.Bin)
+			return img, "", err
+		}
+		img, dropped, err := slim.image(item.Bin)
+		return img, fmt.Sprintf(" (the other binaries left out: %.1f MiB)", float64(dropped)/(1<<20)), err
+	}, repo, tag, ttlUUID, insecure, propagation)
+}
+
+// publishSuiteImageWith pushes the image build makes for item and waits until the registry serves it.
+func publishSuiteImageWith(item suiteImage, build func() (v1.Image, string, error), repo, tag, ttlUUID string, insecure []string, propagation time.Duration) (util.Build, error) {
 	began := time.Now()
 	dest, err := pushTarget(item.Image, repo, tag, ttlUUID, imageBasename(item.Image))
 	if err != nil {
 		return util.Build{}, err
 	}
-	var img v1.Image
-	var dropped int64
-	if slim != nil {
-		img, dropped, err = slim.image(item.Bin)
-	} else {
-		img, err = imageWithEntrypoint(base, item.Bin)
-	}
+	img, note, err := build()
 	if err != nil {
 		return util.Build{}, fmt.Errorf("image for %s: %w", item.Bin, err)
 	}
@@ -229,11 +259,7 @@ func publishSuiteImage(item suiteImage, base v1.Image, slim *slimSuite, repo, ta
 	if err != nil {
 		return util.Build{}, fmt.Errorf("parsing %s: %w", dest, err)
 	}
-	if slim != nil {
-		fmt.Printf("Suite fan-out %s -> %s (the other binaries left out: %.1f MiB)\n", item.Bin, dest, float64(dropped)/(1<<20))
-	} else {
-		fmt.Printf("Suite fan-out %s -> %s\n", item.Bin, dest)
-	}
+	fmt.Printf("Suite fan-out %s -> %s%s\n", item.Bin, dest, note)
 	push := func() error { return remoteWrite(destRef, img, remoteOptionsFor(dest, insecure)...) }
 	if err := util.RetryPush(context.Background(), dest, push); err != nil {
 		if classifyRegistryError(err) == registryAuth {
