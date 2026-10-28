@@ -103,3 +103,22 @@ func TestOwnContainerIDFromMountInfo(t *testing.T) {
 	}
 	assert.Equal(t, id, ownContainerID())
 }
+
+// On an ARC runner the dind daemon's /var/lib/docker sits in a Kubernetes volume, so the bind source names the pod's
+// container first and this container second (PriceWhisperer run 40610603655). The second is the one dind knows.
+func TestOwnContainerIDTakesTheInnermostID(t *testing.T) {
+	if _, err := os.Stat("/.dockerenv"); err != nil {
+		t.Skip("not in a Docker container")
+	}
+	old := mountInfo
+	t.Cleanup(func() { mountInfo = old })
+	pod := "b8f0c825090746a06f670f2baad961c64854ca65bd243404ca47f2ab0a81b699"
+	own := "7f4edfab8e762bd7f5d56d0132873f33d7527ed8d9fdaa9ddce03e36f962043f"
+	mountInfo = func() ([]byte, error) {
+		return []byte("1 2 0:1 / / rw - overlay overlay rw\n" +
+			"388 378 8:1 /var/lib/rancher/k3s/agent/containerd/io.containerd.grpc.v1.cri/containers/" + pod +
+			"/volumes/167dd6fd26995d60834622d81e55e93c6acba29b4a197b0cdde0e81bbc2810e5/containers/" + own +
+			"/hostname /etc/hostname rw,relatime - ext4 /dev/sda1 rw\n"), nil
+	}
+	assert.Equal(t, own, ownContainerID())
+}
