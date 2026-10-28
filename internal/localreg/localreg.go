@@ -157,8 +157,10 @@ func ownContainerID() string {
 		if !strings.Contains(line, " /etc/hostname ") && !strings.Contains(line, " /etc/resolv.conf ") {
 			continue
 		}
-		if m := containerIDInMount.FindStringSubmatch(line); m != nil {
-			return m[1]
+		// The last id in the path: with nested Docker (an ARC runner's dind sidecar on Kubernetes) the bind source
+		// is .../cri/containers/<pod container>/volumes/.../containers/<this container>/hostname.
+		if m := containerIDInMount.FindAllStringSubmatch(line, -1); m != nil {
+			return m[len(m)-1][1]
 		}
 	}
 	return ""
