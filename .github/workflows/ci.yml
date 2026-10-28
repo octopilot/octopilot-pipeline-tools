@@ -38,7 +38,7 @@ jobs:
     outputs:
       pipeline-context: ${{ steps.detect.outputs.pipeline-context }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Detect Contexts
         id: detect
         uses: octopilot/actions/detect-contexts@main
@@ -48,7 +48,7 @@ jobs:
     if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: octopilot/actions/lint@main
         with:
           pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
@@ -61,7 +61,7 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.detect.outputs.pipeline-context).matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: octopilot/actions/test@main
         with:
           pipeline-context: ${{ toJson(matrix) }}
@@ -78,7 +78,7 @@ jobs:
     env:
       OP_PACK_NETWORK: host
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # - uses: octopilot/actions/janitor@main
       #   with:
       #     pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
@@ -124,7 +124,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -174,7 +174,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -323,7 +323,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
