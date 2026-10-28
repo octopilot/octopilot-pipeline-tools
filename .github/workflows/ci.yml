@@ -13,19 +13,8 @@ on:
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, master]
-    # Same Go paths as push: without them a pull request changing only Go code ran no lint or tests.
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - "src/**"
-      - "tests/**"
-      - "pyproject.toml"
-      - "Dockerfile"
-      - "skaffold.yaml"
-      - "base/**"
-      - ".pre-commit-config.yaml"
-      - ".github/workflows/ci.yml"
+    # No paths filter: main's ruleset requires lint, integration and CI result, so every pull request must
+    # report them (a CHANGELOG-only or workflow-only PR would otherwise wait forever).
   workflow_dispatch:
     inputs:
       release:
@@ -106,6 +95,20 @@ jobs:
       - run: just test-integration
         env:
           BP_GO_VERSION: ${{ fromJson(needs.detect.outputs.pipeline-context).versions.op }}
+
+  # One stable check for main's ruleset: the test matrix's check names carry the Go version and would change with it.
+  ci-result:
+    name: CI result
+    needs: [detect, lint, test, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lint, test and integration passed or were skipped
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -Eq '"(failure|cancelled)"'; then exit 1; fi
 
   # ── Job 1: cross-compile Go binaries for all platforms ────────────────────
   # Runs on a fresh runner; no Docker images pulled, minimal disk use.

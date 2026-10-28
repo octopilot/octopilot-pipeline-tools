@@ -1,37 +1,43 @@
-# Dependabot: pip (pyproject.toml) + GitHub Actions
-# PRs get label "automerge" so dependabot-automerge workflow can merge when checks pass.
+# Dependabot: Go modules and GitHub Actions, Monday 09:00 UTC like the other Microscaler/Octopilot repos.
+# Minor and patch bumps arrive as one grouped PR per ecosystem; majors arrive one PR each.
+# .github/workflows/dependabot-automerge.yml queues auto-merge behind main's required checks, except majors and
+# 0.x minor bumps, which stay open for review.
 version: 2
 updates:
-  - package-ecosystem: "pip"
-    directory: "/"
+  - package-ecosystem: gomod
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
+      day: monday
       time: "09:00"
+      timezone: "UTC"
     open-pull-requests-limit: 10
     labels:
-      - "dependencies"
-      - "automerge"
+      - dependencies
+      - go
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
-      include: "scope"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    pull-request-branch-name:
-      separator: "/"
+      prefix: chore
+      include: scope
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
+      day: monday
       time: "09:00"
-    open-pull-requests-limit: 5
+      timezone: "UTC"
+    open-pull-requests-limit: 10
     labels:
-      - "dependencies"
-      - "automerge"
+      - dependencies
+      - github-actions
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
+      prefix: chore
+      include: scope
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

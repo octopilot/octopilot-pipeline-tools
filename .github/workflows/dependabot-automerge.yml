@@ -1,9 +1,11 @@
-# Automerge Dependabot PRs that have the "automerge" label after required checks pass.
-# Mirrors secret-manager-controller pattern: schedule + workflow_dispatch, wait for CI jobs, squash merge.
+# Enables GitHub auto-merge on Dependabot PRs: GitHub merges once the checks main's ruleset requires have passed
+# (lint, integration, CI result, CodeQL). Runs on a GitHub-hosted runner (pull requests never run on ms02).
+# Prereq: repository setting "Allow auto-merge" on.
+name: Dependabot Automerge
+
 on:
-  schedule:
-    - cron: "0 */6 * * *"
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
@@ -12,119 +14,37 @@ permissions:
 jobs:
   automerge:
     name: Automerge Dependabot PRs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    if: github.actor == 'dependabot[bot]'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Find and process Dependabot PRs
-        uses: actions/github-script@v8
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
         with:
-          script: |
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-            });
-
-            const dependabotPRs = prs.filter(pr =>
-              pr.user.login === 'dependabot[bot]' &&
-              pr.labels.some(label => label.name === 'automerge')
-            );
-
-            console.log(`Found ${dependabotPRs.length} Dependabot PR(s) with automerge label`);
-
-            if (dependabotPRs.length === 0) {
-              console.log('✅ No PRs to process');
-              return;
-            }
-
-            const requiredStatusChecks = ['Lint', 'Run tests'];
-            const maxWaitTime = 30 * 60 * 1000;
-            const checkInterval = 30 * 1000;
-
-            for (const pr of dependabotPRs) {
-              console.log(`\n📋 Processing PR #${pr.number}: ${pr.title}`);
-
-              const { data: prDetails } = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-              });
-
-              if (prDetails.mergeable === false) {
-                console.log(`⚠️  PR #${pr.number} is not mergeable (may have conflicts)`);
-                continue;
-              }
-
-              const startTime = Date.now();
-              let checksPassed = false;
-
-              while (Date.now() - startTime < maxWaitTime) {
-                const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: pr.head.sha,
-                });
-
-                const { data: checks } = await github.rest.checks.listForRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: pr.head.sha,
-                });
-
-                const allStatuses = [
-                  ...statuses.map(s => ({ name: s.context, state: s.state })),
-                  ...checks.check_runs.map(c => ({ name: c.name, state: c.status === 'completed' ? c.conclusion : c.status })),
-                ];
-
-                const requiredChecks = requiredStatusChecks.map(name => {
-                  const status = allStatuses.find(s => s.name === name || s.name.includes(name));
-                  return { name, status };
-                });
-
-                const allPassed = requiredChecks.every(
-                  check => check.status && (check.status.state === 'success' || check.status.state === 'completed')
-                );
-                const anyFailed = requiredChecks.some(
-                  check => check.status && (check.status.state === 'failure' || check.status.state === 'failed')
-                );
-
-                if (allPassed) {
-                  console.log(`✅ All required checks passed for PR #${pr.number}`);
-                  checksPassed = true;
-                  break;
-                }
-
-                if (anyFailed) {
-                  console.log(`❌ One or more required checks failed for PR #${pr.number}`);
-                  break;
-                }
-
-                console.log(`⏳ Waiting for status checks for PR #${pr.number}...`);
-                await new Promise(resolve => setTimeout(resolve, checkInterval));
-              }
-
-              if (!checksPassed) {
-                console.log(`⏱️  Timeout or checks failed for PR #${pr.number}, skipping merge`);
-                continue;
-              }
-
-              try {
-                await github.rest.pulls.merge({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: pr.number,
-                  merge_method: 'squash',
-                  commit_title: `${pr.title} (#${pr.number})`,
-                  commit_message: `Automerge: ${pr.body || ''}`,
-                });
-                console.log(`✅ PR #${pr.number} merged successfully`);
-              } catch (error) {
-                if (error.status === 405) {
-                  console.log(`⚠️  PR #${pr.number} cannot be merged (may require review or have conflicts)`);
-                } else {
-                  console.error(`❌ Error merging PR #${pr.number}:`, error.message);
-                }
-              }
-            }
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # Majors stay open for review, and so does a 0.x minor bump (0.5 -> 0.6), which semver allows to break though
+      # Dependabot calls it minor (27 Oct 2026: argon2 0.6 and rand 0.10 auto-merged into sesame-idam and broke its
+      # build). A grouped PR is held if any update in it would be. Patch and other minor bumps queue auto-merge.
+      - name: Hold majors and 0.x minors
+        id: hold
+        env:
+          DEPS: ${{ steps.metadata.outputs.updated-dependencies-json }}
+        run: |
+          held="$(jq -r '.[]
+            | select(.updateType == "version-update:semver-major"
+                     or (.updateType == "version-update:semver-minor"
+                         and ((.prevVersion // "") | ltrimstr("v") | startswith("0."))))
+            | "\(.dependencyName) \(.prevVersion) -> \(.newVersion)"' <<<"$DEPS")"
+          if [ -n "$held" ]; then
+            echo "Left open for review:"
+            echo "$held"
+            echo "hold=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hold=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Enable auto-merge (squash)
+        if: steps.hold.outputs.hold == 'false'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
