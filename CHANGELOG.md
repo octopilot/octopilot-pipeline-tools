@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed: upload accounting on Artifact Registry
+
+op counted blob bytes only on `/v2/<repo>/blobs/uploads/` URLs. Artifact Registry continues uploads at `/artifacts-uploads/...`, so pushes there reported 0.0 MiB. Bytes are now counted for every PATCH, and for every PUT or POST that is not a manifest or a mount.
+
 ## v1.2.5
 
 ### Fixed: multi-platform images are what their index says they are

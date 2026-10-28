@@ -47,10 +47,16 @@ type countingTransport struct {
 	c    *UploadCounter
 }
 
+// RoundTrip counts by method and response, not by the upload URL's shape: a registry chooses where a blob upload
+// continues (the Location of the POST), and Artifact Registry continues at /artifacts-uploads/..., not at
+// /v2/<repo>/blobs/uploads/. Every PATCH, and every PUT or POST that is not a manifest, sends blob bytes.
 func (t *countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	p := req.URL.Path
-	upload := strings.Contains(p, "/blobs/uploads/") && (req.Method == http.MethodPatch || req.Method == http.MethodPut)
-	if upload && req.Body != nil && req.Body != http.NoBody {
+	manifest := strings.Contains(p, "/manifests/")
+	mount := req.Method == http.MethodPost && req.URL.Query().Get("mount") != ""
+	blob := !manifest && !mount &&
+		(req.Method == http.MethodPatch || req.Method == http.MethodPut || req.Method == http.MethodPost)
+	if blob && req.Body != nil && req.Body != http.NoBody {
 		req.Body = &countingBody{ReadCloser: req.Body, n: &t.c.bytes}
 	}
 	resp, err := t.base.RoundTrip(req)
@@ -60,12 +66,13 @@ func (t *countingTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	switch {
 	case req.Method == http.MethodHead && strings.Contains(p, "/blobs/sha256:") && resp.StatusCode == http.StatusOK:
 		t.c.existing.Add(1)
-	case req.Method == http.MethodPost && strings.HasSuffix(p, "/blobs/uploads/") && req.URL.Query().Get("mount") != "" && resp.StatusCode == http.StatusCreated:
+	case mount && resp.StatusCode == http.StatusCreated:
 		t.c.mounts.Add(1)
-	case req.Method == http.MethodPut && strings.Contains(p, "/blobs/uploads/") && resp.StatusCode == http.StatusCreated:
-		t.c.uploads.Add(1)
-	case req.Method == http.MethodPut && strings.Contains(p, "/manifests/") && resp.StatusCode < 300:
+	case manifest && req.Method == http.MethodPut && resp.StatusCode < 300:
 		t.c.manifests.Add(1)
+	case blob && resp.StatusCode == http.StatusCreated && (req.Method == http.MethodPut || req.URL.Query().Get("digest") != ""):
+		// The upload's last request: a PUT with ?digest=, or a monolithic POST with ?digest=.
+		t.c.uploads.Add(1)
 	}
 	return resp, nil
 }
