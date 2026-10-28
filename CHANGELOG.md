@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## v1.2.6
+
+### Fixed: op finds its own container on ARC runners
+
+On an ARC runner (dind sidecar on Kubernetes) the mountinfo line for `/etc/hostname` names two containers: the Kubernetes pod container first and op's Docker container last. op took the first, which the dind daemon does not know. Since v1.2.5 op checks the ID with the daemon and falls back to the hostname, so builds already worked; now the first guess is right.
+
+### Changed: op's own arm64 image is built on a native arm64 runner
+
+op's arm64 image used to be built under QEMU and took about 40 minutes. Each platform now builds on its own runner (amd64 on `ubuntu-latest`, arm64 on `ubuntu-24.04-arm`) in about 5 minutes, and a final job assembles the `op` and `op-base` indexes and checks each entry's platform. CI runs of the same ref now queue instead of overlapping, so two main runs can no longer publish each other's images.
+
 
 ### Fixed: upload accounting on Artifact Registry
 
