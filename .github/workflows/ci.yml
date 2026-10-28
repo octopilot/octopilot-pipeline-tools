@@ -34,6 +34,14 @@ on:
         default: false
         type: boolean
 
+
+# Each per-arch leg pushes <ref>-<arch> and reads the digest back by tag, so two runs of the
+# same ref must not overlap: the later push would land in the earlier run's index. Main and tag
+# runs queue (GitHub keeps only the newest pending run per group); pull requests cancel.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   detect:
     name: Detect Contexts
