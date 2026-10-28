@@ -150,6 +150,14 @@ just free-disk
 
 ---
 
+## Merging to main
+
+`main` has a ruleset (id 26017967) that requires these checks on every pull request: `lint`, `integration`, `CI result` (lint, the test matrix and integration together) and CodeQL's `Analyze (go)` and `Analyze (actions)`. Force pushes and deleting `main` are blocked. Repository admins can bypass the ruleset; Trigger Release relies on that to push its version bump.
+
+CI runs on every pull request, whatever it touches, so a CHANGELOG-only change gets the checks too.
+
+Dependabot opens one grouped minor/patch PR a week for Go modules and one for GitHub Actions, and a separate PR for each major. `dependabot-automerge.yml` queues auto-merge for patch and minor bumps, and GitHub merges them once the required checks pass. Majors, and minor bumps of a 0.x module (which may break), stay open for review; a grouped PR stays open if any update in it would.
+
 ## Dependencies & Forks
 
 `octopilot-pipeline-tools` depends on forked versions of upstream projects to support multi-architecture builds with the Pack and Skaffold Go libraries. Forks are maintained on dedicated branches until changes are accepted upstream.
